@@ -797,7 +797,13 @@ ${data.map((item, index) => `
         {/* Fixed Toolbar */}
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Exportação de Dados</h2>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Exportação de Dados</h2>
+              <span className="text-xs text-gray-400 dark:text-gray-500">{filteredAndSortedRecords.length} registro(s)</span>
+            </div>
+              <span className="text-xs text-gray-400 dark:text-gray-500">{filteredAndSortedRecords.length} registro(s)</span>
+            </div>
             
             <div className="flex items-center gap-3">
               <button
@@ -813,12 +819,7 @@ ${data.map((item, index) => `
 
         {/* Content */}
         <div className="flex-1 overflow-hidden flex flex-col">
-          {/* Hint bar */}
-          <div className="px-6 py-1.5 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
-            <p className="text-xs text-gray-400 dark:text-gray-500">
-              {filteredAndSortedRecords.length} registro(s)
-            </p>
-          </div>
+
           <div className="flex-1 overflow-auto relative">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
