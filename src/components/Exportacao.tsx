@@ -12,8 +12,6 @@ import { supabase } from '../lib/supabase';
 export const Exportacao: React.FC = () => {
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [activeFilterCol, setActiveFilterCol] = React.useState<keyof ExportRecord | null>(null);
-  const filterRef = React.useRef<HTMLDivElement>(null);
   const [activeFilterCol, setActiveFilterCol] = useState<keyof ExportRecord | null>(null);
   const filterRef = React.useRef<HTMLDivElement>(null);
   const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
@@ -1003,7 +1001,8 @@ ${data.map((item, index) => `
         </div>
       </div>
 
-      <ExportModalsOpen={exportModalOpen}
+      <ExportModal
+        isOpen={exportModalOpen}
         onClose={() => setExportModalOpen(false)}
         onExport={handleExport}
       />
