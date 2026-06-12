@@ -833,10 +833,14 @@ ${data.map((item, index) => `
         </div>
 
         {/* Content */}
-        <div className="flex-1 p-6 overflow-hidden">
-          {/* Export Records Table */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden h-full flex flex-col">
-            <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Hint bar */}
+          <div className="px-6 py-1.5 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              {filteredAndSortedRecords.length} registro(s)
+            </p>
+          </div>
+          <div className="flex-1 overflow-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
@@ -932,7 +936,6 @@ ${data.map((item, index) => `
                   )}
                 </tbody>
               </table>
-            </div>
           </div>
         </div>
       </div>

@@ -94,6 +94,11 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   const [colFilters, setColFilters] = useState<Record<string, string>>({});
   const [activeFilterCol, setActiveFilterCol] = useState<string | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
+  const [colSelectorOpen, setColSelectorOpen] = useState(false);
+  const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
+  const [dragColIdx, setDragColIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
   // Matriz state
   const [expandedPais, setExpandedPais] = useState<Set<string>>(new Set());
@@ -285,6 +290,16 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   // Table data
   const columns = useMemo(() => filteredRaw.length > 0 ? Object.keys(filteredRaw[0]) : [], [filteredRaw]);
 
+  React.useEffect(() => {
+    setVisibleColumns(prev => {
+      if (prev.length === 0 || !prev.every(c => columns.includes(c))) return columns;
+      const newCols = columns.filter(c => !prev.includes(c));
+      return [...prev, ...newCols];
+    });
+  }, [columns]);
+
+  const displayColumns = visibleColumns.filter(c => !hiddenColumns.includes(c));
+
   const tableData = useMemo(() => {
     let data = [...filteredRaw];
     Object.entries(colFilters).forEach(([col, val]) => {
@@ -394,39 +409,40 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       {/* Subheader */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Visualização de Dados</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Visualização de Dados</h2>
+
+          {/* Right side: tabs + export button + date filter */}
+          <div className="flex items-center gap-3">
             {/* View mode tabs */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
               {(['tabela', 'matriz', 'dashboard'] as ViewMode[]).map(mode => (
                 <button
                   key={mode}
                   onClick={() => setViewMode(mode)}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                  className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
                     viewMode === mode
                       ? 'bg-blue-600 text-white'
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
                   }`}
                 >
                   {mode.toUpperCase()}
                 </button>
               ))}
-              {/* Export panel trigger — only in dashboard */}
-              {viewMode === 'dashboard' && (
-                <button
-                  onClick={() => setExportPanelOpen(true)}
-                  className="ml-2 flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                  title="Exportar dashboard"
-                >
-                  <ArrowDown className="w-3.5 h-3.5" />
-                  <ArrowUp className="w-3.5 h-3.5" />
-                </button>
-              )}
             </div>
-          </div>
+            {/* Export panel trigger — only in dashboard */}
+            {viewMode === 'dashboard' && (
+              <button
+                onClick={() => setExportPanelOpen(true)}
+                className="flex items-center gap-0.5 px-2 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                title="Exportar dashboard"
+              >
+                <ArrowUp className="w-3 h-3" />
+                <ArrowDown className="w-3 h-3" />
+              </button>
+            )}
 
-          {/* Date filter */}
-          <div className="flex items-center gap-2">
+            {/* Date filter */}
+            <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400" />
             <input
               type="date"
@@ -444,6 +460,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             {(dateFilter.startDate || dateFilter.endDate) && (
               <button onClick={() => setDateFilter({ startDate: '', endDate: '' })} className="text-xs text-red-500 hover:text-red-700">Limpar</button>
             )}
+            </div>
           </div>
         </div>
       </div>
@@ -515,13 +532,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
         {/* ── TABELA ── */}
         {viewMode === 'tabela' && (
           <div className="h-full flex flex-col">
-            {/* Hint */}
-            <div className="px-6 py-1.5 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
-              <p className="text-xs text-gray-400 dark:text-gray-500">
-                Clique na coluna para ordenar &nbsp;·&nbsp; <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Ctrl</kbd> + clique para filtrar
-              </p>
-            </div>
-
             {filteredRaw.length === 0 ? (
               <div className="p-12 text-center">
                 <BarChart2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -529,26 +539,30 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                 <p className="text-gray-400 dark:text-gray-500 mt-2">Importe arquivos na seção de Importação</p>
               </div>
             ) : (
-              <div className="flex-1 overflow-hidden relative">
-                {/* Pagination top */}
-                <div className="px-6 py-2 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between flex-shrink-0">
-                  <span className="text-xs text-gray-600 dark:text-gray-400">
-                    {(page-1)*ROWS_PER_PAGE+1} a {Math.min(page*ROWS_PER_PAGE, tableData.length)} de {tableData.length}
+              <div className="flex-1 overflow-hidden flex flex-col relative">
+                {/* Toolbar: col selector */}
+                <div className="px-4 py-1.5 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between flex-shrink-0">
+                  <span className="text-xs text-gray-400 dark:text-gray-500">
+                    {tableData.length} registros
                   </span>
-                  {totalPages > 1 && (
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1} className="px-2 py-1 text-xs border rounded disabled:opacity-40 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300">Anterior</button>
-                      <span className="text-xs text-gray-600 dark:text-gray-400">{page} de {totalPages}</span>
-                      <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page===totalPages} className="px-2 py-1 text-xs border rounded disabled:opacity-40 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300">Próximo</button>
-                    </div>
-                  )}
+                  <button
+                    onClick={() => setColSelectorOpen(o => !o)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${
+                      colSelectorOpen
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
+                    }`}
+                  >
+                    <Filter className="w-3 h-3" />
+                    Colunas
+                  </button>
                 </div>
 
-                <div className="h-full overflow-auto">
+                <div className="flex-1 overflow-auto" style={{ overflowX: 'auto' }}>
                   <table className="w-full">
                     <thead>
                       <tr>
-                        {columns.map(col => {
+                        {displayColumns.map(col => {
                           const hasFilter = !!colFilters[col];
                           return (
                             <th
@@ -570,7 +584,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                       {pageData.map((row: any, i) => (
                         <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150">
-                          {columns.map(col => (
+                          {displayColumns.map(col => (
                             <td key={col} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                               {formatCell(row[col], col)}
                             </td>
@@ -604,7 +618,77 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                     )}
                   </div>
                 )}
+
+                {/* Column selector panel */}
+                {colSelectorOpen && (
+                  <div className="absolute right-0 top-0 bottom-0 w-64 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 z-40 flex flex-col shadow-xl">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">Colunas</span>
+                      <button onClick={() => setColSelectorOpen(false)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-2">
+                      {visibleColumns.map((col, idx) => (
+                        <div
+                          key={col}
+                          draggable
+                          onDragStart={() => setDragColIdx(idx)}
+                          onDragOver={e => { e.preventDefault(); setDragOverIdx(idx); }}
+                          onDrop={() => {
+                            if (dragColIdx === null) return;
+                            const next = [...visibleColumns];
+                            const [moved] = next.splice(dragColIdx, 1);
+                            next.splice(idx, 0, moved);
+                            setVisibleColumns(next);
+                            setDragColIdx(null);
+                            setDragOverIdx(null);
+                          }}
+                          className={`flex items-center gap-2 px-2 py-2 rounded cursor-grab select-none text-sm transition-colors ${
+                            dragOverIdx === idx ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          <span className="text-gray-400 cursor-grab">⠿</span>
+                          <label className="flex items-center gap-2 cursor-pointer flex-1">
+                            <input
+                              type="checkbox"
+                              checked={hiddenColumns.indexOf(col) === -1}
+                              onChange={e => {
+                                if (e.target.checked) setHiddenColumns(h => h.filter(c => c !== col));
+                                else setHiddenColumns(h => [...h, col]);
+                              }}
+                              className="rounded"
+                            />
+                            <span className="text-gray-700 dark:text-gray-300 truncate">{col}</span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="p-3 border-t border-gray-200 dark:border-gray-700">
+                      <button
+                        onClick={() => { setHiddenColumns([]); setVisibleColumns(columns); }}
+                        className="w-full text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        Mostrar todas
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Pagination footer */}
+              {totalPages > 1 && (
+                <div className="px-6 py-2 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 flex items-center justify-between flex-shrink-0">
+                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                    {(page-1)*ROWS_PER_PAGE+1}–{Math.min(page*ROWS_PER_PAGE, tableData.length)} de {tableData.length}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setPage(1)} disabled={page===1} className="px-2 py-1 text-xs border rounded disabled:opacity-40 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300">«</button>
+                    <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1} className="px-2 py-1 text-xs border rounded disabled:opacity-40 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300">‹</button>
+                    <span className="text-xs text-gray-600 dark:text-gray-400">{page} / {totalPages}</span>
+                    <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page===totalPages} className="px-2 py-1 text-xs border rounded disabled:opacity-40 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300">›</button>
+                    <button onClick={() => setPage(totalPages)} disabled={page===totalPages} className="px-2 py-1 text-xs border rounded disabled:opacity-40 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300">»</button>
+                  </div>
+                </div>
+              )}
             )}
           </div>
         )}
