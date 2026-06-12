@@ -86,8 +86,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   const [exportPanelOpen, setExportPanelOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const calendarRef = React.useRef<HTMLDivElement>(null);
-  const [calendarOpen, setCalendarOpen] = useState(false);
-  const calendarRef = React.useRef<HTMLDivElement>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
 
   // Table state
