@@ -672,7 +672,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                     </div>
                   </div>
                 )}
-              </div>
 
               {/* Pagination footer */}
               {totalPages > 1 && (
@@ -689,9 +688,8 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                   </div>
                 </div>
               )}
-            </div>
-          )}
-        </div>
+              </div>
+            )}
         )}
 
         {/* ── MATRIZ ── */}
