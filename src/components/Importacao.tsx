@@ -191,7 +191,7 @@ export const Importacao: React.FC<ImportacaoProps> = ({ selectedCanal = 'TODOS' 
                   <Filter className="w-3 h-3" /> Limpar filtros
                 </button>
               )}
-              <label className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
+              <label className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
                 <Upload className="w-4 h-4" />
                 {loading ? 'Processando...' : 'Upload Arquivo'}
                 <input type="file" accept=".txt,.csv,.xls,.xlsx" onChange={handleFileUpload} className="hidden" disabled={loading} multiple />
