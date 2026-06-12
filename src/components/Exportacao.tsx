@@ -799,7 +799,7 @@ ${data.map((item, index) => `
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-3">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Exportação de Dados</h2>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white">Exportação de Dados</h2>
               <span className="text-xs text-gray-400 dark:text-gray-500">{filteredAndSortedRecords.length} registro(s)</span>
             </div>
               <span className="text-xs text-gray-400 dark:text-gray-500">{filteredAndSortedRecords.length} registro(s)</span>
