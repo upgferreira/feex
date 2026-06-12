@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Trash2, ArrowUp, ArrowDown, FileText } from 'lucide-react';
+import { Download, Trash2, ArrowUp, ArrowDown, Filter, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { ExportRecord } from '../types';
 import { ExportModal } from './ExportModal';
@@ -12,6 +12,10 @@ import { supabase } from '../lib/supabase';
 export const Exportacao: React.FC = () => {
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [activeFilterCol, setActiveFilterCol] = React.useState<keyof ExportRecord | null>(null);
+  const filterRef = React.useRef<HTMLDivElement>(null);
+  const [activeFilterCol, setActiveFilterCol] = useState<keyof ExportRecord | null>(null);
+  const filterRef = React.useRef<HTMLDivElement>(null);
   const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
   const [exportRecords, setExportRecords] = useState<ExportRecord[]>([]);
   const [sortColumn, setSortColumn] = useState<keyof ExportRecord | null>(null);
@@ -763,50 +767,27 @@ ${data.map((item, index) => `
   }, [exportRecords, columnFilters, sortColumn, sortDirection]);
 
   const SortableHeader: React.FC<{ column: keyof ExportRecord; children: React.ReactNode }> = ({ column, children }) => {
-    const uniqueValues = getUniqueColumnValues(column);
-    
+    const hasFilter = !!columnFilters[column];
     return (
-      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky top-0 bg-gray-50 dark:bg-gray-700 z-10">
-        <div className="space-y-2">
-          <div
-            className="flex items-center gap-2 cursor-pointer hover:text-gray-700 dark:hover:text-gray-300 whitespace-nowrap"
-            onClick={() => handleSort(column)}
-          >
-            <span className="truncate">{children}</span>
-            {sortColumn === column && (
-              sortDirection === 'asc' ? (
-                <ArrowUp className="w-4 h-4 flex-shrink-0" />
-              ) : (
-                <ArrowDown className="w-4 h-4 flex-shrink-0" />
-              )
-            )}
-          </div>
-          <select
-            value={columnFilters[column] || ''}
-            onChange={(e) => handleColumnFilter(column, e.target.value)}
-            className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <option value="">Todos</option>
-            {uniqueValues.map(value => {
-              if (column === 'dataDownload' && value instanceof Date) {
-                const isoString = value.toISOString();
-                const displayValue = formatDate(value);
-                return (
-                  <option key={isoString} value={isoString}>
-                    {displayValue}
-                  </option>
-                );
-              }
-              
-              const stringValue = value?.toString() || '';
-              return (
-                <option key={stringValue} value={stringValue}>
-                  {stringValue}
-                </option>
-              );
-            })}
-          </select>
+      <th
+        className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors ${
+          hasFilter
+            ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+            : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'
+        }`}
+        onClick={(e) => {
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            setActiveFilterCol(prev => prev === column ? null : column);
+          } else {
+            handleSort(column);
+          }
+        }}
+      >
+        <div className="flex items-center gap-1">
+          {children}
+          {sortColumn === column && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
+          {hasFilter && <Filter className="w-3 h-3" />}
         </div>
       </th>
     );
@@ -840,7 +821,7 @@ ${data.map((item, index) => `
               {filteredAndSortedRecords.length} registro(s)
             </p>
           </div>
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-auto relative">
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
@@ -936,12 +917,93 @@ ${data.map((item, index) => `
                   )}
                 </tbody>
               </table>
+            {/* Ctrl+click filter popup */}
+            {activeFilterCol && (
+              <div ref={filterRef} className="absolute top-0 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 w-72">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">Filtrar: {activeFilterCol}</span>
+                  <button onClick={() => setActiveFilterCol(null)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
+                </div>
+                <select
+                  autoFocus
+                  value={columnFilters[activeFilterCol] || ''}
+                  onChange={e => handleColumnFilter(activeFilterCol, e.target.value)}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="">Todos</option>
+                  {getUniqueColumnValues(activeFilterCol).slice(0, 50).map(v => {
+                    const str = v instanceof Date ? v.toISOString() : String(v ?? '');
+                    const display = v instanceof Date ? formatDate(v) : String(v ?? '');
+                    return <option key={str} value={str}>{display}</option>;
+                  })}
+                </select>
+                {columnFilters[activeFilterCol] && (
+                  <button onClick={() => handleColumnFilter(activeFilterCol!, '')} className="mt-2 w-full text-xs text-red-500 hover:text-red-700 text-center">Limpar filtro</button>
+                )}
+              </div>
+            )}
+            {activeFilterCol && (
+              <div ref={filterRef} className="absolute top-0 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 w-72">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">Filtrar: {activeFilterCol}</span>
+                  <button onClick={() => setActiveFilterCol(null)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
+                </div>
+                <select autoFocus value={columnFilters[activeFilterCol] || ''} onChange={e => handleColumnFilter(activeFilterCol, e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                  <option value="">Todos</option>
+                  {getUniqueColumnValues(activeFilterCol).slice(0, 50).map(v => {
+                    const str = v instanceof Date ? v.toISOString() : String(v ?? '');
+                    const display = v instanceof Date ? formatDate(v) : String(v ?? '');
+                    return <option key={str} value={str}>{display}</option>;
+                  })}
+                </select>
+                {columnFilters[activeFilterCol] && (
+                  <button onClick={() => handleColumnFilter(activeFilterCol!, '')} className="mt-2 w-full text-xs text-red-500 hover:text-red-700 text-center">Limpar filtro</button>
+                )}
+              </div>
+            )}
+            {activeFilterCol && (
+              <div ref={filterRef} className="absolute top-0 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 w-72">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">Filtrar: {activeFilterCol}</span>
+                  <button onClick={() => setActiveFilterCol(null)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
+                </div>
+                <select autoFocus value={columnFilters[activeFilterCol] || ''} onChange={e => handleColumnFilter(activeFilterCol, e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                  <option value="">Todos</option>
+                  {getUniqueColumnValues(activeFilterCol).slice(0, 50).map(v => {
+                    const str = v instanceof Date ? v.toISOString() : String(v ?? '');
+                    const display = v instanceof Date ? formatDate(v) : String(v ?? '');
+                    return <option key={str} value={str}>{display}</option>;
+                  })}
+                </select>
+                {columnFilters[activeFilterCol] && (
+                  <button onClick={() => handleColumnFilter(activeFilterCol!, '')} className="mt-2 w-full text-xs text-red-500 hover:text-red-700 text-center">Limpar filtro</button>
+                )}
+              </div>
+            )}
+                      {activeFilterCol && (
+              <div ref={filterRef} className="absolute top-0 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 w-72">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">Filtrar: {activeFilterCol}</span>
+                  <button onClick={() => setActiveFilterCol(null)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
+                </div>
+                <select autoFocus value={columnFilters[activeFilterCol] || ''} onChange={e => handleColumnFilter(activeFilterCol, e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                  <option value="">Todos</option>
+                  {getUniqueColumnValues(activeFilterCol).slice(0, 50).map(v => {
+                    const str = v instanceof Date ? v.toISOString() : String(v ?? '');
+                    const display = v instanceof Date ? formatDate(v) : String(v ?? '');
+                    return <option key={str} value={str}>{display}</option>;
+                  })}
+                </select>
+                {columnFilters[activeFilterCol] && (
+                  <button onClick={() => handleColumnFilter(activeFilterCol!, '')} className="mt-2 w-full text-xs text-red-500 hover:text-red-700 text-center">Limpar filtro</button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <ExportModal
-        isOpen={exportModalOpen}
+      <ExportModalsOpen={exportModalOpen}
         onClose={() => setExportModalOpen(false)}
         onExport={handleExport}
       />
