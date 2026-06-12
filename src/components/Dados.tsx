@@ -144,25 +144,43 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     });
   }, [rawData, dateFilter, canal]);
 
+  const ML_FRETES_GRUPOS = ['Tarifa do Mercado Envios', 'Tarifas do Mercado Envios Full'];
+  const ML_TAXAS_GRUPOS = ['Tarifas de venda', 'Tarifas dos serviços do Mercado Pago', 'Taxas de parcelamento'];
+
   const stats = useMemo(() => {
-    const empty = { vendas: 0, receita: 0, taxas: 0, lucro: 0, ticketMedio: 0, impostos: 0, lucroBruto: 0 };
+    const empty = { vendas: 0, receita: 0, taxas: 0, fretes: 0, outros: 0, margemBruta: 0, margemLiquida: 0, ticketMedio: 0 };
     if (filteredRaw.length === 0) return empty;
+
     if (canal === 'MERCADO LIVRE') {
       const vendas = new Set(filteredRaw.map((r: any) => r['Número da venda'])).size;
       const receita = filteredRaw.reduce((a: number, r: any) => a + (Number(r['Valor da transação']) || 0), 0);
-      const taxas = filteredRaw.reduce((a: number, r: any) => a + (Number(r['Valor da tarifa']) || 0), 0);
-      const lucro = receita - taxas;
-      const impostos = receita * 0.1;
-      return { vendas, receita, taxas, lucro, ticketMedio: vendas > 0 ? receita / vendas : 0, impostos, lucroBruto: lucro - impostos };
+      let taxas = 0, fretes = 0, outros = 0;
+      filteredRaw.forEach((r: any) => {
+        const grupo = ML_GRUPO_MAP[r.Detalhe?.toString() || ''] || 'Outros';
+        const val = Math.abs(Number(r['Valor da tarifa']) || 0);
+        if (ML_FRETES_GRUPOS.includes(grupo)) fretes += val;
+        else if (ML_TAXAS_GRUPOS.includes(grupo)) taxas += val;
+        else outros += val;
+      });
+      const margemBruta = receita - taxas - fretes;
+      const margemLiquida = margemBruta - outros;
+      return { vendas, receita, taxas, fretes, outros, margemBruta, margemLiquida, ticketMedio: vendas > 0 ? receita / vendas : 0 };
     }
+
     if (canal === 'TODOS') {
-      let vendas = 0, receita = 0, taxas = 0;
+      let vendas = 0, receita = 0, taxas = 0, fretes = 0, outros = 0;
       CANAIS.forEach(c => {
         const data = getAllChannelData(c);
         if (c === 'MERCADO LIVRE') {
           vendas += new Set(data.map((r: any) => r['Número da venda'])).size;
           receita += data.reduce((a: number, r: any) => a + (Number(r['Valor da transação']) || 0), 0);
-          taxas += data.reduce((a: number, r: any) => a + (Number(r['Valor da tarifa']) || 0), 0);
+          data.forEach((r: any) => {
+            const grupo = ML_GRUPO_MAP[r.Detalhe?.toString() || ''] || 'Outros';
+            const val = Math.abs(Number(r['Valor da tarifa']) || 0);
+            if (ML_FRETES_GRUPOS.includes(grupo)) fretes += val;
+            else if (ML_TAXAS_GRUPOS.includes(grupo)) taxas += val;
+            else outros += val;
+          });
         } else {
           vendas += data.length;
           receita += data.reduce((a: number, r: any) => {
@@ -171,17 +189,18 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
           }, 0);
         }
       });
-      const lucro = receita - taxas;
-      const impostos = receita * 0.1;
-      return { vendas, receita, taxas, lucro, ticketMedio: vendas > 0 ? receita / vendas : 0, impostos, lucroBruto: lucro - impostos };
+      const margemBruta = receita - taxas - fretes;
+      const margemLiquida = margemBruta - outros;
+      return { vendas, receita, taxas, fretes, outros, margemBruta, margemLiquida, ticketMedio: vendas > 0 ? receita / vendas : 0 };
     }
+
     const vendas = filteredRaw.length;
     const receita = filteredRaw.reduce((a: number, r: any) => {
       const keys = Object.keys(r).filter(k => typeof r[k] === 'number' && r[k] > 0);
       return keys.length > 0 ? a + (Number(r[keys[0]]) || 0) : a;
     }, 0);
-    const impostos = receita * 0.1;
-    return { vendas, receita, taxas: 0, lucro: receita, ticketMedio: vendas > 0 ? receita / vendas : 0, impostos, lucroBruto: receita - impostos };
+    const margemBruta = receita;
+    return { vendas, receita, taxas: 0, fretes: 0, outros: 0, margemBruta, margemLiquida: margemBruta, ticketMedio: vendas > 0 ? receita / vendas : 0 };
   }, [filteredRaw, canal, getAllChannelData]);
 
   const categoriaPaiData = useMemo(() => {
@@ -344,13 +363,14 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   };
 
   const statCards = [
-    { label: 'Vendas', value: stats.vendas.toLocaleString('pt-BR'), icon: <ShoppingCart className="h-6 w-6 text-blue-600" /> },
-    { label: 'Ticket Médio', value: formatBRL(stats.ticketMedio), icon: <CreditCard className="h-6 w-6 text-purple-600" /> },
-    { label: 'Receita', value: formatBRL(stats.receita), icon: <DollarSign className="h-6 w-6 text-green-600" /> },
-    { label: 'Taxas', value: formatBRL(stats.taxas), icon: <TrendingDown className="h-6 w-6 text-red-600" /> },
-    { label: 'Lucro', value: formatBRL(stats.lucro), icon: <TrendingUp className="h-6 w-6 text-indigo-600" /> },
-    { label: 'Impostos', value: formatBRL(stats.impostos), icon: <Receipt className="h-6 w-6 text-orange-600" /> },
-    { label: 'Lucro Bruto', value: formatBRL(stats.lucroBruto), icon: <BarChart2 className="h-6 w-6 text-emerald-600" /> },
+    { label: 'Vendas',        value: stats.vendas.toLocaleString('pt-BR'), icon: <ShoppingCart className="h-6 w-6 text-blue-600" /> },
+    { label: 'Ticket Médio',  value: formatBRL(stats.ticketMedio),         icon: <CreditCard className="h-6 w-6 text-purple-600" /> },
+    { label: 'Receita',       value: formatBRL(stats.receita),             icon: <DollarSign className="h-6 w-6 text-green-600" /> },
+    { label: 'Taxas',         value: formatBRL(stats.taxas),               icon: <TrendingDown className="h-6 w-6 text-red-600" /> },
+    { label: 'Fretes',        value: formatBRL(stats.fretes),              icon: <Receipt className="h-6 w-6 text-orange-600" /> },
+    { label: 'Margem Bruta',  value: formatBRL(stats.margemBruta),         icon: <TrendingUp className="h-6 w-6 text-emerald-600" /> },
+    { label: 'Outros',        value: formatBRL(stats.outros),              icon: <BarChart2 className="h-6 w-6 text-gray-500" /> },
+    { label: 'Margem Líquida',value: formatBRL(stats.margemLiquida),       icon: <TrendingUp className="h-6 w-6 text-indigo-600" /> },
   ];
 
   const PieSection = ({ data, title, tooltipLabel }: { data: any[]; title: string; tooltipLabel: string }) => (
@@ -427,15 +447,20 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                 </div>
               )}
             </div>
-            {viewMode === 'tabela' && (
-              <button
-                onClick={() => setColSelectorOpen(o => !o)}
-                className={`p-1.5 rounded border transition-colors ${colSelectorOpen ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}
-                title="Selecionar colunas"
-              >
-                <Filter className="w-4 h-4" />
-              </button>
-            )}
+            <button
+              onClick={() => viewMode === 'tabela' && setColSelectorOpen(o => !o)}
+              disabled={viewMode !== 'tabela'}
+              className={`p-1.5 rounded border transition-colors ${
+                viewMode === 'tabela'
+                  ? colSelectorOpen
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-600 border-gray-200 dark:border-gray-600 cursor-not-allowed'
+              }`}
+              title={viewMode === 'tabela' ? 'Selecionar colunas' : 'Disponível apenas no modo Tabela'}
+            >
+              <Filter className="w-4 h-4" />
+            </button>
             
             <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
               {(['tabela', 'matriz', 'dashboard'] as ViewMode[]).map(mode => (
@@ -476,7 +501,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
         {/* DASHBOARD */}
         {viewMode === 'dashboard' && (
           <div ref={dashboardRef} className="h-full overflow-auto p-6 pb-20">
-            <div className="grid grid-cols-1 md:grid-cols-7 gap-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-8 gap-3 mb-6">
               {statCards.map(card => (
                 <div key={card.label} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
                   <div className="flex items-center">
