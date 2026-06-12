@@ -408,15 +408,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                 <Filter className="w-4 h-4" />
               </button>
             )}
-            {viewMode === 'tabela' && (
-              <button
-                onClick={() => setColSelectorOpen(o => !o)}
-                className={`p-1.5 rounded border transition-colors ${colSelectorOpen ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}
-                title="Selecionar colunas"
-              >
-                <Filter className="w-4 h-4" />
-              </button>
-            )}
+            
             <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
               {(['tabela', 'matriz', 'dashboard'] as ViewMode[]).map(mode => (
                 <button
