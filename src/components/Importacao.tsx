@@ -181,7 +181,7 @@ export const Importacao: React.FC<ImportacaoProps> = ({ selectedCanal = 'TODOS' 
         {/* Toolbar */}
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Importação de Dados</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Importação de Dados</h2>
             <div className="flex items-center gap-2">
               {Object.keys(columnFilters).some(k => columnFilters[k]) && (
                 <button
