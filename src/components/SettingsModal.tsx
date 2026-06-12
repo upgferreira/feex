@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Building2, Mail, Phone, MapPin, Globe, Save, Lock, Shield, Eye, EyeOff } from 'lucide-react';
+import { X, Building2, Save, Lock, Eye, EyeOff, Shield } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useUserProfile } from '../hooks/useUserProfile';
 
@@ -10,37 +10,24 @@ interface SettingsModalProps {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { user } = useAuth();
-  const { profile, loading, updateProfile, updatePassword, enableTwoFactor, disableTwoFactor } = useUserProfile();
-  
-  const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');
+  const { profile, updateProfile, updatePassword, enableTwoFactor, disableTwoFactor } = useUserProfile();
+
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  
-  // Profile form data
+
   const [formData, setFormData] = useState({
-    cnpj: '',
-    responsible_name: '',
-    phone: '',
-    razao_social: '',
-    nome_fantasia: '',
-    endereco: '',
-    site: ''
+    cnpj: '', responsible_name: '', phone: '',
+    razao_social: '', nome_fantasia: '', endereco: '', site: ''
   });
 
-  // Password form data
   const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
+    currentPassword: '', newPassword: '', confirmPassword: ''
   });
 
   const [showPasswords, setShowPasswords] = useState({
-    current: false,
-    new: false,
-    confirm: false
+    current: false, new: false, confirm: false
   });
 
-  // Load profile data when modal opens or profile changes
   useEffect(() => {
     if (profile) {
       setFormData({
@@ -55,459 +42,215 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     }
   }, [profile]);
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handlePasswordChange = (field: string, value: string) => {
-    setPasswordData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleSaveProfile = async () => {
-    setSaving(true);
-    setMessage(null);
-
-    try {
-      const { error } = await updateProfile(formData);
-      
-      if (error) {
-        setMessage({ type: 'error', text: error });
-      } else {
-        setMessage({ type: 'success', text: 'Perfil atualizado com sucesso!' });
-      }
-    } catch (err) {
-      setMessage({ type: 'error', text: 'Erro ao salvar perfil' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleUpdatePassword = async () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setMessage({ type: 'error', text: 'As senhas não coincidem' });
-      return;
-    }
-
-    if (passwordData.newPassword.length < 6) {
-      setMessage({ type: 'error', text: 'A nova senha deve ter pelo menos 6 caracteres' });
-      return;
-    }
-
-    setSaving(true);
-    setMessage(null);
-
-    try {
-      const { error } = await updatePassword(passwordData.currentPassword, passwordData.newPassword);
-      
-      if (error) {
-        setMessage({ type: 'error', text: error });
-      } else {
-        setMessage({ type: 'success', text: 'Senha atualizada com sucesso!' });
-        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      }
-    } catch (err) {
-      setMessage({ type: 'error', text: 'Erro ao atualizar senha' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleToggleTwoFactor = async (method: 'email' | 'sms') => {
-    setSaving(true);
-    setMessage(null);
-
-    try {
-      if (profile?.two_factor_enabled) {
-        const { error } = await disableTwoFactor();
-        if (error) {
-          setMessage({ type: 'error', text: error });
-        } else {
-          setMessage({ type: 'success', text: 'Autenticação de dois fatores desativada' });
-        }
-      } else {
-        const { error, message: successMessage } = await enableTwoFactor(method);
-        if (error) {
-          setMessage({ type: 'error', text: error });
-        } else {
-          setMessage({ type: 'success', text: successMessage || 'Autenticação de dois fatores ativada' });
-        }
-      }
-    } catch (err) {
-      setMessage({ type: 'error', text: 'Erro ao alterar configuração de 2FA' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  React.useEffect(() => {
+  useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     if (isOpen) document.addEventListener('keydown', h);
     return () => document.removeEventListener('keydown', h);
   }, [isOpen, onClose]);
 
+  const handleSaveProfile = async () => {
+    setSaving(true); setMessage(null);
+    try {
+      const { error } = await updateProfile(formData);
+      setMessage(error ? { type: 'error', text: error } : { type: 'success', text: 'Perfil atualizado!' });
+    } catch { setMessage({ type: 'error', text: 'Erro ao salvar perfil' }); }
+    finally { setSaving(false); }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setMessage({ type: 'error', text: 'As senhas não coincidem' }); return;
+    }
+    if (passwordData.newPassword.length < 6) {
+      setMessage({ type: 'error', text: 'Senha deve ter pelo menos 6 caracteres' }); return;
+    }
+    setSaving(true); setMessage(null);
+    try {
+      const { error } = await updatePassword(passwordData.currentPassword, passwordData.newPassword);
+      if (error) { setMessage({ type: 'error', text: error }); }
+      else { setMessage({ type: 'success', text: 'Senha atualizada!' }); setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' }); }
+    } catch { setMessage({ type: 'error', text: 'Erro ao atualizar senha' }); }
+    finally { setSaving(false); }
+  };
+
+  const handleToggleTwoFactor = async (method: 'email' | 'sms') => {
+    setSaving(true); setMessage(null);
+    try {
+      if (profile?.two_factor_enabled) {
+        const { error } = await disableTwoFactor();
+        setMessage(error ? { type: 'error', text: error } : { type: 'success', text: '2FA desativado' });
+      } else {
+        const { error, message: msg } = await enableTwoFactor(method);
+        setMessage(error ? { type: 'error', text: error } : { type: 'success', text: msg || '2FA ativado' });
+      }
+    } catch { setMessage({ type: 'error', text: 'Erro ao alterar 2FA' }); }
+    finally { setSaving(false); }
+  };
+
   if (!isOpen) return null;
 
+  const inputCls = "w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent";
+  const labelCls = "block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1";
+  const sectionCls = "bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 mb-4";
+
   return (
-    <><div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} /><div className="fixed right-0 top-0 bottom-0 w-1/4 min-w-[320px] z-50 flex flex-col bg-white dark:bg-gray-800 shadow-2xl overflow-hidden">
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div className="fixed right-0 top-0 bottom-0 w-[360px] z-50 flex flex-col bg-white dark:bg-gray-800 shadow-2xl">
+
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Configurações</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-          >
-            <X className="w-6 h-6" />
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Configurações</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="border-b border-gray-200 dark:border-gray-700">
-          <nav className="flex space-x-8 px-6">
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'profile'
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-              }`}
-            >
-              <User className="w-4 h-4 inline mr-2" />
-              Perfil
-            </button>
-            <button
-              onClick={() => setActiveTab('security')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'security'
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-              }`}
-            >
-              <Shield className="w-4 h-4 inline mr-2" />
-              Segurança
-            </button>
-          </nav>
-        </div>
-
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+
+          {/* Message */}
           {message && (
-            <div className={`mb-6 p-4 rounded-lg ${
-              message.type === 'success' 
-                ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400'
-                : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
-            }`}>
+            <div className={`mb-4 px-3 py-2 rounded-lg text-sm ${message.type === 'success' ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'}`}>
               {message.text}
             </div>
           )}
 
-            <div className="space-y-6">
-              {/* Company Information */}
+          {/* Company Info */}
+          <div className={sectionCls}>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              <Building2 className="w-4 h-4" /> Informações da Empresa
+            </h3>
+            <div className="space-y-3">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <Building2 className="w-5 h-5" />
-                  Informações da Empresa
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      CNPJ
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.cnpj}
-                      onChange={(e) => handleInputChange('cnpj', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      placeholder="00.000.000/0000-00"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Razão Social
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.razao_social}
-                      onChange={(e) => handleInputChange('razao_social', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      placeholder="Razão social da empresa"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Nome Fantasia
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.nome_fantasia}
-                      onChange={(e) => handleInputChange('nome_fantasia', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      placeholder="Nome fantasia"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Site
-                    </label>
-                    <div className="relative">
-                      <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                      <input
-                        type="url"
-                        value={formData.site}
-                        onChange={(e) => handleInputChange('site', e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        placeholder="https://www.exemplo.com"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Endereço
-                    </label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
-                      <textarea
-                        value={formData.endereco}
-                        onChange={(e) => handleInputChange('endereco', e.target.value)}
-                        rows={3}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        placeholder="Endereço completo da empresa"
-                      />
-                    </div>
-                  </div>
-                </div>
+                <label className={labelCls}>CNPJ</label>
+                <input className={inputCls} value={formData.cnpj} onChange={e => setFormData(f => ({ ...f, cnpj: e.target.value }))} placeholder="00.000.000/0000-00" />
               </div>
-
-              {/* Contact Information */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <User className="w-5 h-5" />
-                  Informações de Contato
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Nome do Responsável
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.responsible_name}
-                      onChange={(e) => handleInputChange('responsible_name', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                      placeholder="Nome completo"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Email
-                    </label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                      <input
-                        type="email"
-                        value={user?.email || ''}
-                        disabled
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-                        placeholder="seu@email.com"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      O email não pode ser alterado aqui
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Telefone
-                    </label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                      <input
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => handleInputChange('phone', e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        placeholder="(11) 99999-9999"
-                      />
-                    </div>
-                  </div>
-                </div>
+                <label className={labelCls}>Razão Social</label>
+                <input className={inputCls} value={formData.razao_social} onChange={e => setFormData(f => ({ ...f, razao_social: e.target.value }))} />
               </div>
-            </div>
-          )}
-
-            <div className="space-y-6">
-              {/* Password Change */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <Lock className="w-5 h-5" />
-                  Alterar Senha
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Senha Atual
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPasswords.current ? 'text' : 'password'}
-                        value={passwordData.currentPassword}
-                        onChange={(e) => handlePasswordChange('currentPassword', e.target.value)}
-                        className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        placeholder="Digite sua senha atual"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                      >
-                        {showPasswords.current ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Nova Senha
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPasswords.new ? 'text' : 'password'}
-                        value={passwordData.newPassword}
-                        onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
-                        className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        placeholder="Digite a nova senha"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                      >
-                        {showPasswords.new ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Confirmar Nova Senha
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPasswords.confirm ? 'text' : 'password'}
-                        value={passwordData.confirmPassword}
-                        onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
-                        className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                        placeholder="Confirme a nova senha"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                      >
-                        {showPasswords.confirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={handleUpdatePassword}
-                    disabled={saving || !passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                  >
-                    {saving ? 'Atualizando...' : 'Atualizar Senha'}
-                  </button>
-                </div>
+                <label className={labelCls}>Nome Fantasia</label>
+                <input className={inputCls} value={formData.nome_fantasia} onChange={e => setFormData(f => ({ ...f, nome_fantasia: e.target.value }))} />
               </div>
-
-              {/* Two-Factor Authentication */}
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <Shield className="w-5 h-5" />
-                  Autenticação de Dois Fatores
-                </h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
-                    <div>
-                      <h4 className="font-medium text-gray-900 dark:text-white">
-                        Autenticação por Email
-                      </h4>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Receba códigos de verificação por email
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleToggleTwoFactor('email')}
-                      disabled={saving}
-                      className={`px-4 py-2 rounded-lg transition-colors duration-200 ${
-                        profile?.two_factor_enabled && profile?.two_factor_method === 'email'
-                          ? 'bg-red-600 hover:bg-red-700 text-white'
-                          : 'bg-green-600 hover:bg-green-700 text-white'
-                      } disabled:opacity-50`}
-                    >
-                      {profile?.two_factor_enabled && profile?.two_factor_method === 'email' ? 'Desativar' : 'Ativar'}
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
-                    <div>
-                      <h4 className="font-medium text-gray-900 dark:text-white">
-                        Autenticação por SMS
-                      </h4>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Receba códigos de verificação por SMS
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleToggleTwoFactor('sms')}
-                      disabled={saving}
-                      className={`px-4 py-2 rounded-lg transition-colors duration-200 ${
-                        profile?.two_factor_enabled && profile?.two_factor_method === 'sms'
-                          ? 'bg-red-600 hover:bg-red-700 text-white'
-                          : 'bg-green-600 hover:bg-green-700 text-white'
-                      } disabled:opacity-50`}
-                    >
-                      {profile?.two_factor_enabled && profile?.two_factor_method === 'sms' ? 'Desativar' : 'Ativar'}
-                    </button>
-                  </div>
-                </div>
+                <label className={labelCls}>Site</label>
+                <input className={inputCls} value={formData.site} onChange={e => setFormData(f => ({ ...f, site: e.target.value }))} placeholder="https://" />
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        {activeTab === 'profile' && (
-          <div className="p-6 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSaveProfile}
-                disabled={saving || loading}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-              >
-                <Save className="w-4 h-4" />
-                {saving ? 'Salvando...' : 'Salvar'}
-              </button>
+              <div>
+                <label className={labelCls}>Endereço</label>
+                <input className={inputCls} value={formData.endereco} onChange={e => setFormData(f => ({ ...f, endereco: e.target.value }))} />
+              </div>
             </div>
           </div>
-        )}
-    </div>
-  </>
+
+          {/* Responsible */}
+          <div className={sectionCls}>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              <Building2 className="w-4 h-4" /> Responsável
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <label className={labelCls}>Nome do Responsável</label>
+                <input className={inputCls} value={formData.responsible_name} onChange={e => setFormData(f => ({ ...f, responsible_name: e.target.value }))} />
+              </div>
+              <div>
+                <label className={labelCls}>Telefone</label>
+                <input className={inputCls} value={formData.phone} onChange={e => setFormData(f => ({ ...f, phone: e.target.value }))} placeholder="(00) 00000-0000" />
+              </div>
+              <div>
+                <label className={labelCls}>Email</label>
+                <input className={inputCls} value={user?.email || ''} disabled />
+              </div>
+            </div>
+          </div>
+
+          {/* Save profile */}
+          <button
+            onClick={handleSaveProfile}
+            disabled={saving}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 mb-4"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? 'Salvando...' : 'Salvar Perfil'}
+          </button>
+
+          {/* Password */}
+          <div className={sectionCls}>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              <Lock className="w-4 h-4" /> Alterar Senha
+            </h3>
+            <div className="space-y-3">
+              {(['current', 'new', 'confirm'] as const).map(key => {
+                const labels = { current: 'Senha Atual', new: 'Nova Senha', confirm: 'Confirmar Nova Senha' };
+                const fields = { current: 'currentPassword', new: 'newPassword', confirm: 'confirmPassword' } as const;
+                return (
+                  <div key={key}>
+                    <label className={labelCls}>{labels[key]}</label>
+                    <div className="relative">
+                      <input
+                        type={showPasswords[key] ? 'text' : 'password'}
+                        className={inputCls + ' pr-9'}
+                        value={passwordData[fields[key]]}
+                        onChange={e => setPasswordData(p => ({ ...p, [fields[key]]: e.target.value }))}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswords(p => ({ ...p, [key]: !p[key] }))}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+                      >
+                        {showPasswords[key] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              onClick={handleUpdatePassword}
+              disabled={saving}
+              className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            >
+              <Lock className="w-4 h-4" />
+              {saving ? 'Atualizando...' : 'Atualizar Senha'}
+            </button>
+          </div>
+
+          {/* 2FA */}
+          <div className={sectionCls}>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              <Shield className="w-4 h-4" /> Autenticação de Dois Fatores
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+              {profile?.two_factor_enabled ? 'Autenticação de dois fatores está ativa.' : 'Adicione uma camada extra de segurança.'}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleToggleTwoFactor('email')}
+                disabled={saving}
+                className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-colors ${
+                  profile?.two_factor_enabled
+                    ? 'border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'
+                    : 'border-blue-300 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                } disabled:opacity-50`}
+              >
+                {profile?.two_factor_enabled ? 'Desativar 2FA' : 'Ativar via Email'}
+              </button>
+              {!profile?.two_factor_enabled && (
+                <button
+                  onClick={() => handleToggleTwoFactor('sms')}
+                  disabled={saving}
+                  className="flex-1 py-2 text-xs font-medium rounded-lg border border-blue-300 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50"
+                >
+                  Ativar via SMS
+                </button>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </>
   );
 };
