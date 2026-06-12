@@ -33,40 +33,32 @@ function App() {
   }, [files]);
 
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    const t = setTimeout(() => {
-      if (isDarkMode) document.documentElement.classList.add('dark');
-      else document.documentElement.classList.remove('dark');
-    }, 0);
-    return () => clearTimeout(t);
+    if (isDarkMode) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
   }, [isDarkMode]);
 
   useEffect(() => {
-    if (!adminLoading && isAdmin) setCurrentView('admin');
-    else if (!adminLoading && !isAdmin) setCurrentView('dados');
+    if (!adminLoading) {
+      if (isAdmin) setCurrentView('admin');
+      else setCurrentView('dados');
+    }
   }, [isAdmin, adminLoading]);
 
   if (loading || adminLoading) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'dark' : ''}`}>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
         </div>
       </div>
     );
   }
 
-  if (!user) {
-    return <div className={isDarkMode ? 'dark' : ''}><Auth /></div>;
-  }
+  if (!user) return <div className={isDarkMode ? 'dark' : ''}><Auth /></div>;
 
   const renderContent = () => {
     switch (currentView) {
-      case 'importacao': return <Importacao />;
+      case 'importacao': return <Importacao selectedCanal={selectedCanal} />;
       case 'dados':      return <Dados selectedCanal={selectedCanal} />;
       case 'exportacao': return <Exportacao />;
       case 'admin':      return <AdminPanel />;
@@ -88,7 +80,7 @@ function App() {
           selectedCanal={selectedCanal}
           onCanalChange={setSelectedCanal}
         />
-        <div className="flex-1 overflow-hidden pt-14">
+        <div className="flex-1 overflow-hidden pt-14 pb-8">
           {renderContent()}
         </div>
         <Footer
