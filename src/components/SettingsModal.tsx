@@ -154,7 +154,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white dark:bg-gray-800 overflow-hidden">
+    <><div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} /><div className="fixed right-0 top-0 bottom-0 w-1/4 min-w-[320px] z-50 flex flex-col bg-white dark:bg-gray-800 shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Configurações</h2>
@@ -195,7 +195,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="flex-1 overflow-y-auto p-5">
           {message && (
             <div className={`mb-6 p-4 rounded-lg ${
               message.type === 'success' 
@@ -204,9 +204,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             }`}>
               {message.text}
             </div>
-          )}
 
-          {activeTab === 'profile' && (
+          
             <div className="space-y-6">
               {/* Company Information */}
               <div>
@@ -345,9 +344,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </div>
               </div>
             </div>
-          )}
 
-          {activeTab === 'security' && (
+          
             <div className="space-y-6">
               {/* Password Change */}
               <div>
@@ -510,5 +508,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           </div>
         )}
     </div>
+  </>
   );
 };
