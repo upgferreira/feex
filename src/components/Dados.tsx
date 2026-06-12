@@ -84,6 +84,10 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
   const [dateFilter, setDateFilter] = useState({ startDate: '', endDate: '' });
   const [exportPanelOpen, setExportPanelOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const calendarRef = React.useRef<HTMLDivElement>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const calendarRef = React.useRef<HTMLDivElement>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
 
   // Table state
@@ -112,6 +116,8 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     const handler = (e: MouseEvent) => {
       if (filterRef.current && !filterRef.current.contains(e.target as Node))
         setActiveFilterCol(null);
+      if (calendarRef.current && !calendarRef.current.contains(e.target as Node))
+        setCalendarOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -399,6 +405,30 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             )}
           </div>
           <div className="flex items-center gap-3">
+            {/* Calendar date filter button */}
+            <div className="relative" ref={calendarRef}>
+              <button
+                onClick={() => setCalendarOpen(o => !o)}
+                className={`p-1.5 rounded border transition-colors ${
+                  (dateFilter.startDate || dateFilter.endDate)
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
+                }`}
+                title="Filtrar por data"
+              >
+                <Calendar className="w-4 h-4" />
+              </button>
+              {calendarOpen && (
+                <div className="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3 flex items-center gap-2 whitespace-nowrap">
+                  <input type="date" value={dateFilter.startDate} onChange={e => setDateFilter(f => ({ ...f, startDate: e.target.value }))} className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                  <span className="text-xs text-gray-400">até</span>
+                  <input type="date" value={dateFilter.endDate} onChange={e => setDateFilter(f => ({ ...f, endDate: e.target.value }))} className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
+                  {(dateFilter.startDate || dateFilter.endDate) && (
+                    <button onClick={() => { setDateFilter({ startDate: '', endDate: '' }); setCalendarOpen(false); }} className="text-xs text-red-500 hover:text-red-700 ml-1">Limpar</button>
+                  )}
+                </div>
+              )}
+            </div>
             {viewMode === 'tabela' && (
               <button
                 onClick={() => setColSelectorOpen(o => !o)}
