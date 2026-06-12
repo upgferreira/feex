@@ -200,13 +200,6 @@ export const Importacao: React.FC<ImportacaoProps> = ({ selectedCanal = 'TODOS' 
           </div>
         </div>
 
-        {/* Hint */}
-        <div className="px-6 py-1.5 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex-shrink-0">
-          <p className="text-xs text-gray-400 dark:text-gray-500">
-            Clique na coluna para ordenar &nbsp;·&nbsp; <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">Ctrl</kbd> + clique para filtrar
-          </p>
-        </div>
-
         {/* Table — full width, no padding */}
         <div className="flex-1 overflow-hidden relative">
           {error && (

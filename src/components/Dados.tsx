@@ -387,8 +387,36 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       {/* Subheader */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Visualização de Dados</h2>
           <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Visualização de Dados</h2>
+            {viewMode === 'tabela' && tableData.length > 0 && (
+              <span className="text-xs text-gray-400 dark:text-gray-500">{tableData.length.toLocaleString('pt-BR')} registros</span>
+            )}
+          </div>
+            {viewMode === 'tabela' && tableData.length > 0 && (
+              <span className="text-xs text-gray-400 dark:text-gray-500">{tableData.length.toLocaleString('pt-BR')} registros</span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {viewMode === 'tabela' && (
+              <button
+                onClick={() => setColSelectorOpen(o => !o)}
+                className={`p-1.5 rounded border transition-colors ${colSelectorOpen ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}
+                title="Selecionar colunas"
+              >
+                <Filter className="w-4 h-4" />
+              </button>
+            )}
+            {viewMode === 'tabela' && (
+              <button
+                onClick={() => setColSelectorOpen(o => !o)}
+                className={`p-1.5 rounded border transition-colors ${colSelectorOpen ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}
+                title="Selecionar colunas"
+              >
+                <Filter className="w-4 h-4" />
+              </button>
+            )}
             <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
               {(['tabela', 'matriz', 'dashboard'] as ViewMode[]).map(mode => (
                 <button
@@ -492,18 +520,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
         {/* TABELA */}
         {viewMode === 'tabela' && (
           <div className="h-full flex flex-col">
-            {/* Toolbar */}
-            <div className="px-4 py-1.5 bg-gray-50 dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between flex-shrink-0">
-              <span className="text-xs text-gray-400 dark:text-gray-500">{tableData.length} registros</span>
-              <button
-                onClick={() => setColSelectorOpen(o => !o)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded border transition-colors ${colSelectorOpen ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}
-              >
-                <Filter className="w-3 h-3" />
-                Colunas
-              </button>
-            </div>
-
             {/* Table area */}
             <div className="flex-1 overflow-auto" style={{ overflowX: 'auto' }}>
               {filteredRaw.length === 0 ? (
