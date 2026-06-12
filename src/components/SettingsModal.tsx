@@ -204,8 +204,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             }`}>
               {message.text}
             </div>
+          )}
 
-          
             <div className="space-y-6">
               {/* Company Information */}
               <div>
@@ -344,8 +344,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </div>
               </div>
             </div>
+          )}
 
-          
             <div className="space-y-6">
               {/* Password Change */}
               <div>
