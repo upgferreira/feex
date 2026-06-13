@@ -336,7 +336,7 @@ export const Exportacao: React.FC = () => {
         channel: exportData.canal, type: exportData.erp, year: ano, competence,
         start_period: exportData.dataInicial, end_period: exportData.dataFinal,
         format: exportData.formatos[0], file_name: fileName.replace(/\.[^/.]+$/, ''),
-        file_data: null, file_headers: null, user_id: user.id,
+        user_id: user.id,
       }).select().single();
       if (error) throw error;
       setExportRecords(prev => [{
@@ -345,7 +345,9 @@ export const Exportacao: React.FC = () => {
         periodoFinal: data.end_period, formatos: data.format ? [data.format] : [],
         arquivo: data.file_name, dataDownload: new Date(data.created_at),
       }, ...prev]);
-    } catch (e) { console.error('Erro ao salvar:', e); }
+      // Also reload to ensure consistency
+      await loadExportRecords();
+    } catch (e) { console.error('Erro ao salvar exported_file:', JSON.stringify(e)); }
   };
 
   const handleExport = async (exportData: { canal: string; erp: string; dataInicial: string; dataFinal: string; formatos: string[] }) => {
