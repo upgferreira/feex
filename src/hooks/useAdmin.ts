@@ -33,14 +33,14 @@ export interface UserProfile {
 
 export interface FinancialCategory {
   id: string;
-  canal: string;
-  grupo: string;
-  categoria_canal: string;
-  categoria_pai_erp: string;
-  categoria_erp: string;
-  tipo: string;
-  descontado: string;
-  nfe: string;
+  channel: string;
+  channel_group: string;
+  channel_category: string;
+  erp_parent_category: string;
+  erp_category: string;
+  category_type: string;
+  deducted: string;
+  invoice: string;
   created_at: string;
   updated_at: string;
 }
