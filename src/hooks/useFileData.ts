@@ -31,26 +31,26 @@ export const useFileData = () => {
     try {
       const { data, error } = await supabase
         .from('imported_files')
-        .select('id, canal, tipo, ano, competencia, periodo_inicial, periodo_final, arquivo, original_name, size, data_upload, data, columns, user_id')
+        .select('id, channel, type, year, competence, start_period, end_period, file_name, source_file_name, size, upload_date, file_data, file_headers, user_id, format')
         .eq('user_id', user.id)
-        .order('data_upload', { ascending: false });
+        .order('upload_date', { ascending: false });
 
       if (error) throw error;
 
       const formattedFiles: ImportedFile[] = data.map(file => ({
         id: file.id,
-        canal: file.canal,
-        tipo: file.tipo,
-        ano: file.ano,
-        competencia: file.competencia,
-        periodoInicial: file.periodo_inicial,
-        periodoFinal: file.periodo_final,
-        arquivo: file.arquivo,
-        originalName: file.original_name,
+        canal: file.channel,
+        tipo: file.type,
+        ano: file.year,
+        competencia: file.competence,
+        periodoInicial: file.start_period,
+        periodoFinal: file.end_period,
+        arquivo: file.file_name,
+        originalName: file.source_file_name,
         size: file.size,
-        dataUpload: new Date(file.data_upload),
-        data: file.data,
-        columns: file.columns,
+        dataUpload: new Date(file.upload_date),
+        data: file.file_data,
+        columns: file.file_headers,
       }));
 
       // Save to cache
@@ -166,17 +166,17 @@ export const useFileData = () => {
       const { data: savedFile, error: saveError } = await supabase
         .from('imported_files')
         .insert({
-          canal: processedFile.canal,
-          tipo: processedFile.tipo,
-          ano: processedFile.ano,
-          competencia: processedFile.competencia,
-          periodo_inicial: processedFile.periodoInicial,
-          periodo_final: processedFile.periodoFinal,
-          arquivo: processedFile.arquivo,
-          original_name: processedFile.originalName,
+          channel: processedFile.canal,
+          type: processedFile.tipo,
+          year: processedFile.ano,
+          competence: processedFile.competencia,
+          start_period: processedFile.periodoInicial,
+          end_period: processedFile.periodoFinal,
+          file_name: processedFile.arquivo,
+          source_file_name: processedFile.originalName,
           size: processedFile.size,
-          data: processedFile.data,
-          columns: processedFile.columns,
+          file_data: processedFile.data,
+          file_headers: processedFile.columns,
           user_id: user.id,
         })
         .select()
@@ -186,18 +186,18 @@ export const useFileData = () => {
 
       const newFile: ImportedFile = {
         id: savedFile.id,
-        canal: savedFile.canal,
-        tipo: savedFile.tipo,
-        ano: savedFile.ano,
-        competencia: savedFile.competencia,
-        periodoInicial: savedFile.periodo_inicial,
-        periodoFinal: savedFile.periodo_final,
-        arquivo: savedFile.arquivo,
-        originalName: savedFile.original_name,
+        canal: savedFile.channel,
+        tipo: savedFile.type,
+        ano: savedFile.year,
+        competencia: savedFile.competence,
+        periodoInicial: savedFile.start_period,
+        periodoFinal: savedFile.end_period,
+        arquivo: savedFile.file_name,
+        originalName: savedFile.source_file_name,
         size: savedFile.size,
-        dataUpload: new Date(savedFile.data_upload),
-        data: savedFile.data,
-        columns: savedFile.columns,
+        dataUpload: new Date(savedFile.upload_date),
+        data: savedFile.file_data,
+        columns: savedFile.file_headers,
       };
 
       // Update cache
