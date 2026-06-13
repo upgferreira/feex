@@ -130,6 +130,7 @@ export const Importacao: React.FC<ImportacaoProps> = ({ selectedCanal = 'TODOS' 
     { key: 'periodoInicial', label: 'Período Inicial' },
     { key: 'periodoFinal', label: 'Período Final' },
     { key: 'arquivo', label: 'Arquivo' },
+    { key: 'tipo', label: 'Formato' },
     { key: 'dataUpload', label: 'Data Upload' },
   ];
 
