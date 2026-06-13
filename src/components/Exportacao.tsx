@@ -716,12 +716,13 @@ ${data.map((item, index) => `
 
     let finalData = channelData;
 
-    // Se for Bling + Mercado Livre, converter os dados
-    if (record.erp === 'BLING' && record.canal === 'MERCADO LIVRE') {
+    // Converter dados para o ERP selecionado
+    if (record.erp === 'BLING') {
       try {
-        finalData = convertMercadoLivreToBling(channelData, record.periodoInicial, record.periodoFinal, record.competencia);
-      } else if (record.canal === 'NUVEM PAGO') {
-        finalData = convertNuvemPagoToBling(channelData, record.periodoInicial, record.periodoFinal, record.competencia);
+        if (record.canal === 'MERCADO LIVRE') {
+          finalData = convertMercadoLivreToBling(channelData, record.periodoInicial, record.periodoFinal, record.competencia);
+        } else if (record.canal === 'NUVEM PAGO') {
+          finalData = convertNuvemPagoToBling(channelData, record.periodoInicial, record.periodoFinal, record.competencia);
         
         // Se não conseguiu converter ou não há dados, gerar template vazio
         if (!finalData || finalData.length === 0) {
