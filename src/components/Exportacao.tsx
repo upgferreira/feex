@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Trash2, ArrowUp, ArrowDown, Filter, FileText } from 'lucide-react';
+import { Download, Trash2, ArrowUp, ArrowDown, Filter } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { ExportRecord } from '../types';
 import { ExportModal } from './ExportModal';
@@ -11,12 +11,10 @@ import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
 
 export const Exportacao: React.FC = () => {
-  const { files } = useFileData();
+  const { files, getAllChannelData } = useFileData();
   const canais = React.useMemo(() => [...new Set(files.map((f: any) => f.canal))].sort(), [files]);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [activeFilterCol, setActiveFilterCol] = useState<keyof ExportRecord | null>(null);
-  const filterRef = React.useRef<HTMLDivElement>(null);
   const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
   const [exportRecords, setExportRecords] = useState<ExportRecord[]>([]);
   const [sortColumn, setSortColumn] = useState<keyof ExportRecord | null>(null);
@@ -24,11 +22,9 @@ export const Exportacao: React.FC = () => {
   const [columnFilters, setColumnFilters] = useState<{[key: string]: string}>({});
   const [categories, setCategories] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
-  const { getAllChannelData } = useFileData();
   const { user } = useAuth();
   const { getCategories, getAccounts } = useAdmin();
 
-  // Load export records from Supabase on mount
   useEffect(() => {
     if (user) {
       loadExportRecords();
@@ -38,183 +34,98 @@ export const Exportacao: React.FC = () => {
   }, [user]);
 
   const loadCategories = async () => {
-    try {
-      const categoriesData = await getCategories();
-      setCategories(categoriesData);
-    } catch (error) {
-      console.error('Erro ao carregar categorias:', error);
-    }
+    try { setCategories(await getCategories()); }
+    catch (e) { console.error('Erro ao carregar categorias:', e); }
   };
 
   const loadAccounts = async () => {
-    try {
-      const accountsData = await getAccounts();
-      setAccounts(accountsData);
-    } catch (error) {
-      console.error('Erro ao carregar contas:', error);
-    }
+    try { setAccounts(await getAccounts()); }
+    catch (e) { console.error('Erro ao carregar contas:', e); }
   };
 
   const loadExportRecords = async () => {
     if (!user) return;
-
     try {
       const { data, error } = await supabase
         .from('exported_files')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-
       if (error) throw error;
-
-      const formattedRecords: ExportRecord[] = data.map(record => ({
-        id: record.id,
-        canal: record.channel,
-        erp: record.type,
-        ano: record.year,
-        competencia: record.competence,
-        periodoInicial: record.start_period,
-        periodoFinal: record.end_period,
-        formatos: record.format ? [record.format] : [],
-        arquivo: record.file_name,
-        dataDownload: new Date(record.created_at)
-      }));
-
-      setExportRecords(formattedRecords);
-    } catch (err) {
-      console.error('Error loading export records:', err);
-    }
+      setExportRecords(data.map(r => ({
+        id: r.id,
+        canal: r.channel,
+        erp: r.type,
+        ano: r.year,
+        competencia: r.competence,
+        periodoInicial: r.start_period,
+        periodoFinal: r.end_period,
+        formatos: r.format ? [r.format] : [],
+        arquivo: r.file_name,
+        dataDownload: new Date(r.created_at),
+      })));
+    } catch (e) { console.error('Error loading export records:', e); }
   };
 
-  // Função para normalizar texto removendo acentos e caracteres especiais
-  const normalizeText = (text: string): string => {
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const normalizeText = (text: string) => {
     if (!text) return '';
-    
-    return text
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Remove acentos
-      .replace(/[^\w\s-]/g, '') // Remove caracteres especiais exceto hífens e espaços
-      .replace(/\s+/g, ' ') // Normaliza espaços
-      .trim()
-      .toUpperCase();
+    return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s-]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
   };
 
-  // Função para encontrar categoria mapeada usando dados do banco
   const findMappedCategory = (detalhe: string): string => {
     if (!detalhe) return 'Nao mapeado';
-    
-    // Primeiro tenta busca exata
-    const exactMatch = categories.find(cat => 
-      cat.canal === 'MERCADO LIVRE' && 
-      cat.categoria_canal.toUpperCase() === detalhe.toUpperCase()
-    );
-    
-    if (exactMatch) return exactMatch.categoria_erp;
-    
-    // Normaliza o texto de entrada
-    const normalizedInput = normalizeText(detalhe);
-    
-    // Busca por correspondência normalizada
-    const normalizedMatch = categories.find(cat => {
-      if (cat.canal !== 'MERCADO LIVRE') return false;
-      const normalizedKey = normalizeText(cat.categoria_canal);
-      return normalizedKey === normalizedInput;
+    const norm = normalizeText(detalhe);
+    const match = categories.find(c => {
+      if ((c.channel || c.canal) !== 'MERCADO LIVRE') return false;
+      const key = normalizeText(c.channel_category || c.categoria_canal || '');
+      return key === norm || key.includes(norm) || norm.includes(key);
     });
-    
-    if (normalizedMatch) return normalizedMatch.categoria_erp;
-    
-    // Busca parcial para casos como "CAMPAÃ'AS" vs "CAMPANHAS"
-    const partialMatch = categories.find(cat => {
-      if (cat.canal !== 'MERCADO LIVRE') return false;
-      const normalizedKey = normalizeText(cat.categoria_canal);
-      
-      if (normalizedKey.includes(normalizedInput) || normalizedInput.includes(normalizedKey)) {
-        // Verifica se a similaridade é alta o suficiente
-        const similarity = Math.max(normalizedKey.length, normalizedInput.length) - 
-                          Math.abs(normalizedKey.length - normalizedInput.length);
-        return similarity / Math.max(normalizedKey.length, normalizedInput.length) > 0.8;
-      }
-      return false;
-    });
-    
-    if (partialMatch) return partialMatch.categoria_erp;
-    
-    return 'Nao mapeado';
+    return match?.erp_category || match?.categoria_erp || 'Nao mapeado';
   };
 
-  // Função para converter data serial do Excel para formato brasileiro
   const convertExcelDate = (serialDate: number): string => {
     if (!serialDate || isNaN(serialDate)) return '';
-    
-    // Excel serial date: dias desde 1 de janeiro de 1900
-    const excelEpoch = new Date(1900, 0, 1);
-    const jsDate = new Date(excelEpoch.getTime() + (serialDate - 1) * 24 * 60 * 60 * 1000);
-    
-    // Ajuste para o bug do Excel (1900 não é ano bissexto)
-    if (serialDate > 59) {
-      jsDate.setTime(jsDate.getTime() - 24 * 60 * 60 * 1000);
-    }
-    
-    return jsDate.toLocaleDateString('pt-BR');
+    const d = new Date(new Date(1900, 0, 1).getTime() + (serialDate - 1) * 86400000);
+    if (serialDate > 59) d.setTime(d.getTime() - 86400000);
+    return d.toLocaleDateString('pt-BR');
   };
 
-  // Função para limpar texto removendo tabulações e espaços duplos
-  const cleanText = (text: string): string => {
-    if (!text) return '';
-    
-    return text
-      .replace(/\t/g, ' ')        // Substitui tabulações por espaços
-      .replace(/\s+/g, ' ')       // Substitui múltiplos espaços por um único espaço
-      .trim();                    // Remove espaços no início e fim
-  };
+  const cleanText = (text: string) =>
+    text ? text.replace(/\t/g, ' ').replace(/\s+/g, ' ').trim() : '';
 
   const formatDateToBR = (dateString: string): string => {
-    // Se é um número (data serial do Excel)
-    const serialDate = Number(dateString);
-    if (!isNaN(serialDate) && serialDate > 1 && serialDate < 100000) {
-      return convertExcelDate(serialDate);
-    }
-    
-    // Se já está no formato brasileiro, retorna como está
-    if (dateString.includes('/')) {
-      return dateString;
-    }
-    
-    // Se está no formato YYYY-MM-DD, converte para DD/MM/YYYY
+    const serial = Number(dateString);
+    if (!isNaN(serial) && serial > 1 && serial < 100000) return convertExcelDate(serial);
+    if (dateString.includes('/')) return dateString;
     if (dateString.includes('-')) {
-      const [year, month, day] = dateString.split('-');
-      return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+      const [y, m, d] = dateString.split('-');
+      return `${d.padStart(2,'0')}/${m.padStart(2,'0')}/${y}`;
     }
-    
     return dateString;
   };
 
-  const formatValueToBR = (value: number): string => {
-    // Converter para string com vírgula como separador decimal
-    return value.toFixed(2).replace('.', ',');
+  const formatValueToBR = (value: number) => value.toFixed(2).replace('.', ',');
+
+  const formatDate = (date: Date) =>
+    new Intl.DateTimeFormat('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }).format(date);
+
+  const formatDateForFileName = (dateString: string): string => {
+    if (!dateString || typeof dateString !== 'string') return '01-01-1970';
+    const parts = dateString.split('-');
+    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    return dateString.replace(/[^\d-]/g, '') || '01-01-1970';
   };
 
+  // ── Converters ────────────────────────────────────────────────────────────
   const convertMercadoLivreToBling = (data: any[], dataInicial: string, dataFinal: string, competencia: string) => {
-    console.log('Iniciando conversão Mercado Livre para Bling');
-    console.log('Dados recebidos:', data.length, 'registros');
-    console.log('Período:', dataInicial, 'até', dataFinal);
-
-    if (!data || data.length === 0) {
-      console.log('Nenhum dado encontrado para conversão');
-      return [];
-    }
-
-    const clienteFornecedor = "EBAZAR.COM.BR. LTDA";
-    const portador = "Banco | MERCADO PAGO | C/C";
-    const cnpj = "03.007.331/0001-41";
-
-    const resultado: any[] = [];
-
-    // Converter datas de filtro para objetos Date
+    if (!data?.length) return [];
+    const clienteFornecedor = 'EBAZAR.COM.BR. LTDA';
+    const portador = 'Banco | MERCADO PAGO | C/C';
+    const cnpj = '03.007.331/0001-41';
     const dataInicialObj = new Date(dataInicial);
     const dataFinalObj = new Date(dataFinal);
-
-    console.log('Filtros de data:', dataInicialObj, 'até', dataFinalObj);
+    const resultado: any[] = [];
 
     data.forEach((row, index) => {
       try {
@@ -223,31 +134,18 @@ export const Exportacao: React.FC = () => {
         const valorTarifa = row['Valor da tarifa'];
         const numVenda = row['Número da venda'];
         const cliente = row['Cliente'];
+        if (!dataTarifa || !detalhe || valorTarifa == null) return;
 
-        if (!dataTarifa || !detalhe || valorTarifa === undefined || valorTarifa === null) {
-          console.log(`Linha ${index} ignorada - dados obrigatórios ausentes:`, { dataTarifa, detalhe, valorTarifa });
-          return;
-        }
-
-        // Converter data da tarifa para Date
-        let dataLinha: Date;
-        let dataFormatada: string;
-        
+        let dataLinha: Date, dataFormatada: string;
         if (typeof dataTarifa === 'number') {
-          // Data serial do Excel
           dataFormatada = convertExcelDate(dataTarifa);
-          const [day, month, year] = dataFormatada.split('/');
-          dataLinha = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+          const [d, m, y] = dataFormatada.split('/');
+          dataLinha = new Date(+y, +m - 1, +d);
         } else if (typeof dataTarifa === 'string') {
           if (dataTarifa.includes('/')) {
-            // Formato DD/MM/YYYY
             dataFormatada = dataTarifa;
-            const [day, month, year] = dataTarifa.split('/');
-            dataLinha = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-          } else if (dataTarifa.includes('-')) {
-            // Formato YYYY-MM-DD
-            dataLinha = new Date(dataTarifa);
-            dataFormatada = dataLinha.toLocaleDateString('pt-BR');
+            const [d, m, y] = dataTarifa.split('/');
+            dataLinha = new Date(+y, +m - 1, +d);
           } else {
             dataLinha = new Date(dataTarifa);
             dataFormatada = dataLinha.toLocaleDateString('pt-BR');
@@ -257,757 +155,293 @@ export const Exportacao: React.FC = () => {
           dataFormatada = dataLinha.toLocaleDateString('pt-BR');
         }
 
-        // Verificar se a data é válida
-        if (isNaN(dataLinha.getTime())) {
-          console.log(`Linha ${index} ignorada - data inválida:`, dataTarifa);
-          return;
-        }
+        if (isNaN(dataLinha.getTime()) || dataLinha < dataInicialObj || dataLinha > dataFinalObj) return;
 
-        // Filtro por período
-        if (dataLinha < dataInicialObj || dataLinha > dataFinalObj) {
-          console.log(`Linha ${index} ignorada - fora do período:`, dataLinha);
-          return;
-        }
-
-        // Mapear categoria usando a função melhorada com dados do banco
         const categoria = findMappedCategory(detalhe);
-
-        // Criar observações no formato especificado (sem acentos e sem separadores que quebrem CSV)
-        const obsComponents = [
+        const obs = cleanText([
           'MERCADO LIVRE',
           cleanText([detalhe, numVenda, cliente].filter(Boolean).join(' > ').toUpperCase()),
           categoria.toUpperCase(),
           `${formatDateToBR(dataInicial)} - ${formatDateToBR(dataFinal)}`,
-          competencia
-        ].filter(Boolean);
+          competencia,
+        ].filter(Boolean).join(' | '));
 
-        // Juntar com pipe e aplicar limpeza de texto
-        const obs = cleanText(obsComponents.join(' | '));
-
-        // Converter valor para número e inverter sinal (despesas ficam negativas)
-        const valorNumerico = Number(valorTarifa) * -1;
-
-        const registro = {
-          "ID": "",
-          "Data": dataFormatada,
-          "Competencia": dataFormatada,
-          "Cliente/Fornecedor": clienteFornecedor,
-          "Observacoes": obs,
-          "Valor": formatValueToBR(valorNumerico),
-          "Categoria": categoria,
-          "Portador": portador,
-          "Saldo": "N",
-          "CNPJ": cnpj
-        };
-
-        resultado.push(registro);
-        console.log(`Linha ${index} convertida:`, registro);
-
-      } catch (error) {
-        console.error(`Erro ao processar linha ${index}:`, error, row);
-      }
+        resultado.push({
+          'ID': '', 'Data': dataFormatada, 'Competencia': dataFormatada,
+          'Cliente/Fornecedor': clienteFornecedor, 'Observacoes': obs,
+          'Valor': formatValueToBR(Number(valorTarifa) * -1),
+          'Categoria': categoria, 'Portador': portador, 'Saldo': 'N', 'CNPJ': cnpj,
+        });
+      } catch (e) { console.error(`Linha ${index}:`, e); }
     });
-
-    console.log('Conversão finalizada:', resultado.length, 'registros convertidos');
     return resultado;
   };
 
-  const convertNuvemPagoToBling = (
-    data: any[],
-    dataInicial: string,
-    dataFinal: string,
-    competencia: string
-  ) => {
-    if (!data || data.length === 0) return [];
+  const convertNuvemPagoToBling = (data: any[], dataInicial: string, dataFinal: string, competencia: string) => {
+    if (!data?.length) return [];
 
-    // ── Busca conta financeira ────────────────────────────────────────────
-    const conta = accounts.find(a =>
-      String(a.canal || '').toUpperCase() === 'NUVEM PAGO'
-    );
-    const portador          = conta?.caixa                     || '';
-    const clienteFornecedor = conta?.fornecedor_nome_fantasia   || 'NUVEM PAGO';
-    const cnpj              = conta?.fornecedor_cnpj            || '';
+    const conta = accounts.find(a => String(a.canal || '').toUpperCase() === 'NUVEM PAGO');
+    const portador          = conta?.caixa || '';
+    const clienteFornecedor = conta?.fornecedor_nome_fantasia || 'NUVEM PAGO';
+    const cnpj              = conta?.fornecedor_cnpj || '';
 
-    // ── Busca categoria ───────────────────────────────────────────────────
     const catRow = categories.find(c => {
       const canal    = String(c.channel || c.canal || '').toUpperCase();
       const catCanal = String(c.channel_category || c.categoria_canal || '').toUpperCase();
       return canal === 'NUVEM PAGO' && catCanal === 'TAXAS';
     });
-    const categoriaERP       = catRow?.erp_category    || catRow?.categoria_erp    || '';
-    const categoriaPai       = catRow?.erp_parent_category || catRow?.categoria_pai_erp || '';
-    const categoriaCompleta  = categoriaPai && categoriaERP
-      ? `${categoriaERP.toUpperCase()}`
-      : categoriaERP;
+    const categoriaERP = catRow?.erp_category || catRow?.categoria_erp || '';
+    const categoriaPai = catRow?.erp_parent_category || catRow?.categoria_pai_erp || '';
 
-    // ── Agrupamento por pedido ────────────────────────────────────────────
     const pedidos: Record<string, any> = {};
+    const dataInicialObj = new Date(dataInicial);
+    const dataFinalObj   = new Date(dataFinal);
 
     data.forEach(row => {
-      const numeroPedido  = String(row['Número do Pedido'] || row['numero_pedido'] || '').trim();
-      const comprador     = String(row['Nome do comprador'] || row['nome_comprador'] || '').trim();
-      const dataPagamento = row['Data de pagamento'] || row['data_pagamento'];
-      const taxa          = Number(String(row['Taxas']  || row['taxas']  || '0').replace(',', '.')) || 0;
-      const juros         = Number(String(row['Juros']  || row['juros']  || '0').replace(',', '.')) || 0;
-      const valorTotal    = (taxa + juros) * -1;
-
+      const numeroPedido  = String(row['Número do Pedido'] || '').trim();
+      const comprador     = String(row['Nome do comprador'] || '').trim();
+      const dataPagamento = row['Data de pagamento'];
+      const taxa  = Number(String(row['Taxas']  || '0').replace(',', '.')) || 0;
+      const juros = Number(String(row['Juros']  || '0').replace(',', '.')) || 0;
       if (!numeroPedido || !dataPagamento) return;
 
-      // Filtro por período
-      const dataLinha = dataPagamento instanceof Date
-        ? dataPagamento
-        : new Date(dataPagamento);
-      const dataInicialObj = new Date(dataInicial);
-      const dataFinalObj   = new Date(dataFinal);
+      const dataLinha = dataPagamento instanceof Date ? dataPagamento : new Date(dataPagamento);
       if (dataLinha < dataInicialObj || dataLinha > dataFinalObj) return;
 
       if (!pedidos[numeroPedido]) {
-        pedidos[numeroPedido] = {
-          pedido: numeroPedido,
-          comprador,
-          dataPagamento: dataLinha,
-          valor: 0,
-          juros: 0,
-        };
+        pedidos[numeroPedido] = { pedido: numeroPedido, comprador, dataPagamento: dataLinha, valor: 0, juros: 0 };
       }
-      pedidos[numeroPedido].valor += valorTotal;
+      pedidos[numeroPedido].valor += (taxa + juros) * -1;
       pedidos[numeroPedido].juros += juros;
     });
 
-    // ── Monta resultado ───────────────────────────────────────────────────
     return Object.values(pedidos).map((item: any) => {
       const dataFormatada = item.dataPagamento.toLocaleDateString('pt-BR');
-
       const obs = cleanText([
         `NUVEM PAGO: ${item.comprador.toUpperCase()}`,
-        [
-          `PEDIDO DE VENDA: XXXXXX/${item.pedido}`,
-          'NF: XX/XXXXXX',
-          item.juros > 0 ? 'TAXA + JUROS' : 'TAXA',
-        ].join(' > '),
-        categoriaCompleta ? `${categoriaPai.toUpperCase()} > ${categoriaERP.toUpperCase()}` : '',
+        [`PEDIDO DE VENDA: XXXXXX/${item.pedido}`, 'NF: XX/XXXXXX', item.juros > 0 ? 'TAXA + JUROS' : 'TAXA'].join(' > '),
+        categoriaPai && categoriaERP ? `${categoriaPai.toUpperCase()} > ${categoriaERP.toUpperCase()}` : '',
         `${formatDateToBR(dataInicial)} - ${formatDateToBR(dataFinal)}`,
         competencia,
       ].filter(Boolean).join(' | '));
-
       return {
-        'ID':                  '',
-        'Data':                dataFormatada,
-        'Competencia':         dataFormatada,
-        'Cliente/Fornecedor':  clienteFornecedor,
-        'Observacoes':         obs,
-        'Valor':               formatValueToBR(item.valor),
-        'Categoria':           categoriaERP,
-        'Portador':            portador,
-        'Saldo':               'N',
-        'CNPJ':                cnpj,
+        'ID': '', 'Data': dataFormatada, 'Competencia': dataFormatada,
+        'Cliente/Fornecedor': clienteFornecedor, 'Observacoes': obs,
+        'Valor': formatValueToBR(item.valor),
+        'Categoria': categoriaERP, 'Portador': portador, 'Saldo': 'N', 'CNPJ': cnpj,
       };
     });
   };
 
-  const generateEmptyBlingTemplate = () => {
-    return [{
-      "ID": "",
-      "Data": "",
-      "Competencia": "",
-      "Cliente/Fornecedor": "",
-      "Observacoes": "",
-      "Valor": "",
-      "Categoria": "",
-      "Portador": "",
-      "Saldo": "",
-      "CNPJ": ""
-    }];
-  };
+  const generateEmptyBlingTemplate = () => [{
+    'ID': '', 'Data': '', 'Competencia': '', 'Cliente/Fornecedor': '',
+    'Observacoes': '', 'Valor': '', 'Categoria': '', 'Portador': '', 'Saldo': '', 'CNPJ': '',
+  }];
 
-  const formatDateForFileName = (dateString: string): string => {
-    // Check if dateString is null, undefined, or not a string
-    if (!dateString || typeof dateString !== 'string') {
-      return '01-01-1970'; // Return a default date format
-    }
-    
-    // Convert YYYY-MM-DD to DD-MM-YYYY
-    const parts = dateString.split('-');
-    if (parts.length === 3) {
-      const [year, month, day] = parts;
-      return `${day}-${month}-${year}`;
-    }
-    
-    // If it's not in the expected format, return as is or a default
-    return dateString.replace(/[^\d-]/g, '') || '01-01-1970';
-  };
-
+  // ── File generation ───────────────────────────────────────────────────────
   const generateFileName = (exportData: any, formato: string): string => {
     const { canal, erp, ano, dataInicial, dataFinal } = exportData;
-    
-    if (erp === 'BLING' && canal === 'MERCADO LIVRE') {
-      // Extrair mês da data inicial para competência
+    if (erp === 'BLING') {
       const dataInicialObj = dataInicial ? new Date(dataInicial) : new Date();
       const competencia = (dataInicialObj.getMonth() + 1).toString().padStart(2, '0');
-      
-      // Formatar datas para o padrão correto (DD-MM-YYYY)
-      const dataInicialFormatted = formatDateForFileName(dataInicial);
-      const dataFinalFormatted = formatDateForFileName(dataFinal);
-      
-      return `MERCADO_LIVRE_FATURAMENTO_${ano || new Date().getFullYear()}_${competencia}-${ano || new Date().getFullYear()}_${dataInicialFormatted}_${dataFinalFormatted}_bling-modelo-registro-caixa.${formato.toLowerCase()}`;
+      const yr = ano || new Date().getFullYear();
+      return `${canal.replace(/ /g,'_')}_FATURAMENTO_${yr}_${competencia}-${yr}_${formatDateForFileName(dataInicial)}_${formatDateForFileName(dataFinal)}_bling-modelo-registro-caixa.${formato.toLowerCase()}`;
     }
-    
     return `dados_exportacao_${canal}_${new Date().toISOString().split('T')[0]}.${formato.toLowerCase()}`;
   };
 
-  const saveExportRecord = async (exportData: {
-    canal: string;
-    erp: string;
-    dataInicial: string;
-    dataFinal: string;
-    formatos: string[];
-  }) => {
-    if (!user) return;
-
-    try {
-      // Extrair ano e competência da data inicial
-      const dataInicialObj = new Date(exportData.dataInicial);
-      const ano = dataInicialObj.getFullYear().toString();
-      const competencia = (dataInicialObj.getMonth() + 1).toString().padStart(2, '0') + '/' + ano;
-
-      // Gerar nome do arquivo baseado nos dados
-      const fileName = generateFileName({ ...exportData, ano }, exportData.formatos[0]);
-
-      // Salvar no banco de dados
-      const { data, error } = await supabase
-        .from('exported_files')
-        .insert({
-          channel: exportData.canal,
-          type: exportData.erp,
-          ano: ano,
-          competence: competence,
-          start_period: exportData.dataInicial,
-          end_period: exportData.dataFinal,
-          format: exportData.formatos?.[0] || exportData.formatos,
-          arquivo: fileName.replace(/\.[^/.]+$/, ""), // Remove extensão para o nome base
-          file_data: [], // Dados do arquivo se necessário
-          user_id: user.id,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Atualizar estado local
-      const newRecord: ExportRecord = {
-        id: data.id,
-        canal: data.canal,
-        erp: data.erp,
-        ano: data.year,
-        competencia: data.competence,
-        periodoInicial: data.start_period,
-        periodoFinal: data.end_period,
-        formatos: data.format ? [data.format] : [],
-        arquivo: data.file_name,
-        dataDownload: new Date(data.created_at),
-      };
-
-      setExportRecords(prev => [newRecord, ...prev]);
-      return newRecord;
-    } catch (error) {
-      console.error('Erro ao salvar registro de exportação:', error);
-    }
-  };
-
-  const handleExport = async (exportData: {
-    canal: string;
-    erp: string;
-    dataInicial: string;
-    dataFinal: string;
-    formatos: string[];
-  }) => {
-    console.log('Iniciando exportação:', exportData);
-
-    // Salvar registro no banco de dados
-    await saveExportRecord(exportData);
-
-    // Extrair ano e competência da data inicial
-    const dataInicialObj = new Date(exportData.dataInicial);
-    const ano = dataInicialObj.getFullYear().toString();
-    const competencia = (dataInicialObj.getMonth() + 1).toString().padStart(2, '0') + '/' + ano;
-
-    // Get actual data from the selected channel
-    let channelData = getAllChannelData(exportData.canal);
-    console.log('Dados do canal obtidos:', channelData.length, 'registros');
-
-    let finalData = channelData;
-
-    // Se for Bling + Mercado Livre, converter os dados
-    if (exportData.erp === 'BLING' && exportData.canal === 'MERCADO LIVRE') {
-      try {
-        finalData = convertMercadoLivreToBling(channelData, exportData.dataInicial, exportData.dataFinal, competencia);
-      } else if (exportData.canal === 'NUVEM PAGO') {
-        finalData = convertNuvemPagoToBling(channelData, exportData.dataInicial, exportData.dataFinal, competencia);
-        
-        // Se não conseguiu converter ou não há dados, gerar template vazio
-        if (!finalData || finalData.length === 0) {
-          console.log('Nenhum dado convertido, gerando template vazio');
-          finalData = generateEmptyBlingTemplate();
-        }
-      } catch (error) {
-        console.error('Erro na conversão, gerando template vazio:', error);
-        finalData = generateEmptyBlingTemplate();
-      }
-    }
-
-    console.log('Dados finais para exportação:', finalData.length, 'registros');
-
-    // Generate files for each format
-    exportData.formatos.forEach(formato => {
-      const fileName = generateFileName({ ...exportData, ano }, formato);
-      
-      try {
-        switch (formato) {
-          case 'CSV':
-            exportToCSV(finalData, fileName);
-            break;
-          case 'XLSX':
-            exportToExcel(finalData, 'xlsx', fileName);
-            break;
-          case 'XLS':
-            exportToExcel(finalData, 'xls', fileName);
-            break;
-          case 'OFX':
-            exportToOFX(finalData, fileName);
-            break;
-        }
-        console.log(`Arquivo ${formato} gerado com sucesso:`, fileName);
-      } catch (error) {
-        console.error(`Erro ao gerar arquivo ${formato}:`, error);
-      }
-    });
-  };
-
   const exportToCSV = (data: any[], fileName?: string) => {
-    if (data.length === 0) {
-      console.log('Nenhum dado para exportar CSV');
-      return;
-    }
-
+    if (!data.length) return;
     const headers = Object.keys(data[0]);
-    
-    // Função para escapar valores CSV corretamente
-    const escapeCSVValue = (value: any): string => {
-      if (value === null || value === undefined) return '';
-      
-      const stringValue = value.toString();
-      
-      // Se contém vírgula, quebra de linha ou aspas, precisa ser escapado
-      if (stringValue.includes(',') || stringValue.includes('\n') || stringValue.includes('"')) {
-        // Duplicar aspas internas e envolver em aspas
-        return `"${stringValue.replace(/"/g, '""')}"`;
-      }
-      
-      return stringValue;
+    const escape = (v: any) => {
+      const s = v == null ? '' : v.toString();
+      return s.includes(',') || s.includes('\n') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
     };
-
-    const csvContent = [
-      headers.join(','),
-      ...data.map(item => 
-        headers.map(header => escapeCSVValue(item[header])).join(',')
-      )
-    ].join('\n');
-
-    // Adicionar BOM para UTF-8 para garantir que acentos sejam exibidos corretamente
-    const BOM = '\uFEFF';
-    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = fileName || `dados_exportacao_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    
-    // Clean up the URL object
-    setTimeout(() => URL.revokeObjectURL(link.href), 100);
+    const csv = [headers.join(','), ...data.map(row => headers.map(h => escape(row[h])).join(','))].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
+    a.download = fileName || `exportacao_${Date.now()}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 100);
   };
 
   const exportToExcel = (data: any[], format: 'xlsx' | 'xls', fileName?: string) => {
-    if (data.length === 0) {
-      console.log('Nenhum dado para exportar Excel');
-      return;
-    }
-
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Dados');
-
-    const defaultFileName = `dados_exportacao_${new Date().toISOString().split('T')[0]}.${format}`;
-    XLSX.writeFile(workbook, fileName || defaultFileName);
+    if (!data.length) return;
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'Dados');
+    XLSX.writeFile(wb, fileName || `exportacao_${Date.now()}.${format}`);
   };
 
   const exportToOFX = (data: any[], fileName?: string) => {
-    if (data.length === 0) {
-      console.log('Nenhum dado para exportar OFX');
-      return;
-    }
-
-    const ofxContent = `OFXHEADER:100
-DATA:OFXSGML
-VERSION:102
-SECURITY:NONE
-ENCODING:USASCII
-CHARSET:1252
-COMPRESSION:NONE
-OLDFILEUID:NONE
-NEWFILEUID:NONE
-
-<OFX>
-<SIGNONMSGSRSV1>
-<SONRS>
-<STATUS>
-<CODE>0
-<SEVERITY>INFO
-</STATUS>
-<DTSERVER>${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}
-<LANGUAGE>POR
-</SONRS>
-</SIGNONMSGSRSV1>
-<BANKMSGSRSV1>
-<STMTTRNRS>
-<TRNUID>1
-<STATUS>
-<CODE>0
-<SEVERITY>INFO
-</STATUS>
-<STMTRS>
-<CURDEF>BRL
-<BANKACCTFROM>
-<BANKID>001
-<ACCTID>12345
-<ACCTTYPE>CHECKING
-</BANKACCTFROM>
-<BANKTRANLIST>
-<DTSTART>${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}
-<DTEND>${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}
-${data.map((item, index) => `
-<STMTTRN>
-<TRNTYPE>DEBIT
-<DTPOSTED>${new Date().toISOString().replace(/[-:]/g, '').split('T')[0]}
-<TRNAMT>-${Number(Object.values(item)[0]) || 0}
-<FITID>${index + 1}
-<NAME>${Object.values(item)[1] || 'Transação'}
-<MEMO>Dados exportados
-</STMTTRN>`).join('')}
-</BANKTRANLIST>
-</STMTRS>
-</STMTTRNRS>
-</BANKMSGSRSV1>
-</OFX>`;
-
-    const blob = new Blob([ofxContent], { type: 'application/x-ofx' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = fileName || `dados_exportacao_${new Date().toISOString().split('T')[0]}.ofx`;
-    link.click();
-    
-    // Clean up the URL object
-    setTimeout(() => URL.revokeObjectURL(link.href), 100);
+    if (!data.length) return;
+    const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0];
+    const content = `OFXHEADER:100\nDATA:OFXSGML\nVERSION:102\nSECURITY:NONE\nENCODING:USASCII\nCHARSET:1252\nCOMPRESSION:NONE\nOLDFILEUID:NONE\nNEWFILEUID:NONE\n\n<OFX><SIGNONMSGSRSV1><SONRS><STATUS><CODE>0<SEVERITY>INFO</STATUS><DTSERVER>${now}<LANGUAGE>POR</SONRS></SIGNONMSGSRSV1></OFX>`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type: 'application/x-ofx' }));
+    a.download = fileName || `exportacao_${Date.now()}.ofx`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 100);
   };
 
-  const handleDownloadRecord = (record: ExportRecord) => {
-    console.log('Download do registro:', record);
-
-    // Get the data for this record
-    let channelData = getAllChannelData(record.canal);
-
-    let finalData = channelData;
-
-    // Converter dados para o ERP selecionado
-    if (record.erp === 'BLING') {
+  const getConvertedData = (canal: string, erp: string, dataInicial: string, dataFinal: string, competencia: string) => {
+    const channelData = getAllChannelData(canal);
+    if (erp === 'BLING') {
       try {
-        if (record.canal === 'MERCADO LIVRE') {
-          finalData = convertMercadoLivreToBling(channelData, record.periodoInicial, record.periodoFinal, record.competencia);
-        } else if (record.canal === 'NUVEM PAGO') {
-          finalData = convertNuvemPagoToBling(channelData, record.periodoInicial, record.periodoFinal, record.competencia);
-        
-        // Se não conseguiu converter ou não há dados, gerar template vazio
-        if (!finalData || finalData.length === 0) {
-          finalData = generateEmptyBlingTemplate();
-        }
-      } catch (error) {
-        console.error('Erro na conversão durante download:', error);
-        finalData = generateEmptyBlingTemplate();
+        let result: any[] = [];
+        if (canal === 'MERCADO LIVRE') result = convertMercadoLivreToBling(channelData, dataInicial, dataFinal, competencia);
+        else if (canal === 'NUVEM PAGO')  result = convertNuvemPagoToBling(channelData, dataInicial, dataFinal, competencia);
+        else result = channelData;
+        return result?.length ? result : generateEmptyBlingTemplate();
+      } catch (e) {
+        console.error('Erro na conversão:', e);
+        return generateEmptyBlingTemplate();
       }
     }
+    return channelData;
+  };
 
-    // Generate files for each format
-    record.formatos.forEach(formato => {
-      const fileName = generateFileName(record, formato);
-      
-      switch (formato) {
-        case 'CSV':
-          exportToCSV(finalData, fileName);
-          break;
-        case 'XLSX':
-          exportToExcel(finalData, 'xlsx', fileName);
-          break;
-        case 'XLS':
-          exportToExcel(finalData, 'xls', fileName);
-          break;
-        case 'OFX':
-          exportToOFX(finalData, fileName);
-          break;
-      }
+  const saveExportRecord = async (exportData: { canal: string; erp: string; dataInicial: string; dataFinal: string; formatos: string[] }) => {
+    if (!user) return;
+    try {
+      const dataObj = new Date(exportData.dataInicial);
+      const ano = dataObj.getFullYear().toString();
+      const competence = (dataObj.getMonth() + 1).toString().padStart(2, '0') + '/' + ano;
+      const fileName = generateFileName({ ...exportData, ano }, exportData.formatos[0]);
+      const { data, error } = await supabase.from('exported_files').insert({
+        channel: exportData.canal, type: exportData.erp, year: ano, competence,
+        start_period: exportData.dataInicial, end_period: exportData.dataFinal,
+        format: exportData.formatos[0], file_name: fileName.replace(/\.[^/.]+$/, ''),
+        file_data: [], user_id: user.id,
+      }).select().single();
+      if (error) throw error;
+      setExportRecords(prev => [{
+        id: data.id, canal: data.channel, erp: data.type, ano: data.year,
+        competencia: data.competence, periodoInicial: data.start_period,
+        periodoFinal: data.end_period, formatos: data.format ? [data.format] : [],
+        arquivo: data.file_name, dataDownload: new Date(data.created_at),
+      }, ...prev]);
+    } catch (e) { console.error('Erro ao salvar:', e); }
+  };
+
+  const handleExport = async (exportData: { canal: string; erp: string; dataInicial: string; dataFinal: string; formatos: string[] }) => {
+    await saveExportRecord(exportData);
+    const dataObj = new Date(exportData.dataInicial);
+    const ano = dataObj.getFullYear().toString();
+    const competencia = (dataObj.getMonth() + 1).toString().padStart(2, '0') + '/' + ano;
+    const finalData = getConvertedData(exportData.canal, exportData.erp, exportData.dataInicial, exportData.dataFinal, competencia);
+    exportData.formatos.forEach(formato => {
+      const fileName = generateFileName({ ...exportData, ano }, formato);
+      try {
+        if (formato === 'CSV')       exportToCSV(finalData, fileName);
+        else if (formato === 'XLSX') exportToExcel(finalData, 'xlsx', fileName);
+        else if (formato === 'XLS')  exportToExcel(finalData, 'xls', fileName);
+        else if (formato === 'OFX')  exportToOFX(finalData, fileName);
+      } catch (e) { console.error(`Erro ao gerar ${formato}:`, e); }
     });
   };
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date);
-  };
-
-  const handleDeleteClick = (id: string) => {
-    setRecordToDelete(id);
-    setDeleteModalOpen(true);
+  const handleDownloadRecord = (record: ExportRecord) => {
+    const finalData = getConvertedData(record.canal, record.erp, record.periodoInicial, record.periodoFinal, record.competencia);
+    record.formatos.forEach(formato => {
+      const fileName = generateFileName(record, formato);
+      if (formato === 'CSV')       exportToCSV(finalData, fileName);
+      else if (formato === 'XLSX') exportToExcel(finalData, 'xlsx', fileName);
+      else if (formato === 'XLS')  exportToExcel(finalData, 'xls', fileName);
+      else if (formato === 'OFX')  exportToOFX(finalData, fileName);
+    });
   };
 
   const handleDeleteConfirm = async (password: string) => {
     if (!recordToDelete || !user) return false;
-
     try {
-      // Verify password by attempting to sign in
-      const { error } = await supabase.auth.signInWithPassword({
-        email: user.email!,
-        password: password
-      });
-
-      if (error) {
-        return false; // Invalid password
-      }
-
-      // Password is correct, proceed with deletion from database
-      const { error: deleteError } = await supabase
-        .from('exported_files')
-        .delete()
-        .eq('id', recordToDelete)
-        .eq('user_id', user.id);
-
+      const { error } = await supabase.auth.signInWithPassword({ email: user.email!, password });
+      if (error) return false;
+      const { error: deleteError } = await supabase.from('exported_files').delete().eq('id', recordToDelete).eq('user_id', user.id);
       if (deleteError) throw deleteError;
-
-      // Update local state
-      setExportRecords(prev => prev.filter(record => record.id !== recordToDelete));
+      setExportRecords(prev => prev.filter(r => r.id !== recordToDelete));
       setDeleteModalOpen(false);
       setRecordToDelete(null);
       return true;
-    } catch (err) {
-      console.error('Error verifying password or deleting record:', err);
-      return false;
-    }
-  };
-
-  const handleSort = (column: keyof ExportRecord) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortColumn(column);
-      setSortDirection('asc');
-    }
-  };
-
-  const handleColumnFilter = (column: string, value: string) => {
-    setColumnFilters(prev => ({
-      ...prev,
-      [column]: value
-    }));
-  };
-
-  const getUniqueColumnValues = (column: keyof ExportRecord) => {
-    const values = exportRecords.map(record => record[column]).filter(Boolean);
-    const uniqueValues = [...new Set(values)];
-    
-    if (column === 'dataDownload') {
-      return uniqueValues.sort((a, b) => {
-        if (a instanceof Date && b instanceof Date) {
-          return a.getTime() - b.getTime();
-        }
-        return 0;
-      });
-    }
-    
-    return uniqueValues.sort();
+    } catch { return false; }
   };
 
   const filteredAndSortedRecords = React.useMemo(() => {
     let result = [...exportRecords];
-
-    Object.entries(columnFilters).forEach(([column, filterValue]) => {
-      if (filterValue) {
-        result = result.filter(record => {
-          const value = record[column as keyof ExportRecord];
-          if (column === 'dataDownload' && value instanceof Date) {
-            return value.toISOString().includes(filterValue);
-          }
-          if (Array.isArray(value)) {
-            return value.some(v => v.toLowerCase().includes(filterValue.toLowerCase()));
-          }
-          return value?.toString().toLowerCase().includes(filterValue.toLowerCase());
-        });
-      }
+    Object.entries(columnFilters).forEach(([col, val]) => {
+      if (val) result = result.filter(r => {
+        const v = r[col as keyof ExportRecord];
+        if (Array.isArray(v)) return v.some(x => x.toLowerCase().includes(val.toLowerCase()));
+        return v?.toString().toLowerCase().includes(val.toLowerCase());
+      });
     });
-
     if (sortColumn) {
       result.sort((a, b) => {
-        const aVal = a[sortColumn];
-        const bVal = b[sortColumn];
-        
-        if (aVal === null || aVal === undefined) return 1;
-        if (bVal === null || bVal === undefined) return -1;
-        
-        let comparison = 0;
-        if (aVal instanceof Date && bVal instanceof Date) {
-          comparison = aVal.getTime() - bVal.getTime();
-        } else {
-          comparison = aVal.toString().localeCompare(bVal.toString());
-        }
-        
-        return sortDirection === 'asc' ? comparison : -comparison;
+        const av = a[sortColumn], bv = b[sortColumn];
+        if (av == null) return 1; if (bv == null) return -1;
+        const cmp = av instanceof Date && bv instanceof Date ? av.getTime() - bv.getTime() : av.toString().localeCompare(bv.toString());
+        return sortDirection === 'asc' ? cmp : -cmp;
       });
     }
-
     return result;
   }, [exportRecords, columnFilters, sortColumn, sortDirection]);
-
-  const SortableHeader: React.FC<{ column: keyof ExportRecord; children: React.ReactNode; compact?: boolean }> = ({ column, children, compact }) => {
-    const hasFilter = !!columnFilters[column];
-    return (
-      <th
-        className={`${compact ? 'px-3' : 'px-6'} py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors ${
-          hasFilter
-            ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-            : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'
-        }`}
-        onClick={(e) => {
-          if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            setActiveFilterCol(prev => prev === column ? null : column);
-          } else {
-            handleSort(column);
-          }
-        }}
-      >
-        <div className="flex items-center gap-1">
-          {children}
-          {sortColumn === column && (sortDirection === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
-          {hasFilter && <Filter className="w-3 h-3" />}
-        </div>
-      </th>
-    );
-  };
 
   return (
     <>
       <div className="h-full flex flex-col">
-        {/* Fixed Toolbar */}
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-3">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Exportação de Dados</h2>
               <span className="text-xs text-gray-400 dark:text-gray-500">{filteredAndSortedRecords.length} registro(s)</span>
             </div>
-              <span className="text-xs text-gray-400 dark:text-gray-500">{filteredAndSortedRecords.length} registro(s)</span>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setExportModalOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
-              >
-                <Download className="w-4 h-4" />
-                Download Arquivo
-              </button>
-            </div>
+            <button onClick={() => setExportModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <Download className="w-4 h-4" /> Download Arquivo
+            </button>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-hidden flex flex-col">
-
-          <DataTable
-            columns={[
-              {
-                key: 'canal', label: 'Canal',
-                render: (v: string) => (
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    v === 'AMAZON' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400' :
-                    v === 'MERCADO LIVRE' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
-                    v === 'MAGAZINE LUIZA' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
-                    v === 'SHEIN' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400' :
-                    v === 'SHOPEE' ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' :
-                    'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                  }`}>{v}</span>
-                ),
-              },
-              {
-                key: 'erp', label: 'Tipo',
-                render: (v: string) => (
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                    v === 'BLING' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
-                    v === 'TINY' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
-                    'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                  }`}>{v}</span>
-                ),
-              },
-              { key: 'ano', label: 'Ano', width: 'compact' as const },
-              { key: 'competencia', label: 'Competência', width: 'compact' as const },
-              {
-                key: 'periodoInicial', label: 'Período Inicial', width: 'compact' as const,
-                render: (v: string) => v ? formatDateToBR(v) : '-',
-              },
-              {
-                key: 'periodoFinal', label: 'Período Final', width: 'compact' as const,
-                render: (v: string) => v ? formatDateToBR(v) : '-',
-              },
-              { key: 'arquivo', label: 'Arquivo', width: 'wrap' as const },
-              {
-                key: 'formatos', label: 'Formato',
-                render: (v: string[]) => v?.length ? <FormatBadge value={v[0]} /> : '-',
-              },
-              {
-                key: 'dataDownload', label: 'Data Download', width: 'compact' as const,
-                render: (v: Date) => v ? formatDate(v) : '-',
-              },
-            ]}
-            data={filteredAndSortedRecords}
-            rowKey={row => row.id}
-            emptyIcon={<Download className="w-12 h-12 text-gray-400" />}
-            emptyText="Nenhum arquivo exportado"
-            emptySubText="Clique em Download Arquivo para gerar uma exportação"
-            actions={record => (
-              <div className="flex items-center gap-2">
-                <button onClick={() => handleDownloadRecord(record)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title="Download">
-                  <Download className="w-4 h-4" />
-                </button>
-                <button onClick={() => { setRecordToDelete(record.id); setDeleteModalOpen(true); }} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Excluir">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          />
-
-            <ExportModal
-        isOpen={exportModalOpen}
-        canais={canais}
-        onClose={() => setExportModalOpen(false)}
-        onExport={handleExport}
-      />
-
-      <DeleteConfirmModal
-        isOpen={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
-        onConfirm={handleDeleteConfirm}
-      />
+        <DataTable
+          columns={[
+            { key: 'canal', label: 'Canal', render: (v: string) => (
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                v === 'AMAZON' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400' :
+                v === 'MERCADO LIVRE' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                v === 'MAGAZINE LUIZA' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
+                v === 'SHEIN' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400' :
+                v === 'SHOPEE' ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' :
+                'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+              }`}>{v}</span>
+            )},
+            { key: 'erp', label: 'Tipo', render: (v: string) => (
+              <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
+                v === 'BLING' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+              }`}>{v}</span>
+            )},
+            { key: 'ano', label: 'Ano', width: 'compact' as const },
+            { key: 'competencia', label: 'Competência', width: 'compact' as const },
+            { key: 'periodoInicial', label: 'Período Inicial', width: 'compact' as const, render: (v: string) => v ? formatDateToBR(v) : '-' },
+            { key: 'periodoFinal', label: 'Período Final', width: 'compact' as const, render: (v: string) => v ? formatDateToBR(v) : '-' },
+            { key: 'arquivo', label: 'Arquivo', width: 'wrap' as const },
+            { key: 'formatos', label: 'Formato', render: (v: string[]) => v?.length ? <FormatBadge value={v[0]} /> : '-' },
+            { key: 'dataDownload', label: 'Data Download', width: 'compact' as const, render: (v: Date) => v ? formatDate(v) : '-' },
+          ]}
+          data={filteredAndSortedRecords}
+          rowKey={row => row.id}
+          emptyIcon={<Download className="w-12 h-12 text-gray-400" />}
+          emptyText="Nenhum arquivo exportado"
+          emptySubText="Clique em Download Arquivo para gerar uma exportação"
+          actions={record => (
+            <div className="flex items-center gap-2">
+              <button onClick={() => handleDownloadRecord(record)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title="Download"><Download className="w-4 h-4" /></button>
+              <button onClick={() => { setRecordToDelete(record.id); setDeleteModalOpen(true); }} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Excluir"><Trash2 className="w-4 h-4" /></button>
+            </div>
+          )}
+        />
       </div>
-    </div>
+
+      <ExportModal isOpen={exportModalOpen} canais={canais} onClose={() => setExportModalOpen(false)} onExport={handleExport} />
+      <DeleteConfirmModal isOpen={deleteModalOpen} onClose={() => setDeleteModalOpen(false)} onConfirm={handleDeleteConfirm} />
     </>
   );
 };
