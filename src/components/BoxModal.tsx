@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, ArrowUp, ArrowDown, Filter, Check, X as XIcon } from 'lucide-react';
 import { FullscreenModal } from './FullscreenModal';
-import { useAdmin } from '../hooks/useAdmin';
+import { supabase } from '../lib/supabase';
 
 interface BoxModalProps { isOpen: boolean; onClose: () => void; }
 
@@ -24,10 +24,18 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
   const [newRow, setNewRow] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
-  const { getAccounts, createAccount } = useAdmin();
+
 
   useEffect(() => {
-    if (isOpen) { setLoading(true); getAccounts().then(setAccounts).catch(console.error).finally(() => setLoading(false)); }
+    if (isOpen) {
+      setLoading(true);
+      supabase.from('financial_accounts').select('*').order('canal', { ascending: true })
+        .then(({ data, error }) => {
+          if (error) console.error(error);
+          else setAccounts(data || []);
+        })
+        .finally(() => setLoading(false));
+    }
   }, [isOpen]);
 
   useEffect(() => {
@@ -76,9 +84,10 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
         fornecedor_razao_social: newRow.fornecedor_razao_social || '',
         fornecedor_cnpj: newRow.fornecedor_cnpj || '',
       };
-      await createAccount(data as any);
-      const fresh = await getAccounts();
-      setAccounts(fresh);
+      const { error: insertError } = await supabase.from('financial_accounts').insert(data);
+      if (insertError) throw insertError;
+      const { data: fresh } = await supabase.from('financial_accounts').select('*').order('canal', { ascending: true });
+      setAccounts(fresh || []);
       setAddingRow(false);
       setNewRow({});
     } catch (e: any) {
