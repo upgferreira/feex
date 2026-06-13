@@ -6,15 +6,18 @@ import { useAdmin } from '../hooks/useAdmin';
 interface CategoryModalProps { isOpen: boolean; onClose: () => void; }
 
 const COLS = [
-  { key: 'canal', label: 'Canal' },
-  { key: 'grupo', label: 'Grupo' },
-  { key: 'categoria_canal', label: 'Categoria Canal' },
-  { key: 'categoria_pai_erp', label: 'Categoria Pai ERP' },
-  { key: 'categoria_erp', label: 'Categoria ERP' },
-  { key: 'tipo', label: 'Tipo' },
-  { key: 'descontado', label: 'Descontado' },
-  { key: 'nfe', label: 'NFe' },
+  { key: 'channel',             label: 'Canal',                type: 'channel' },
+  { key: 'channel_group',       label: 'Grupo',                type: 'text' },
+  { key: 'channel_category',    label: 'Categoria Canal',      type: 'text' },
+  { key: 'erp_parent_category', label: 'Categoria Pai ERP',    type: 'text' },
+  { key: 'erp_category',        label: 'Categoria ERP',        type: 'text' },
+  { key: 'category_type',       label: 'Tipo',                 type: 'type' },
+  { key: 'deducted',            label: 'Descontado',           type: 'text' },
+  { key: 'invoice',             label: 'NF-e',                 type: 'text' },
 ];
+
+const CHANNEL_OPTIONS = ['AMAZON', 'MAGAZINE LUIZA', 'MERCADO LIVRE', 'SHEIN', 'SHOPEE'];
+const TYPE_OPTIONS = ['Despesa', 'Receita'];
 
 export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose }) => {
   const [categories, setCategories] = useState<any[]>([]);
@@ -69,14 +72,14 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
     try {
       // Ensure all required fields have at least empty string
       const data = {
-        canal: newRow.canal || '',
-        grupo: newRow.grupo || '',
-        categoria_canal: newRow.categoria_canal || '',
-        categoria_pai_erp: newRow.categoria_pai_erp || '',
-        categoria_erp: newRow.categoria_erp || '',
-        tipo: newRow.tipo || '',
-        descontado: newRow.descontado || '',
-        nfe: newRow.nfe || '',
+        channel:             newRow.channel || '',
+        channel_group:       newRow.channel_group || '',
+        channel_category:    newRow.channel_category || '',
+        erp_parent_category: newRow.erp_parent_category || '',
+        erp_category:        newRow.erp_category || '',
+        category_type:       newRow.category_type || '',
+        deducted:            newRow.deducted || '',
+        invoice:             newRow.invoice || '',
       };
       await createCategory(data as any);
       const fresh = await getCategories();
@@ -138,7 +141,11 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                   <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     {COLS.map(col => (
                       <td key={col.key} className="px-6 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">
-                        {c[col.key] || '-'}
+                        {col.key === 'category_type' && c[col.key] ? (
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${c[col.key] === 'Receita' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'}`}>
+                            {c[col.key]}
+                          </span>
+                        ) : (c[col.key] || '-')}
                       </td>
                     ))}
                     <td />
@@ -147,15 +154,36 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                 {/* New inline row */}
                 {addingRow && (
                   <tr className="bg-blue-50/50 dark:bg-blue-900/10">
-                    {COLS.map(c => (
+                    {COLS.map((c, ci) => (
                       <td key={c.key} className="px-4 py-2">
-                        <input
-                          autoFocus={c.key === 'canal'}
-                          value={newRow[c.key] || ''}
-                          onChange={e => setNewRow(r => ({ ...r, [c.key]: e.target.value }))}
-                          placeholder={c.label}
-                          className="w-full px-2 py-1 text-sm border border-blue-300 dark:border-blue-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
-                        />
+                        {c.type === 'channel' ? (
+                          <select
+                            autoFocus={ci === 0}
+                            value={newRow[c.key] || ''}
+                            onChange={e => setNewRow(r => ({ ...r, [c.key]: e.target.value }))}
+                            className="w-full px-2 py-1 text-sm border border-blue-300 dark:border-blue-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">Canal...</option>
+                            {CHANNEL_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                          </select>
+                        ) : c.type === 'type' ? (
+                          <select
+                            value={newRow[c.key] || ''}
+                            onChange={e => setNewRow(r => ({ ...r, [c.key]: e.target.value }))}
+                            className="w-full px-2 py-1 text-sm border border-blue-300 dark:border-blue-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">Tipo...</option>
+                            {TYPE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                          </select>
+                        ) : (
+                          <input
+                            autoFocus={ci === 0}
+                            value={newRow[c.key] || ''}
+                            onChange={e => setNewRow(r => ({ ...r, [c.key]: e.target.value }))}
+                            placeholder={c.label}
+                            className="w-full px-2 py-1 text-sm border border-blue-300 dark:border-blue-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
+                          />
+                        )}
                       </td>
                     ))}
                     <td className="px-3 py-2">
