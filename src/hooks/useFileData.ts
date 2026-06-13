@@ -8,6 +8,11 @@ import * as XLSX from 'xlsx';
 // ── Module-level cache (persists across re-renders, resets on page reload) ────
 let _cache: ImportedFile[] | null = null;
 let _cacheUserId: string | null = null;
+let _listeners: (() => void)[] = [];
+
+function notifyListeners() {
+  _listeners.forEach(fn => fn());
+}
 
 export const useFileData = () => {
   const [files, setFiles] = useState<ImportedFile[]>(_cache || []);
@@ -17,13 +22,23 @@ export const useFileData = () => {
 
   useEffect(() => {
     if (user) {
-      // Use cache if it belongs to same user
       if (_cache && _cacheUserId === user.id) {
         setFiles(_cache);
       } else {
         loadFiles();
       }
     }
+  }, [user]);
+
+  // Sync with other hook instances when files change
+  useEffect(() => {
+    const handler = () => {
+      if (_cache && _cacheUserId === user?.id) {
+        setFiles([..._cache]);
+      }
+    };
+    window.addEventListener('feex:files-updated', handler);
+    return () => window.removeEventListener('feex:files-updated', handler);
   }, [user]);
 
   const loadFiles = async () => {
@@ -57,6 +72,7 @@ export const useFileData = () => {
       _cache = formattedFiles;
       _cacheUserId = user.id;
       setFiles(formattedFiles);
+      notifyListeners();
     } catch (err) {
       console.error('Error loading files:', err);
       setError('Erro ao carregar arquivos');
@@ -200,9 +216,10 @@ export const useFileData = () => {
         columns: savedFile.file_headers,
       };
 
-      // Update cache
+      // Update cache and notify all hook instances
       _cache = [newFile, ...(_cache || [])];
       setFiles(prev => [newFile, ...prev]);
+      window.dispatchEvent(new CustomEvent('feex:files-updated'));
       return newFile;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao processar arquivo';
@@ -222,9 +239,10 @@ export const useFileData = () => {
         .eq('id', fileId)
         .eq('user_id', user.id);
       if (error) throw error;
-      // Update cache
+      // Update cache and notify all hook instances
       _cache = (_cache || []).filter(f => f.id !== fileId);
       setFiles(prev => prev.filter(f => f.id !== fileId));
+      window.dispatchEvent(new CustomEvent('feex:files-updated'));
     } catch (err) {
       console.error('Error removing file:', err);
       setError('Erro ao remover arquivo');
@@ -239,5 +257,10 @@ export const useFileData = () => {
     return getFilesByChannel(channel).flatMap(f => f.data);
   }, [getFilesByChannel]);
 
-  return { files, loading, error, addFile, removeFile, getFilesByChannel, getAllChannelData, loadFiles };
+  const subscribe = (fn: () => void) => {
+    _listeners.push(fn);
+    return () => { _listeners = _listeners.filter(l => l !== fn); };
+  };
+
+  return { files, loading, error, addFile, removeFile, getFilesByChannel, getAllChannelData, loadFiles, subscribe };
 };
