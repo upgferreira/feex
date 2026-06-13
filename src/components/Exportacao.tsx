@@ -194,18 +194,36 @@ export const Exportacao: React.FC = () => {
     const categoriaPai = catRow?.erp_parent_category || catRow?.categoria_pai_erp || '';
 
     const pedidos: Record<string, any> = {};
-    const dataInicialObj = new Date(dataInicial);
-    const dataFinalObj   = new Date(dataFinal);
+    // Set date range with time at start/end of day to avoid boundary issues
+    const dataInicialObj = new Date(dataInicial + 'T00:00:00');
+    const dataFinalObj   = new Date(dataFinal   + 'T23:59:59');
+
+    const parseValor = (v: any) => {
+      if (v == null || v === '') return 0;
+      return Number(String(v).replace(/\./g,'').replace(',','.')) || 0;
+    };
 
     data.forEach(row => {
-      const numeroPedido  = String(row['Número do Pedido'] || '').trim();
+      // Pedido pode vir como número float (ex: 146.0) — converter para inteiro string
+      const pedidoRaw = row['Número do Pedido'];
+      if (pedidoRaw == null || pedidoRaw === '') return;
+      const numeroPedido  = String(Math.round(Number(pedidoRaw)));
       const comprador     = String(row['Nome do comprador'] || '').trim();
       const dataPagamento = row['Data de pagamento'];
-      const taxa  = Number(String(row['Taxas']  || '0').replace(',', '.')) || 0;
-      const juros = Number(String(row['Juros']  || '0').replace(',', '.')) || 0;
+      const taxa  = parseValor(row['Taxas']);
+      const juros = parseValor(row['Juros']);
       if (!numeroPedido || !dataPagamento) return;
 
-      const dataLinha = dataPagamento instanceof Date ? dataPagamento : new Date(dataPagamento);
+      // Data pode vir como Date object, string ISO, ou número serial
+      let dataLinha: Date;
+      if (dataPagamento instanceof Date) {
+        dataLinha = dataPagamento;
+      } else if (typeof dataPagamento === 'number') {
+        dataLinha = new Date(Math.round((dataPagamento - 25569) * 86400 * 1000));
+      } else {
+        dataLinha = new Date(dataPagamento);
+      }
+      if (isNaN(dataLinha.getTime())) return;
       if (dataLinha < dataInicialObj || dataLinha > dataFinalObj) return;
 
       if (!pedidos[numeroPedido]) {
