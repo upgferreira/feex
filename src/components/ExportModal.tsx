@@ -4,6 +4,7 @@ import { X, Download, Calendar, Building2 } from 'lucide-react';
 interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
+  canais?: string[];
   onExport: (data: {
     canal: string;
     erp: string;
@@ -17,6 +18,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   isOpen,
   onClose,
   onExport,
+  canais = [],
 }) => {
   const [canal, setCanal] = useState('');
   const [erp, setErp] = useState('');
@@ -24,7 +26,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [dataFinal, setDataFinal] = useState('');
   const [formatos, setFormatos] = useState<string[]>([]);
 
-  const channels = ['AMAZON', 'MAGAZINE LUIZA', 'MERCADO LIVRE', 'SHEIN', 'SHOPEE'];
+  const channels = canais.length > 0 ? canais : ['AMAZON', 'MAGAZINE LUIZA', 'MERCADO LIVRE', 'SHEIN', 'SHOPEE'];
   const erps = ['BLING', 'TINY'];
   const formatOptions = ['CSV', 'XLSX', 'XLS', 'OFX'];
 
