@@ -878,10 +878,10 @@ ${data.map((item, index) => `
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{record.ano}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{record.competencia}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                           {record.periodoInicial ? formatDateToBR(record.periodoInicial) : '-'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                        <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                           {record.periodoFinal ? formatDateToBR(record.periodoFinal) : '-'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate" title={record.arquivo}>{record.arquivo}</td>
@@ -894,7 +894,7 @@ ${data.map((item, index) => `
                             ))}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatDate(record.dataDownload)}</td>
+                        <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatDate(record.dataDownload)}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
                             <button
