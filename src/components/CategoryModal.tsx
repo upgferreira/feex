@@ -16,7 +16,6 @@ const COLS = [
   { key: 'invoice',             label: 'NF-e',                 type: 'text' },
 ];
 
-const CHANNEL_OPTIONS = ['AMAZON', 'MAGAZINE LUIZA', 'MERCADO LIVRE', 'SHEIN', 'SHOPEE'];
 const TYPE_OPTIONS = ['Despesa', 'Receita'];
 
 export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose }) => {
@@ -26,6 +25,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [colFilters, setColFilters] = useState<Record<string, string>>({});
   const [activeFilterCol, setActiveFilterCol] = useState<string | null>(null);
+  const [channelOptions, setChannelOptions] = useState<string[]>([]);
   const [addingRow, setAddingRow] = useState(false);
   const [newRow, setNewRow] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -34,6 +34,13 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
 
   useEffect(() => {
     if (isOpen) {
+      // Load unique channels from financial_accounts
+      supabase.from('financial_accounts').select('canal').order('canal', { ascending: true })
+        .then(({ data }) => {
+          const unique = [...new Set((data || []).map((r: any) => r.canal))].filter(Boolean).sort();
+          setChannelOptions(unique as string[]);
+        });
+
       setLoading(true);
       supabase.from('financial_categories').select('*').order('channel', { ascending: true })
         .then(({ data, error }) => {
@@ -173,7 +180,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                             className="w-full px-2 py-1 text-sm border border-blue-300 dark:border-blue-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500"
                           >
                             <option value="">Canal...</option>
-                            {CHANNEL_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                            {channelOptions.map(o => <option key={o} value={o}>{o}</option>)}
                           </select>
                         ) : c.type === 'type' ? (
                           <select
