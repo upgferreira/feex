@@ -130,7 +130,7 @@ export const Importacao: React.FC<ImportacaoProps> = ({ selectedCanal = 'TODOS' 
     { key: 'periodoInicial', label: 'Período Inicial' },
     { key: 'periodoFinal', label: 'Período Final' },
     { key: 'arquivo', label: 'Arquivo' },
-    { key: 'tipo', label: 'Formato' },
+
     { key: 'dataUpload', label: 'Data Upload' },
   ];
 
@@ -213,7 +213,7 @@ export const Importacao: React.FC<ImportacaoProps> = ({ selectedCanal = 'TODOS' 
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-700">
                 <tr>
-                  {COLUMNS.map(({ key, label }) => {
+                  {COLUMNS.map((col) => { const { key, label } = col;
                     const hasFilter = !!columnFilters[key];
                     return (
                       <th
@@ -237,6 +237,9 @@ export const Importacao: React.FC<ImportacaoProps> = ({ selectedCanal = 'TODOS' 
                       </th>
                     );
                   })}
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky top-0 bg-gray-50 dark:bg-gray-700 z-10 whitespace-nowrap">
+                    Formato
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky top-0 bg-gray-50 dark:bg-gray-700 z-10">
                     Ações
                   </th>
@@ -267,6 +270,16 @@ export const Importacao: React.FC<ImportacaoProps> = ({ selectedCanal = 'TODOS' 
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatPeriodo(file.periodoInicial)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatPeriodo(file.periodoFinal)}</td>
                       <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate" title={file.originalName}>{file.originalName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {(() => {
+                          const ext = (file.originalName || '').split('.').pop()?.toUpperCase() || '';
+                          const cls = ext === 'CSV' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                                      ext === 'XLSX' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
+                                      ext === 'XLS' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400' :
+                                      'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+                          return <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}`}>{ext}</span>;
+                        })()}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatDate(file.dataUpload)}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
