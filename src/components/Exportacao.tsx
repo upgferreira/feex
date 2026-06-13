@@ -57,14 +57,14 @@ export const Exportacao: React.FC = () => {
 
       const formattedRecords: ExportRecord[] = data.map(record => ({
         id: record.id,
-        canal: record.canal,
-        erp: record.erp,
-        ano: record.ano,
-        competencia: record.competencia,
-        periodoInicial: record.periodo_inicial,
-        periodoFinal: record.periodo_final,
-        formatos: record.formatos,
-        arquivo: record.arquivo,
+        canal: record.channel,
+        erp: record.type,
+        ano: record.year,
+        competencia: record.competence,
+        periodoInicial: record.start_period,
+        periodoFinal: record.end_period,
+        formatos: record.format ? [record.format] : [],
+        arquivo: record.file_name,
         dataDownload: new Date(record.created_at)
       }));
 
@@ -372,13 +372,13 @@ export const Exportacao: React.FC = () => {
       const { data, error } = await supabase
         .from('exported_files')
         .insert({
-          canal: exportData.canal,
-          erp: exportData.erp,
+          channel: exportData.canal,
+          type: exportData.erp,
           ano: ano,
-          competencia: competencia,
-          periodo_inicial: exportData.dataInicial,
-          periodo_final: exportData.dataFinal,
-          formatos: exportData.formatos,
+          competence: competence,
+          start_period: exportData.dataInicial,
+          end_period: exportData.dataFinal,
+          format: exportData.formatos?.[0] || exportData.formatos,
           arquivo: fileName.replace(/\.[^/.]+$/, ""), // Remove extensão para o nome base
           file_data: [], // Dados do arquivo se necessário
           user_id: user.id,
@@ -393,12 +393,12 @@ export const Exportacao: React.FC = () => {
         id: data.id,
         canal: data.canal,
         erp: data.erp,
-        ano: data.ano,
-        competencia: data.competencia,
-        periodoInicial: data.periodo_inicial,
-        periodoFinal: data.periodo_final,
-        formatos: data.formatos,
-        arquivo: data.arquivo,
+        ano: data.year,
+        competencia: data.competence,
+        periodoInicial: data.start_period,
+        periodoFinal: data.end_period,
+        formatos: data.format ? [data.format] : [],
+        arquivo: data.file_name,
         dataDownload: new Date(data.created_at),
       };
 
@@ -826,10 +826,10 @@ ${data.map((item, index) => `
               <table className="w-full">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <SortableHeader column="canal">Canal</SortableHeader>
+                    <SortableHeader column="channel">Canal</SortableHeader>
                     <SortableHeader column="erp">Tipo</SortableHeader>
                     <SortableHeader column="ano">Ano</SortableHeader>
-                    <SortableHeader column="competencia">Competência</SortableHeader>
+                    <SortableHeader column="competence">Competência</SortableHeader>
                     <SortableHeader column="periodoInicial">Período Inicial</SortableHeader>
                     <SortableHeader column="periodoFinal">Período Final</SortableHeader>
                     <SortableHeader column="arquivo">Arquivo</SortableHeader>
@@ -884,6 +884,7 @@ ${data.map((item, index) => `
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                           {record.periodoFinal ? formatDateToBR(record.periodoFinal) : '-'}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate" title={record.arquivo}>{record.arquivo}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                           <div className="flex gap-1">
                             {record.formatos.map(formato => (
@@ -893,7 +894,6 @@ ${data.map((item, index) => `
                             ))}
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{record.arquivo}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatDate(record.dataDownload)}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
