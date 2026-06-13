@@ -897,6 +897,8 @@ ${data.map((item, index) => `
         onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleDeleteConfirm}
       />
+      </div>
+    </div>
     </>
   );
 };
