@@ -54,7 +54,7 @@ function App() {
     );
   }
 
-  if (!user) return <div className={isDarkMode ? 'dark' : ''}><Auth /></div>;
+  if (!user) return <Auth />;
 
   const renderContent = () => {
     switch (currentView) {
@@ -67,8 +67,7 @@ function App() {
   };
 
   return (
-    <div className={isDarkMode ? 'dark' : ''}>
-      <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
+    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
         <Header
           currentView={currentView}
           onViewChange={setCurrentView}
@@ -91,7 +90,6 @@ function App() {
         <CategoryModal isOpen={categoryModalOpen} onClose={() => setCategoryModalOpen(false)} />
         <BoxModal isOpen={boxModalOpen} onClose={() => setBoxModalOpen(false)} />
         <IntegrationsModal isOpen={integrationsModalOpen} onClose={() => setIntegrationsModalOpen(false)} />
-      </div>
     </div>
   );
 }
