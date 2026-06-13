@@ -77,10 +77,12 @@ export const Exportacao: React.FC = () => {
     if (!detalhe) return 'Nao mapeado';
     const norm = normalizeText(detalhe);
     const match = categories.find(c => {
-      if ((c.channel || c.canal) !== 'MERCADO LIVRE') return false;
+      const ch = String(c.channel || c.canal || '').toUpperCase().trim();
+      if (ch !== 'MERCADO LIVRE') return false;
       const key = normalizeText(c.channel_category || c.categoria_canal || '');
       return key === norm || key.includes(norm) || norm.includes(key);
     });
+    console.log('findMappedCategory:', detalhe, '->', match?.erp_category || match?.categoria_erp, '| categories count:', categories.length);
     return match?.erp_category || match?.categoria_erp || 'Nao mapeado';
   };
 
@@ -180,10 +182,11 @@ export const Exportacao: React.FC = () => {
   const convertNuvemPagoToBling = (data: any[], dataInicial: string, dataFinal: string, competencia: string) => {
     if (!data?.length) return [];
 
-    const conta = accounts.find(a => String(a.canal || '').toUpperCase() === 'NUVEM PAGO');
-    const portador          = conta?.caixa || '';
+    const conta = accounts.find(a => String(a.canal || '').toUpperCase().trim() === 'NUVEM PAGO');
+    console.log('NuvemPago conta:', conta, 'from accounts:', accounts.map(a=>a.canal));
+    const portador          = conta?.caixa                    || '';
     const clienteFornecedor = conta?.fornecedor_nome_fantasia || 'NUVEM PAGO';
-    const cnpj              = conta?.fornecedor_cnpj || '';
+    const cnpj              = conta?.fornecedor_cnpj          || '';
 
     const catRow = categories.find(c => {
       const canal    = String(c.channel || c.canal || '').toUpperCase();
@@ -200,7 +203,11 @@ export const Exportacao: React.FC = () => {
 
     const parseValor = (v: any) => {
       if (v == null || v === '') return 0;
-      return Number(String(v).replace(/\./g,'').replace(',','.')) || 0;
+      const s = String(v).trim().replace('R$','').replace(/\s/g,'');
+      // BR format: 1.234,56 → has comma as decimal
+      if (s.includes(',')) return Number(s.replace(/\./g,'').replace(',','.')) || 0;
+      // EN format: 7.25 → dot is decimal, parse directly
+      return Number(s) || 0;
     };
 
     data.forEach(row => {
@@ -329,7 +336,7 @@ export const Exportacao: React.FC = () => {
         channel: exportData.canal, type: exportData.erp, year: ano, competence,
         start_period: exportData.dataInicial, end_period: exportData.dataFinal,
         format: exportData.formatos[0], file_name: fileName.replace(/\.[^/.]+$/, ''),
-        file_data: [], user_id: user.id,
+        file_data: null, file_headers: null, user_id: user.id,
       }).select().single();
       if (error) throw error;
       setExportRecords(prev => [{
