@@ -1,61 +1,79 @@
 import React from 'react';
 import { FullscreenModal } from './FullscreenModal';
-import { Building2, ShoppingCart } from 'lucide-react';
 
 interface IntegrationsModalProps { isOpen: boolean; onClose: () => void; }
 
-export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, onClose }) => {
-  const erp = [
-    { name: 'BLING', emoji: '🔷', status: 'Disponível' },
-    { name: 'OMIE', emoji: '🟢', status: 'Em breve' },
-  ];
-  const marketplaces = [
-    { name: 'AMAZON', emoji: '🟠', status: 'Disponível' },
-    { name: 'MAGAZINE LUIZA', emoji: '🔵', status: 'Disponível' },
-    { name: 'MERCADO LIVRE', emoji: '🟡', status: 'Disponível' },
-    { name: 'SHEIN', emoji: '🟣', status: 'Disponível' },
-    { name: 'SHOPEE', emoji: '🔴', status: 'Disponível' },
-  ];
+const ERP = [
+  { name: 'BLING',        available: true  },
+  { name: 'LYNX',         available: false },
+  { name: 'OLIST/TINY',   available: true  },
+  { name: 'OMIE',         available: false },
+  { name: 'SANKHYA',      available: false },
+  { name: 'UPSELLER',     available: false },
+];
 
-  const Table = ({ title, icon, data }: { title: string; icon: React.ReactNode; data: typeof erp }) => (
-    <div>
-      <div className="flex items-center gap-2 px-8 py-4 border-b border-gray-100 dark:border-gray-800">
-        {icon}
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white">{title}</h3>
-      </div>
-      <table className="w-full">
-        <thead className="bg-gray-50 dark:bg-gray-700/50">
-          <tr>
-            <th className="px-8 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Integração</th>
-            <th className="px-8 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-          {data.map(item => (
-            <tr key={item.name} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
-              <td className="px-8 py-4 text-sm text-gray-900 dark:text-gray-100">
-                <span className="mr-2">{item.emoji}</span>{item.name}
-              </td>
-              <td className="px-8 py-4">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  item.status === 'Disponível'
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                    : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-                }`}>{item.status}</span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+const MARKETPLACES = [
+  { name: 'AMAZON',       available: true  },
+  { name: 'MAGALU',       available: true  },
+  { name: 'MERCADO LIVRE',available: true  },
+  { name: 'SHEIN',        available: true  },
+  { name: 'SHOPEE',       available: true  },
+  { name: 'TEMU',         available: false },
+  { name: 'TIKTOK SHOP',  available: false },
+];
+
+const GATEWAYS = [
+  { name: 'CIELO',        available: true  },
+  { name: 'MERCADO PAGO', available: false },
+  { name: 'NUVEM PAGO',   available: true  },
+  { name: 'PAGARME',      available: false },
+  { name: 'REDE',         available: false },
+  { name: 'STONE',        available: false },
+];
+
+const Card = ({ name, available }: { name: string; available: boolean }) => (
+  <div className={`flex flex-col items-center justify-between p-4 rounded-xl border transition-all ${
+    available
+      ? 'bg-white dark:bg-gray-800 border-green-200 dark:border-green-800 shadow-sm'
+      : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-60'
+  }`}>
+    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-bold mb-3 ${
+      available
+        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+        : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+    }`}>
+      {name.charAt(0)}
     </div>
-  );
+    <span className="text-xs font-semibold text-gray-800 dark:text-gray-200 text-center leading-tight mb-2">
+      {name}
+    </span>
+    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+      available
+        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+        : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+    }`}>
+      {available ? 'Disponível' : 'Em breve'}
+    </span>
+  </div>
+);
 
-  return (
-    <FullscreenModal isOpen={isOpen} onClose={onClose} title="Integrações">
-      <div className="overflow-auto h-full">
-        <Table title="ERP" icon={<Building2 className="w-5 h-5 text-blue-600" />} data={erp} />
-        <Table title="Marketplaces" icon={<ShoppingCart className="w-5 h-5 text-blue-600" />} data={marketplaces} />
-      </div>
-    </FullscreenModal>
-  );
-};
+const Section = ({ title, items }: { title: string; items: typeof ERP }) => (
+  <div className="mb-8">
+    <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4 px-1">
+      {title}
+    </h3>
+    <div className="grid grid-cols-8 gap-3">
+      {items.map(item => <Card key={item.name} {...item} />)}
+    </div>
+  </div>
+);
+
+export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, onClose }) => (
+  <FullscreenModal isOpen={isOpen} onClose={onClose} title="Integrações">
+    <div className="p-8 overflow-auto h-full">
+      <Section title="ERP" items={ERP} />
+      <Section title="Marketplaces" items={MARKETPLACES} />
+      <Section title="Gateways de Pagamento" items={GATEWAYS} />
+    </div>
+  </FullscreenModal>
+);
