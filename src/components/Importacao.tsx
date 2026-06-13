@@ -264,7 +264,7 @@ export const Importacao: React.FC<ImportacaoProps> = ({ selectedCanal = 'TODOS' 
                           {file.canal}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{file.tipo}</td>
+                      <td className={`${ ['ano','competencia','periodoInicial','periodoFinal','dataUpload'].includes(String(key)) ? 'px-3' : 'px-6' } py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100`}>{file.tipo}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{file.ano}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatCompetencia(file.competencia)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatPeriodo(file.periodoInicial)}</td>
