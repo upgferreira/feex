@@ -10,6 +10,8 @@ import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
 
 export const Exportacao: React.FC = () => {
+  const { files } = useFileData();
+  const canais = React.useMemo(() => [...new Set(files.map((f: any) => f.canal))].sort(), [files]);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [activeFilterCol, setActiveFilterCol] = useState<keyof ExportRecord | null>(null);
@@ -1004,6 +1006,7 @@ ${data.map((item, index) => `
 
       <ExportModal
         isOpen={exportModalOpen}
+        canais={canais}
         onClose={() => setExportModalOpen(false)}
         onExport={handleExport}
       />
