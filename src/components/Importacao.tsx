@@ -218,7 +218,7 @@ export const Importacao: React.FC<ImportacaoProps> = ({ selectedCanal = 'TODOS' 
                     return (
                       <th
                         key={key}
-                        className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none transition-colors
+                        className={`${ ['ano','competencia','periodoInicial','periodoFinal','dataUpload'].includes(key) ? 'px-3' : 'px-6' } py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none transition-colors
                           ${hasFilter
                             ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                             : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'
@@ -264,11 +264,11 @@ export const Importacao: React.FC<ImportacaoProps> = ({ selectedCanal = 'TODOS' 
                           {file.canal}
                         </span>
                       </td>
-                      <td className={`${ ['ano','competencia','periodoInicial','periodoFinal','dataUpload'].includes(String(key)) ? 'px-3' : 'px-6' } py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100`}>{file.tipo}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{file.ano}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatCompetencia(file.competencia)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatPeriodo(file.periodoInicial)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatPeriodo(file.periodoFinal)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{file.tipo}</td>
+                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{file.ano}</td>
+                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatCompetencia(file.competencia)}</td>
+                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatPeriodo(file.periodoInicial)}</td>
+                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatPeriodo(file.periodoFinal)}</td>
                       <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate" title={file.originalName}>{file.originalName}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         {(() => {
@@ -280,7 +280,7 @@ export const Importacao: React.FC<ImportacaoProps> = ({ selectedCanal = 'TODOS' 
                           return <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}`}>{ext}</span>;
                         })()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatDate(file.dataUpload)}</td>
+                      <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatDate(file.dataUpload)}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <button onClick={() => handleDownloadFile(file)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title="Download">
