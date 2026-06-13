@@ -63,15 +63,28 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
     setAddingRow(true);
   };
 
+  const [saveError, setSaveError] = React.useState<string | null>(null);
+
   const handleSaveRow = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
-      await createAccount(newRow as any);
+      const data = {
+        canal: newRow.canal || '',
+        caixa: newRow.caixa || '',
+        fornecedor_nome_fantasia: newRow.fornecedor_nome_fantasia || '',
+        fornecedor_razao_social: newRow.fornecedor_razao_social || '',
+        fornecedor_cnpj: newRow.fornecedor_cnpj || '',
+      };
+      await createAccount(data as any);
       const fresh = await getAccounts();
       setAccounts(fresh);
       setAddingRow(false);
       setNewRow({});
-    } catch (e) { console.error(e); }
+    } catch (e: any) {
+      console.error('Error saving account:', e);
+      setSaveError(e?.message || 'Erro ao salvar');
+    }
     finally { setSaving(false); }
   };
 
@@ -187,6 +200,11 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
           )}
         </div>
 
+        {saveError && (
+          <div className="px-6 py-2 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800 flex-shrink-0 text-xs text-red-600 dark:text-red-400">
+            Erro: {saveError}
+          </div>
+        )}
         <div className="px-6 py-2 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 text-xs text-gray-400">
           Clique para ordenar · Ctrl+clique para filtrar · ESC para fechar
         </div>
