@@ -12,6 +12,8 @@ const COLS = [
   { key: 'categoria_pai_erp', label: 'Categoria Pai ERP' },
   { key: 'categoria_erp', label: 'Categoria ERP' },
   { key: 'tipo', label: 'Tipo' },
+  { key: 'descontado', label: 'Descontado' },
+  { key: 'nfe', label: 'NFe' },
 ];
 
 export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose }) => {
@@ -59,15 +61,32 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
       return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
     });
 
+  const [saveError, setSaveError] = React.useState<string | null>(null);
+
   const handleSaveRow = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
-      await createCategory(newRow as any);
+      // Ensure all required fields have at least empty string
+      const data = {
+        canal: newRow.canal || '',
+        grupo: newRow.grupo || '',
+        categoria_canal: newRow.categoria_canal || '',
+        categoria_pai_erp: newRow.categoria_pai_erp || '',
+        categoria_erp: newRow.categoria_erp || '',
+        tipo: newRow.tipo || '',
+        descontado: newRow.descontado || '',
+        nfe: newRow.nfe || '',
+      };
+      await createCategory(data as any);
       const fresh = await getCategories();
       setCategories(fresh);
       setAddingRow(false);
       setNewRow({});
-    } catch (e) { console.error(e); }
+    } catch (e: any) {
+      console.error('Error saving category:', e);
+      setSaveError(e?.message || 'Erro ao salvar');
+    }
     finally { setSaving(false); }
   };
 
@@ -144,7 +163,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                         <button onClick={handleSaveRow} disabled={saving} className="p-1 text-green-600 hover:bg-green-50 rounded" title="Salvar">
                           <Check className="w-4 h-4" />
                         </button>
-                        <button onClick={() => setAddingRow(false)} className="p-1 text-red-500 hover:bg-red-50 rounded" title="Cancelar">
+                        <button onClick={() => { setAddingRow(false); setSaveError(null); }} className="p-1 text-red-500 hover:bg-red-50 rounded" title="Cancelar">
                           <XIcon className="w-4 h-4" />
                         </button>
                       </div>
@@ -152,7 +171,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                   </tr>
                 )}
                 {displayed.length === 0 && !addingRow && (
-                  <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">Nenhum registro encontrado</td></tr>
+                  <tr><td colSpan={9} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">Nenhum registro encontrado</td></tr>
                 )}
               </tbody>
             </table>
@@ -183,6 +202,11 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
           )}
         </div>
 
+        {saveError && (
+          <div className="px-6 py-2 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800 flex-shrink-0 text-xs text-red-600 dark:text-red-400">
+            Erro: {saveError}
+          </div>
+        )}
         <div className="px-6 py-2 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 text-xs text-gray-400">
           Clique para ordenar · Ctrl+clique para filtrar · ESC para fechar
         </div>
