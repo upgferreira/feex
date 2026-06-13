@@ -3,6 +3,7 @@ import { Download, Trash2, ArrowUp, ArrowDown, Filter, FileText } from 'lucide-r
 import * as XLSX from 'xlsx';
 import { ExportRecord } from '../types';
 import { ExportModal } from './ExportModal';
+import { DataTable, FormatBadge, DataTableColumn } from './DataTable';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { useFileData } from '../hooks/useFileData';
 import { useAuth } from '../hooks/useAuth';
@@ -822,189 +823,69 @@ ${data.map((item, index) => `
         {/* Content */}
         <div className="flex-1 overflow-hidden flex flex-col">
 
-          <div className="flex-1 overflow-auto relative">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <SortableHeader column="channel">Canal</SortableHeader>
-                    <SortableHeader column="erp">Tipo</SortableHeader>
-                    <SortableHeader column="ano">Ano</SortableHeader>
-                    <SortableHeader column="competence" compact>Competência</SortableHeader>
-                    <SortableHeader column="periodoInicial" compact>Período Inicial</SortableHeader>
-                    <SortableHeader column="periodoFinal" compact>Período Final</SortableHeader>
-                    <SortableHeader column="arquivo">Arquivo</SortableHeader>
-                    <SortableHeader column="formatos">Formato</SortableHeader>
-                    <SortableHeader column="dataDownload" compact>Data Download</SortableHeader>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky top-0 bg-gray-50 dark:bg-gray-700 z-10">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredAndSortedRecords.length === 0 ? (
-                    <tr>
-                      <td colSpan={10} className="px-6 py-12 text-center">
-                        <div className="flex flex-col items-center gap-3">
-                          <Download className="w-12 h-12 text-gray-400" />
-                          <p className="text-gray-500 dark:text-gray-400 text-lg">Nenhuma exportação realizada</p>
-                          <p className="text-gray-400 dark:text-gray-500">Clique em "Download Arquivo" para começar</p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredAndSortedRecords.map((record) => (
-                      <tr key={record.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            record.canal === 'AMAZON' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400' :
-                            record.canal === 'MERCADO LIVRE' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
-                            record.canal === 'MAGAZINE LUIZA' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
-                            record.canal === 'SHEIN' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400' :
-                            record.canal === 'SHOPEE' ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' :
-                            record.canal === 'TEMPLATE' ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' :
-                            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                          }`}>
-                            {record.canal}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            record.erp === 'BLING' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
-                            record.erp === 'TINY' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
-                            'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                          }`}>
-                            {record.erp}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{record.ano}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{record.competencia}</td>
-                        <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          {record.periodoInicial ? formatDateToBR(record.periodoInicial) : '-'}
-                        </td>
-                        <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          {record.periodoFinal ? formatDateToBR(record.periodoFinal) : '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate" title={record.arquivo}>{record.arquivo}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                          <div className="flex gap-1">
-                            {record.formatos.map(formato => (
-                              <span key={formato} className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400">
-                                {formato}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{formatDate(record.dataDownload)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => handleDownloadRecord(record)}
-                              className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-150"
-                              title="Download arquivo"
-                            >
-                              <Download className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteClick(record.id)}
-                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-150"
-                              title="Remover registro"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            {/* Ctrl+click filter popup */}
-            {activeFilterCol && (
-              <div ref={filterRef} className="absolute top-0 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 w-72">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">Filtrar: {activeFilterCol}</span>
-                  <button onClick={() => setActiveFilterCol(null)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
-                </div>
-                <select
-                  autoFocus
-                  value={columnFilters[activeFilterCol] || ''}
-                  onChange={e => handleColumnFilter(activeFilterCol, e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                >
-                  <option value="">Todos</option>
-                  {getUniqueColumnValues(activeFilterCol).slice(0, 50).map(v => {
-                    const str = v instanceof Date ? v.toISOString() : String(v ?? '');
-                    const display = v instanceof Date ? formatDate(v) : String(v ?? '');
-                    return <option key={str} value={str}>{display}</option>;
-                  })}
-                </select>
-                {columnFilters[activeFilterCol] && (
-                  <button onClick={() => handleColumnFilter(activeFilterCol!, '')} className="mt-2 w-full text-xs text-red-500 hover:text-red-700 text-center">Limpar filtro</button>
-                )}
+          <DataTable
+            columns={[
+              {
+                key: 'canal', label: 'Canal',
+                render: (v: string) => (
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    v === 'AMAZON' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400' :
+                    v === 'MERCADO LIVRE' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                    v === 'MAGAZINE LUIZA' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
+                    v === 'SHEIN' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400' :
+                    v === 'SHOPEE' ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' :
+                    'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                  }`}>{v}</span>
+                ),
+              },
+              {
+                key: 'erp', label: 'Tipo',
+                render: (v: string) => (
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                    v === 'BLING' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                    v === 'TINY' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
+                    'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                  }`}>{v}</span>
+                ),
+              },
+              { key: 'ano', label: 'Ano', width: 'compact' as const },
+              { key: 'competencia', label: 'Competência', width: 'compact' as const },
+              {
+                key: 'periodoInicial', label: 'Período Inicial', width: 'compact' as const,
+                render: (v: string) => v ? formatDateToBR(v) : '-',
+              },
+              {
+                key: 'periodoFinal', label: 'Período Final', width: 'compact' as const,
+                render: (v: string) => v ? formatDateToBR(v) : '-',
+              },
+              { key: 'arquivo', label: 'Arquivo', width: 'wrap' as const },
+              {
+                key: 'formatos', label: 'Formato',
+                render: (v: string[]) => v?.length ? <FormatBadge value={v[0]} /> : '-',
+              },
+              {
+                key: 'dataDownload', label: 'Data Download', width: 'compact' as const,
+                render: (v: Date) => v ? formatDate(v) : '-',
+              },
+            ]}
+            data={filteredAndSortedRecords}
+            rowKey={row => row.id}
+            emptyIcon={<Download className="w-12 h-12 text-gray-400" />}
+            emptyText="Nenhum arquivo exportado"
+            emptySubText="Clique em Download Arquivo para gerar uma exportação"
+            actions={record => (
+              <div className="flex items-center gap-2">
+                <button onClick={() => handleDownloadRecord(record)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title="Download">
+                  <Download className="w-4 h-4" />
+                </button>
+                <button onClick={() => { setRecordToDelete(record.id); setDeleteModalOpen(true); }} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Excluir">
+                  <Trash2 className="w-4 h-4" />
+                </button>
               </div>
             )}
-            {activeFilterCol && (
-              <div ref={filterRef} className="absolute top-0 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 w-72">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">Filtrar: {activeFilterCol}</span>
-                  <button onClick={() => setActiveFilterCol(null)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
-                </div>
-                <select autoFocus value={columnFilters[activeFilterCol] || ''} onChange={e => handleColumnFilter(activeFilterCol, e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                  <option value="">Todos</option>
-                  {getUniqueColumnValues(activeFilterCol).slice(0, 50).map(v => {
-                    const str = v instanceof Date ? v.toISOString() : String(v ?? '');
-                    const display = v instanceof Date ? formatDate(v) : String(v ?? '');
-                    return <option key={str} value={str}>{display}</option>;
-                  })}
-                </select>
-                {columnFilters[activeFilterCol] && (
-                  <button onClick={() => handleColumnFilter(activeFilterCol!, '')} className="mt-2 w-full text-xs text-red-500 hover:text-red-700 text-center">Limpar filtro</button>
-                )}
-              </div>
-            )}
-            {activeFilterCol && (
-              <div ref={filterRef} className="absolute top-0 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 w-72">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">Filtrar: {activeFilterCol}</span>
-                  <button onClick={() => setActiveFilterCol(null)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
-                </div>
-                <select autoFocus value={columnFilters[activeFilterCol] || ''} onChange={e => handleColumnFilter(activeFilterCol, e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                  <option value="">Todos</option>
-                  {getUniqueColumnValues(activeFilterCol).slice(0, 50).map(v => {
-                    const str = v instanceof Date ? v.toISOString() : String(v ?? '');
-                    const display = v instanceof Date ? formatDate(v) : String(v ?? '');
-                    return <option key={str} value={str}>{display}</option>;
-                  })}
-                </select>
-                {columnFilters[activeFilterCol] && (
-                  <button onClick={() => handleColumnFilter(activeFilterCol!, '')} className="mt-2 w-full text-xs text-red-500 hover:text-red-700 text-center">Limpar filtro</button>
-                )}
-              </div>
-            )}
-                      {activeFilterCol && (
-              <div ref={filterRef} className="absolute top-0 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 w-72">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">Filtrar: {activeFilterCol}</span>
-                  <button onClick={() => setActiveFilterCol(null)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
-                </div>
-                <select autoFocus value={columnFilters[activeFilterCol] || ''} onChange={e => handleColumnFilter(activeFilterCol, e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                  <option value="">Todos</option>
-                  {getUniqueColumnValues(activeFilterCol).slice(0, 50).map(v => {
-                    const str = v instanceof Date ? v.toISOString() : String(v ?? '');
-                    const display = v instanceof Date ? formatDate(v) : String(v ?? '');
-                    return <option key={str} value={str}>{display}</option>;
-                  })}
-                </select>
-                {columnFilters[activeFilterCol] && (
-                  <button onClick={() => handleColumnFilter(activeFilterCol!, '')} className="mt-2 w-full text-xs text-red-500 hover:text-red-700 text-center">Limpar filtro</button>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+          />
 
-      <ExportModal
+            <ExportModal
         isOpen={exportModalOpen}
         canais={canais}
         onClose={() => setExportModalOpen(false)}
