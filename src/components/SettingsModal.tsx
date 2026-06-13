@@ -17,7 +17,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   const [formData, setFormData] = useState({
     cnpj: '', responsible_name: '', phone: '',
-    razao_social: '', nome_fantasia: '', endereco: ''
+    razao_social: '', nome_fantasia: ''
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -36,7 +36,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         phone: profile.phone || '',
         razao_social: profile.razao_social || '',
         nome_fantasia: profile.nome_fantasia || '',
-        endereco: profile.endereco || ''
       });
     }
   }, [profile]);
@@ -134,10 +133,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 <input className={inputCls} value={formData.nome_fantasia} onChange={e => setFormData(f => ({ ...f, nome_fantasia: e.target.value }))} />
               </div>
 
-              <div>
-                <label className={labelCls}>Endereço</label>
-                <input className={inputCls} value={formData.endereco} onChange={e => setFormData(f => ({ ...f, endereco: e.target.value }))} />
-              </div>
+
             </div>
           </div>
 
@@ -162,15 +158,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </div>
           </div>
 
-          {/* Save profile */}
-          <button
-            onClick={handleSaveProfile}
-            disabled={saving}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 mb-4"
-          >
-            <Save className="w-4 h-4" />
-            {saving ? 'Salvando...' : 'Salvar Perfil'}
-          </button>
+
 
           {/* Password */}
           <div className={sectionCls}>
