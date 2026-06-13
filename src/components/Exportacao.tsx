@@ -827,13 +827,13 @@ ${data.map((item, index) => `
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
                     <SortableHeader column="canal">Canal</SortableHeader>
-                    <SortableHeader column="erp">ERP</SortableHeader>
+                    <SortableHeader column="erp">Tipo</SortableHeader>
                     <SortableHeader column="ano">Ano</SortableHeader>
                     <SortableHeader column="competencia">Competência</SortableHeader>
                     <SortableHeader column="periodoInicial">Período Inicial</SortableHeader>
                     <SortableHeader column="periodoFinal">Período Final</SortableHeader>
-                    <SortableHeader column="formatos">Formato(s)</SortableHeader>
                     <SortableHeader column="arquivo">Arquivo</SortableHeader>
+                    <SortableHeader column="formatos">Formato(s)</SortableHeader>
                     <SortableHeader column="dataDownload">Data Download</SortableHeader>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky top-0 bg-gray-50 dark:bg-gray-700 z-10">
                       Ações
