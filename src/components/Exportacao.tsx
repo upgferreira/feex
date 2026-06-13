@@ -23,15 +23,17 @@ export const Exportacao: React.FC = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [columnFilters, setColumnFilters] = useState<{[key: string]: string}>({});
   const [categories, setCategories] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
   const { getAllChannelData } = useFileData();
   const { user } = useAuth();
-  const { getCategories } = useAdmin();
+  const { getCategories, getAccounts } = useAdmin();
 
   // Load export records from Supabase on mount
   useEffect(() => {
     if (user) {
       loadExportRecords();
       loadCategories();
+      loadAccounts();
     }
   }, [user]);
 
@@ -41,6 +43,15 @@ export const Exportacao: React.FC = () => {
       setCategories(categoriesData);
     } catch (error) {
       console.error('Erro ao carregar categorias:', error);
+    }
+  };
+
+  const loadAccounts = async () => {
+    try {
+      const accountsData = await getAccounts();
+      setAccounts(accountsData);
+    } catch (error) {
+      console.error('Erro ao carregar contas:', error);
     }
   };
 
@@ -301,6 +312,99 @@ export const Exportacao: React.FC = () => {
     return resultado;
   };
 
+  const convertNuvemPagoToBling = (
+    data: any[],
+    dataInicial: string,
+    dataFinal: string,
+    competencia: string
+  ) => {
+    if (!data || data.length === 0) return [];
+
+    // ── Busca conta financeira ────────────────────────────────────────────
+    const conta = accounts.find(a =>
+      String(a.canal || '').toUpperCase() === 'NUVEM PAGO'
+    );
+    const portador          = conta?.caixa                     || '';
+    const clienteFornecedor = conta?.fornecedor_nome_fantasia   || 'NUVEM PAGO';
+    const cnpj              = conta?.fornecedor_cnpj            || '';
+
+    // ── Busca categoria ───────────────────────────────────────────────────
+    const catRow = categories.find(c => {
+      const canal    = String(c.channel || c.canal || '').toUpperCase();
+      const catCanal = String(c.channel_category || c.categoria_canal || '').toUpperCase();
+      return canal === 'NUVEM PAGO' && catCanal === 'TAXAS';
+    });
+    const categoriaERP       = catRow?.erp_category    || catRow?.categoria_erp    || '';
+    const categoriaPai       = catRow?.erp_parent_category || catRow?.categoria_pai_erp || '';
+    const categoriaCompleta  = categoriaPai && categoriaERP
+      ? `${categoriaERP.toUpperCase()}`
+      : categoriaERP;
+
+    // ── Agrupamento por pedido ────────────────────────────────────────────
+    const pedidos: Record<string, any> = {};
+
+    data.forEach(row => {
+      const numeroPedido  = String(row['Número do Pedido'] || row['numero_pedido'] || '').trim();
+      const comprador     = String(row['Nome do comprador'] || row['nome_comprador'] || '').trim();
+      const dataPagamento = row['Data de pagamento'] || row['data_pagamento'];
+      const taxa          = Number(String(row['Taxas']  || row['taxas']  || '0').replace(',', '.')) || 0;
+      const juros         = Number(String(row['Juros']  || row['juros']  || '0').replace(',', '.')) || 0;
+      const valorTotal    = (taxa + juros) * -1;
+
+      if (!numeroPedido || !dataPagamento) return;
+
+      // Filtro por período
+      const dataLinha = dataPagamento instanceof Date
+        ? dataPagamento
+        : new Date(dataPagamento);
+      const dataInicialObj = new Date(dataInicial);
+      const dataFinalObj   = new Date(dataFinal);
+      if (dataLinha < dataInicialObj || dataLinha > dataFinalObj) return;
+
+      if (!pedidos[numeroPedido]) {
+        pedidos[numeroPedido] = {
+          pedido: numeroPedido,
+          comprador,
+          dataPagamento: dataLinha,
+          valor: 0,
+          juros: 0,
+        };
+      }
+      pedidos[numeroPedido].valor += valorTotal;
+      pedidos[numeroPedido].juros += juros;
+    });
+
+    // ── Monta resultado ───────────────────────────────────────────────────
+    return Object.values(pedidos).map((item: any) => {
+      const dataFormatada = item.dataPagamento.toLocaleDateString('pt-BR');
+
+      const obs = cleanText([
+        `NUVEM PAGO: ${item.comprador.toUpperCase()}`,
+        [
+          `PEDIDO DE VENDA: XXXXXX/${item.pedido}`,
+          'NF: XX/XXXXXX',
+          item.juros > 0 ? 'TAXA + JUROS' : 'TAXA',
+        ].join(' > '),
+        categoriaCompleta ? `${categoriaPai.toUpperCase()} > ${categoriaERP.toUpperCase()}` : '',
+        `${formatDateToBR(dataInicial)} - ${formatDateToBR(dataFinal)}`,
+        competencia,
+      ].filter(Boolean).join(' | '));
+
+      return {
+        'ID':                  '',
+        'Data':                dataFormatada,
+        'Competencia':         dataFormatada,
+        'Cliente/Fornecedor':  clienteFornecedor,
+        'Observacoes':         obs,
+        'Valor':               formatValueToBR(item.valor),
+        'Categoria':           categoriaERP,
+        'Portador':            portador,
+        'Saldo':               'N',
+        'CNPJ':                cnpj,
+      };
+    });
+  };
+
   const generateEmptyBlingTemplate = () => {
     return [{
       "ID": "",
@@ -437,6 +541,8 @@ export const Exportacao: React.FC = () => {
     if (exportData.erp === 'BLING' && exportData.canal === 'MERCADO LIVRE') {
       try {
         finalData = convertMercadoLivreToBling(channelData, exportData.dataInicial, exportData.dataFinal, competencia);
+      } else if (exportData.canal === 'NUVEM PAGO') {
+        finalData = convertNuvemPagoToBling(channelData, exportData.dataInicial, exportData.dataFinal, competencia);
         
         // Se não conseguiu converter ou não há dados, gerar template vazio
         if (!finalData || finalData.length === 0) {
@@ -614,6 +720,8 @@ ${data.map((item, index) => `
     if (record.erp === 'BLING' && record.canal === 'MERCADO LIVRE') {
       try {
         finalData = convertMercadoLivreToBling(channelData, record.periodoInicial, record.periodoFinal, record.competencia);
+      } else if (record.canal === 'NUVEM PAGO') {
+        finalData = convertNuvemPagoToBling(channelData, record.periodoInicial, record.periodoFinal, record.competencia);
         
         // Se não conseguiu converter ou não há dados, gerar template vazio
         if (!finalData || finalData.length === 0) {
