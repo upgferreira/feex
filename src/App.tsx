@@ -25,7 +25,7 @@ function App() {
   const { user, loading } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdmin();
   const { isDarkMode } = useDarkMode();
-  const { files } = useFileData();
+  const { files, subscribe } = useFileData();
 
   // Unique canal list from imported files
   const canais = useMemo(() => {
@@ -36,6 +36,12 @@ function App() {
     if (isDarkMode) document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
   }, [isDarkMode]);
+
+  // Force re-render when files change (fixes dropdown delay)
+  const [, forceUpdate] = React.useState(0);
+  useEffect(() => {
+    return subscribe(() => forceUpdate(n => n + 1));
+  }, [subscribe]);
 
   useEffect(() => {
     if (!adminLoading) {
