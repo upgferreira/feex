@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, ArrowUp, ArrowDown, Filter, Check, X as XIcon } from 'lucide-react';
 import { FullscreenModal } from './FullscreenModal';
-import { useAdmin } from '../hooks/useAdmin';
+import { supabase } from '../lib/supabase';
 
 interface CategoryModalProps { isOpen: boolean; onClose: () => void; }
 
@@ -30,10 +30,18 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
   const [newRow, setNewRow] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
-  const { getCategories, createCategory } = useAdmin();
+
 
   useEffect(() => {
-    if (isOpen) { setLoading(true); getCategories().then(setCategories).catch(console.error).finally(() => setLoading(false)); }
+    if (isOpen) {
+      setLoading(true);
+      supabase.from('financial_categories').select('*').order('channel', { ascending: true })
+        .then(({ data, error }) => {
+          if (error) console.error(error);
+          else setCategories(data || []);
+        })
+        .finally(() => setLoading(false));
+    }
   }, [isOpen]);
 
   useEffect(() => {
@@ -81,9 +89,10 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
         deducted:            newRow.deducted || '',
         invoice:             newRow.invoice || '',
       };
-      await createCategory(data as any);
-      const fresh = await getCategories();
-      setCategories(fresh);
+      const { error: insertError } = await supabase.from('financial_categories').insert(data);
+      if (insertError) throw insertError;
+      const { data: fresh } = await supabase.from('financial_categories').select('*').order('channel', { ascending: true });
+      setCategories(fresh || []);
       setAddingRow(false);
       setNewRow({});
     } catch (e: any) {
