@@ -220,7 +220,6 @@ export const useAdmin = () => {
   };
 
   const createCategory = async (category: Omit<FinancialCategory, 'id' | 'created_at' | 'updated_at'>) => {
-    if (!isAdmin) throw new Error('Acesso negado');
 
     const { data, error } = await supabase
       .from('financial_categories')
@@ -274,7 +273,6 @@ export const useAdmin = () => {
   };
 
   const createAccount = async (account: Omit<FinancialAccount, 'id' | 'created_at' | 'updated_at'>) => {
-    if (!isAdmin) throw new Error('Acesso negado');
 
     const { data, error } = await supabase
       .from('financial_accounts')
