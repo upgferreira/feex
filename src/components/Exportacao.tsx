@@ -833,7 +833,7 @@ ${data.map((item, index) => `
                     <SortableHeader column="periodoInicial" compact>Período Inicial</SortableHeader>
                     <SortableHeader column="periodoFinal" compact>Período Final</SortableHeader>
                     <SortableHeader column="arquivo">Arquivo</SortableHeader>
-                    <SortableHeader column="formatos">Formato(s)</SortableHeader>
+                    <SortableHeader column="formatos">Formato</SortableHeader>
                     <SortableHeader column="dataDownload" compact>Data Download</SortableHeader>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky top-0 bg-gray-50 dark:bg-gray-700 z-10">
                       Ações
