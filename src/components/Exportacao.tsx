@@ -766,11 +766,11 @@ ${data.map((item, index) => `
     return result;
   }, [exportRecords, columnFilters, sortColumn, sortDirection]);
 
-  const SortableHeader: React.FC<{ column: keyof ExportRecord; children: React.ReactNode }> = ({ column, children }) => {
+  const SortableHeader: React.FC<{ column: keyof ExportRecord; children: React.ReactNode; compact?: boolean }> = ({ column, children, compact }) => {
     const hasFilter = !!columnFilters[column];
     return (
       <th
-        className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors ${
+        className={`${compact ? 'px-3' : 'px-6'} py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors ${
           hasFilter
             ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
             : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'
@@ -829,12 +829,12 @@ ${data.map((item, index) => `
                     <SortableHeader column="channel">Canal</SortableHeader>
                     <SortableHeader column="erp">Tipo</SortableHeader>
                     <SortableHeader column="ano">Ano</SortableHeader>
-                    <SortableHeader column="competence">Competência</SortableHeader>
-                    <SortableHeader column="periodoInicial">Período Inicial</SortableHeader>
-                    <SortableHeader column="periodoFinal">Período Final</SortableHeader>
+                    <SortableHeader column="competence" compact>Competência</SortableHeader>
+                    <SortableHeader column="periodoInicial" compact>Período Inicial</SortableHeader>
+                    <SortableHeader column="periodoFinal" compact>Período Final</SortableHeader>
                     <SortableHeader column="arquivo">Arquivo</SortableHeader>
                     <SortableHeader column="formatos">Formato(s)</SortableHeader>
-                    <SortableHeader column="dataDownload">Data Download</SortableHeader>
+                    <SortableHeader column="dataDownload" compact>Data Download</SortableHeader>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky top-0 bg-gray-50 dark:bg-gray-700 z-10">
                       Ações
                     </th>
