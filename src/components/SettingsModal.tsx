@@ -17,7 +17,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   const [formData, setFormData] = useState({
     cnpj: '', responsible_name: '', phone: '',
-    razao_social: '', nome_fantasia: '', endereco: '', site: ''
+    razao_social: '', nome_fantasia: '', endereco: ''
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -36,8 +36,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         phone: profile.phone || '',
         razao_social: profile.razao_social || '',
         nome_fantasia: profile.nome_fantasia || '',
-        endereco: profile.endereco || '',
-        site: profile.site || ''
+        endereco: profile.endereco || ''
       });
     }
   }, [profile]);
@@ -91,7 +90,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   const inputCls = "w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent";
   const labelCls = "block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1";
-  const sectionCls = "bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 mb-4";
+  const sectionCls = "bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 mb-3";
 
   return (
     <>
@@ -99,7 +98,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       <div className="fixed right-0 top-0 bottom-0 w-[360px] z-50 flex flex-col bg-white dark:bg-gray-800 shadow-2xl">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Configurações</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700">
             <X className="w-5 h-5" />
@@ -121,7 +120,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
               <Building2 className="w-4 h-4" /> Informações da Empresa
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div>
                 <label className={labelCls}>CNPJ</label>
                 <input className={inputCls} value={formData.cnpj} onChange={e => setFormData(f => ({ ...f, cnpj: e.target.value }))} placeholder="00.000.000/0000-00" />
@@ -134,10 +133,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 <label className={labelCls}>Nome Fantasia</label>
                 <input className={inputCls} value={formData.nome_fantasia} onChange={e => setFormData(f => ({ ...f, nome_fantasia: e.target.value }))} />
               </div>
-              <div>
-                <label className={labelCls}>Site</label>
-                <input className={inputCls} value={formData.site} onChange={e => setFormData(f => ({ ...f, site: e.target.value }))} placeholder="https://" />
-              </div>
+
               <div>
                 <label className={labelCls}>Endereço</label>
                 <input className={inputCls} value={formData.endereco} onChange={e => setFormData(f => ({ ...f, endereco: e.target.value }))} />
@@ -150,7 +146,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
               <Building2 className="w-4 h-4" /> Responsável
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div>
                 <label className={labelCls}>Nome do Responsável</label>
                 <input className={inputCls} value={formData.responsible_name} onChange={e => setFormData(f => ({ ...f, responsible_name: e.target.value }))} />
@@ -181,7 +177,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
               <Lock className="w-4 h-4" /> Alterar Senha
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {(['current', 'new', 'confirm'] as const).map(key => {
                 const labels = { current: 'Senha Atual', new: 'Nova Senha', confirm: 'Confirmar Nova Senha' };
                 const fields = { current: 'currentPassword', new: 'newPassword', confirm: 'confirmPassword' } as const;
