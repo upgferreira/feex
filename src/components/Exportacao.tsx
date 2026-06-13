@@ -60,7 +60,7 @@ export const Exportacao: React.FC = () => {
         competencia: r.competence,
         periodoInicial: r.start_period,
         periodoFinal: r.end_period,
-        formatos: r.format ? [r.format] : [],
+        formatos: Array.isArray(r.format) ? r.format : (r.format ? [r.format] : []),
         arquivo: r.file_name,
         dataDownload: new Date(r.created_at),
       })));
@@ -335,14 +335,14 @@ export const Exportacao: React.FC = () => {
       const { data, error } = await supabase.from('exported_files').insert({
         channel: exportData.canal, type: exportData.erp, year: ano, competence,
         start_period: exportData.dataInicial, end_period: exportData.dataFinal,
-        format: exportData.formatos[0], file_name: fileName.replace(/\.[^/.]+$/, ''),
-        user_id: user.id,
+        format: exportData.formatos, file_name: fileName.replace(/\.[^/.]+$/, ''),
+        file_data: {}, user_id: user.id,
       }).select().single();
       if (error) throw error;
       setExportRecords(prev => [{
         id: data.id, canal: data.channel, erp: data.type, ano: data.year,
         competencia: data.competence, periodoInicial: data.start_period,
-        periodoFinal: data.end_period, formatos: data.format ? [data.format] : [],
+        periodoFinal: data.end_period, formatos: Array.isArray(data.format) ? data.format : (data.format ? [data.format] : []),
         arquivo: data.file_name, dataDownload: new Date(data.created_at),
       }, ...prev]);
       // Also reload to ensure consistency
