@@ -447,6 +447,58 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     };
   }, []);
 
+  // ── ERP Preview (Bling format) ────────────────────────────────────────────
+  const erpPreviewData = useMemo(() => {
+    console.log('erpPreviewData memo:', { dataView, viewMode, canal, filteredRawLen: filteredRaw.length, categoriesLen: categories.length, accountsLen: accounts.length });
+    if (dataView !== 'erp' || viewMode !== 'tabela') return [];
+    if (!filteredRaw.length) return [];
+
+    // Derive period from data — handle Excel serial, Date objects, and strings
+    const parseD = (v: any): Date | null => {
+      if (!v) return null;
+      if (v instanceof Date) return v;
+      if (typeof v === 'number') {
+        // Excel serial date
+        const d = new Date(new Date(1900,0,1).getTime() + (v-1)*86400000);
+        if (v > 59) d.setTime(d.getTime()-86400000);
+        return d;
+      }
+      if (typeof v === 'string' && v.includes('/')) {
+        const [dd,mm,yy] = v.split('/');
+        return new Date(+yy, +mm-1, +dd);
+      }
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? null : d;
+    };
+
+    const dates = filteredRaw
+      .map((r: any) => parseD(r['Data da tarifa'] || r['Data de pagamento']))
+      .filter((d: Date | null): d is Date => d !== null && !isNaN(d.getTime()))
+      .sort((a: Date, b: Date) => a.getTime() - b.getTime());
+
+    console.log('dates derived:', dates.length, dates[0], dates[dates.length-1]);
+
+    const dataInicial = dates.length ? dates[0].toISOString().split('T')[0] : '';
+    const dataFinal   = dates.length ? dates[dates.length - 1].toISOString().split('T')[0] : '';
+    const dateObj     = dates.length ? dates[0] : new Date();
+    const competencia = `${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
+
+    const rows = convertToBling(canal, filteredRaw, dataInicial, dataFinal, competencia, categories, accounts);
+    console.log('convertToBling result:', rows.length, 'rows for canal:', canal, 'dataInicial:', dataInicial, 'dataFinal:', dataFinal);
+
+    // Map to display columns
+    return rows.map(r => ({
+      'Data':               r['Data'],
+      'Competência':        r['Competencia'],
+      'Categoria':          r['Categoria'],
+      'Observações':        r['Observacoes'],
+      'Valor':              r['Valor'],
+      'Cliente/Fornecedor': r['Cliente/Fornecedor'],
+      'CNPJ':               r['CNPJ'],
+      'Portador':           r['Portador'],
+    }));
+  }, [dataView, viewMode, filteredRaw, canal, categories, accounts]);
+
   // ── ERP MATRIZ data ──────────────────────────────────────────────────────────
   const erpMatrizData = useMemo(() => {
     if (dataView !== 'erp' || viewMode !== 'matriz') return [];
@@ -501,57 +553,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       .sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
   }, [dataView, viewMode, erpPreviewData]);
 
-  // ── ERP Preview (Bling format) ────────────────────────────────────────────
-  const erpPreviewData = useMemo(() => {
-    console.log('erpPreviewData memo:', { dataView, viewMode, canal, filteredRawLen: filteredRaw.length, categoriesLen: categories.length, accountsLen: accounts.length });
-    if (dataView !== 'erp' || viewMode !== 'tabela') return [];
-    if (!filteredRaw.length) return [];
 
-    // Derive period from data — handle Excel serial, Date objects, and strings
-    const parseD = (v: any): Date | null => {
-      if (!v) return null;
-      if (v instanceof Date) return v;
-      if (typeof v === 'number') {
-        // Excel serial date
-        const d = new Date(new Date(1900,0,1).getTime() + (v-1)*86400000);
-        if (v > 59) d.setTime(d.getTime()-86400000);
-        return d;
-      }
-      if (typeof v === 'string' && v.includes('/')) {
-        const [dd,mm,yy] = v.split('/');
-        return new Date(+yy, +mm-1, +dd);
-      }
-      const d = new Date(v);
-      return isNaN(d.getTime()) ? null : d;
-    };
-
-    const dates = filteredRaw
-      .map((r: any) => parseD(r['Data da tarifa'] || r['Data de pagamento']))
-      .filter((d: Date | null): d is Date => d !== null && !isNaN(d.getTime()))
-      .sort((a: Date, b: Date) => a.getTime() - b.getTime());
-
-    console.log('dates derived:', dates.length, dates[0], dates[dates.length-1]);
-
-    const dataInicial = dates.length ? dates[0].toISOString().split('T')[0] : '';
-    const dataFinal   = dates.length ? dates[dates.length - 1].toISOString().split('T')[0] : '';
-    const dateObj     = dates.length ? dates[0] : new Date();
-    const competencia = `${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
-
-    const rows = convertToBling(canal, filteredRaw, dataInicial, dataFinal, competencia, categories, accounts);
-    console.log('convertToBling result:', rows.length, 'rows for canal:', canal, 'dataInicial:', dataInicial, 'dataFinal:', dataFinal);
-
-    // Map to display columns
-    return rows.map(r => ({
-      'Data':               r['Data'],
-      'Competência':        r['Competencia'],
-      'Categoria':          r['Categoria'],
-      'Observações':        r['Observacoes'],
-      'Valor':              r['Valor'],
-      'Cliente/Fornecedor': r['Cliente/Fornecedor'],
-      'CNPJ':               r['CNPJ'],
-      'Portador':           r['Portador'],
-    }));
-  }, [dataView, viewMode, filteredRaw, canal, categories, accounts]);
 
 
   const ERP_COLS = ['Data', 'Competência', 'Categoria', 'Observações', 'Valor', 'Cliente/Fornecedor', 'CNPJ', 'Portador'];
