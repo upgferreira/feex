@@ -112,7 +112,8 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   const [page, setPage] = useState(1);
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [colFilters, setColFilters] = useState<Record<string, string>>({});
+  const [colFilters, setColFilters] = useState<Record<string, string[]>>({});
+  const thRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
   const [activeFilterCol, setActiveFilterCol] = useState<string | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
 
@@ -132,8 +133,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
 
   React.useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (filterRef.current && !filterRef.current.contains(e.target as Node))
-        setActiveFilterCol(null);
       if (calendarRef.current && !calendarRef.current.contains(e.target as Node))
         setCalendarOpen(false);
       if (erpFilterRef.current && !erpFilterRef.current.contains(e.target as Node))
@@ -753,6 +752,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                         const hasFilter = !!colFilters[col];
                         return (
                           <th
+                    ref={el => thRefs.current[col] = el as HTMLTableCellElement}
                             key={col}
                             className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none transition-colors whitespace-nowrap ${hasFilter ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
                             onClick={e => handleColHeaderClick(e, col)}
@@ -816,23 +816,20 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             )}
 
             {/* Filter popup */}
-            {activeFilterCol && (
-              <div ref={filterRef} className="absolute top-12 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 w-72">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">Filtrar: {activeFilterCol}</span>
-                  <button onClick={() => setActiveFilterCol(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg">×</button>
-                </div>
-                <select autoFocus value={colFilters[activeFilterCol] || ''} onChange={e => setColFilters(f => ({ ...f, [activeFilterCol!]: e.target.value }))} className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                  <option value="">Todos</option>
-                  {getColOptions(activeFilterCol).slice(0, 50).map(v => (
-                    <option key={String(v)} value={String(v)}>{String(v)}</option>
-                  ))}
-                </select>
-                {colFilters[activeFilterCol] && (
-                  <button onClick={() => setColFilters(f => ({ ...f, [activeFilterCol!]: '' }))} className="mt-2 w-full text-xs text-red-500 hover:text-red-700 text-center">Limpar filtro</button>
-                )}
-              </div>
-            )}
+            {activeFilterCol && (() => {
+              const anchorRef = { current: thRefs.current[activeFilterCol] } as React.RefObject<HTMLElement>;
+              return (
+                <ColumnFilter
+                  column={activeFilterCol}
+                  label={activeFilterCol}
+                  options={getColOptions(activeFilterCol).map(String)}
+                  selected={colFilters[activeFilterCol] || []}
+                  onChange={vals => setColFilters(f => ({ ...f, [activeFilterCol!]: vals }))}
+                  onClose={() => setActiveFilterCol(null)}
+                  anchorRef={anchorRef}
+                />
+              );
+            })()}
 
             {/* Column selector panel */}
             {colSelectorOpen && (
