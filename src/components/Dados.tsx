@@ -13,6 +13,7 @@ import { useFileData } from '../hooks/useFileData';
 import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
 import { convertToBling, toDateStr } from '../utils/converters';
+import { ColumnFilter, FilterBadge } from './ColumnFilter';
 
 function formatBRL(v: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
