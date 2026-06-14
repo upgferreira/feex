@@ -456,27 +456,39 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     // ML conversion
     if (canal === 'MERCADO LIVRE') {
       return data.map(row => {
-        const dataTarifa = row['Data da tarifa'];
-        const detalhe = row['Detalhe'];
+        const dataTarifa  = row['Data da tarifa'];
+        const detalhe     = String(row['Detalhe']         || '');
         const valorTarifa = Number(row['Valor da tarifa']) || 0;
-        const numVenda = row['Número da venda'] || '';
-        const cliente = row['Cliente'] || '';
+        const numVendaML  = String(row['Número da venda'] || '');
+        const clienteML   = String(row['Cliente']         || '');
 
         let dataFormatada = '';
         if (typeof dataTarifa === 'number') {
           const d = new Date(new Date(1900,0,1).getTime()+(dataTarifa-1)*86400000);
           if (dataTarifa>59) d.setTime(d.getTime()-86400000);
           dataFormatada = d.toLocaleDateString('pt-BR');
+        } else if (dataTarifa instanceof Date) {
+          dataFormatada = dataTarifa.toLocaleDateString('pt-BR');
         } else if (dataTarifa) {
           dataFormatada = new Date(dataTarifa).toLocaleDateString('pt-BR');
         }
 
         const categoria = findCat(detalhe);
+        const pedido = numVendaML ? `XXXXXX/${numVendaML}` : '';
+
+        const obs = [
+          ['MERCADO LIVRE', clienteML ? clienteML.toUpperCase() : ''].filter(Boolean).join(' > '),
+          pedido
+            ? [`PEDIDO DE VENDA: ${pedido}`, 'NF: XX/XXXXXX', detalhe.toUpperCase()].join(' > ')
+            : detalhe.toUpperCase(),
+          categoria.toUpperCase(),
+        ].filter(Boolean).join(' | ');
+
         return {
           'Data': dataFormatada,
           'Competência': dataFormatada,
           'Categoria': categoria,
-          'Observações': [canal, [detalhe, numVenda, cliente].filter(Boolean).join(' > ').toUpperCase(), categoria.toUpperCase()].filter(Boolean).join(' | '),
+          'Observações': obs,
           'Valor': (valorTarifa * -1).toFixed(2).replace('.', ','),
           'Cliente/Fornecedor': clienteFornecedor,
           'CNPJ': cnpj,
@@ -563,32 +575,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-3">
             <div className="flex items-center gap-3">
-            <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-              {(['canal', 'erp'] as const).map(dv => (
-                <button
-                  key={dv}
-                  onClick={() => setDataView(dv)}
-                  className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
-                    dataView === dv
-                      ? 'bg-indigo-600 text-white'
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
-                  }`}
-                >
-                  {dv.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-3">
-            <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-              {(['canal', 'erp'] as const).map(dv => (
-                <button key={dv} onClick={() => setDataView(dv)}
-                  className={`px-3 py-1.5 text-xs font-semibold transition-colors ${dataView === dv ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}>
-                  {dv.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Visualização de Dados</h2>
-          </div>
+            
           </div>
             {viewMode === 'tabela' && tableData.length > 0 && (
               <span className="text-xs text-gray-400 dark:text-gray-500">{tableData.length.toLocaleString('pt-BR')} registros</span>
@@ -600,23 +587,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
           </div>
           <div className="flex items-center gap-3">
             {/* CANAL | ERP toggle — only in tabela mode */}
-            {viewMode === 'tabela' && (
-              <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                {(['canal', 'erp'] as const).map(dv => (
-                  <button
-                    key={dv}
-                    onClick={() => setDataView(dv)}
-                    className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
-                      dataView === dv
-                        ? 'bg-indigo-600 text-white'
-                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
-                    }`}
-                  >
-                    {dv.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            )}
+
             {/* Calendar date filter button */}
             <div className="relative" ref={calendarRef}>
               <button
@@ -656,6 +627,14 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
               <Filter className="w-4 h-4" />
             </button>
             
+                        <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              {(['canal', 'erp'] as const).map(dv => (
+                <button key={dv} onClick={() => setDataView(dv)}
+                  className={`px-3 py-1.5 text-xs font-semibold transition-colors ${dataView === dv ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}>
+                  {dv.toUpperCase()}
+                </button>
+              ))}
+            </div>
             <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
               {(['tabela', 'matriz', 'dashboard'] as ViewMode[]).map(mode => (
                 <button
