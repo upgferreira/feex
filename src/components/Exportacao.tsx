@@ -351,11 +351,21 @@ export const Exportacao: React.FC = () => {
   };
 
   const handleExport = async (exportData: { canal: string; erp: string; dataInicial: string; dataFinal: string; formatos: string[] }) => {
-    await saveExportRecord(exportData);
     const dataObj = new Date(exportData.dataInicial);
     const ano = dataObj.getFullYear().toString();
     const competencia = (dataObj.getMonth() + 1).toString().padStart(2, '0') + '/' + ano;
     const finalData = getConvertedData(exportData.canal, exportData.erp, exportData.dataInicial, exportData.dataFinal, competencia);
+
+    // Block export if any row has empty category
+    if (exportData.erp === 'BLING') {
+      const semCategoria = finalData.filter((r: any) => !r['Categoria'] || r['Categoria'].trim() === '' || r['Categoria'] === 'Nao mapeado');
+      if (semCategoria.length > 0) {
+        alert(`⚠️ ${semCategoria.length} registro(s) sem categoria mapeada. Verifique o mapeamento de categorias antes de exportar.`);
+        return;
+      }
+    }
+
+    await saveExportRecord(exportData);
     exportData.formatos.forEach(formato => {
       const fileName = generateFileName({ ...exportData, ano }, formato);
       try {
