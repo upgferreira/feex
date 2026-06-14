@@ -10,6 +10,8 @@ import {
   Filter, Download, X, Image,
 } from 'lucide-react';
 import { useFileData } from '../hooks/useFileData';
+import { useAdmin } from '../hooks/useAdmin';
+import { supabase } from '../lib/supabase';
 
 function formatBRL(v: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -82,6 +84,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   const { files, getAllChannelData } = useFileData();
   const [canal, setCanal] = useState<string>(externalCanal || 'TODOS');
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
+  const [dataView, setDataView] = useState<'canal' | 'erp'>('canal');
   const [dateFilter, setDateFilter] = useState({ startDate: '', endDate: '' });
   const [exportPanelOpen, setExportPanelOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -406,6 +409,111 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     </div>
   );
 
+  // ── ERP Preview (Bling format) ────────────────────────────────────────────
+  const erpPreviewData = useMemo(() => {
+    if (dataView !== 'erp' || viewMode !== 'tabela') return [];
+    const data = filteredRaw;
+    if (!data.length) return [];
+
+    // Normalize text helper
+    const norm = (t: string) => t?.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w\s-]/g,'').replace(/\s+/g,' ').trim().toUpperCase() || '';
+
+    // Find category
+    const findCat = (detalhe: string) => {
+      const n = norm(detalhe);
+      const match = categories.find(c => {
+        const ch = String(c.channel || c.canal || '').toUpperCase().trim();
+        if (ch !== canal && canal !== 'TODOS') return false;
+        const key = norm(c.channel_category || c.categoria_canal || '');
+        return key === n || key.includes(n) || n.includes(key);
+      });
+      return match?.erp_category || match?.categoria_erp || '';
+    };
+
+    // Find account
+    const conta = accounts.find(a => String(a.canal || '').toUpperCase().trim() === canal.toUpperCase());
+    const clienteFornecedor = conta?.fornecedor_nome_fantasia || canal;
+    const portador = conta?.caixa || '';
+    const cnpj = conta?.fornecedor_cnpj || '';
+
+    // ML conversion
+    if (canal === 'MERCADO LIVRE') {
+      return data.map(row => {
+        const dataTarifa = row['Data da tarifa'];
+        const detalhe = row['Detalhe'];
+        const valorTarifa = Number(row['Valor da tarifa']) || 0;
+        const numVenda = row['Número da venda'] || '';
+        const cliente = row['Cliente'] || '';
+
+        let dataFormatada = '';
+        if (typeof dataTarifa === 'number') {
+          const d = new Date(new Date(1900,0,1).getTime()+(dataTarifa-1)*86400000);
+          if (dataTarifa>59) d.setTime(d.getTime()-86400000);
+          dataFormatada = d.toLocaleDateString('pt-BR');
+        } else if (dataTarifa) {
+          dataFormatada = new Date(dataTarifa).toLocaleDateString('pt-BR');
+        }
+
+        const categoria = findCat(detalhe);
+        return {
+          'Data': dataFormatada,
+          'Competência': dataFormatada,
+          'Categoria': categoria,
+          'Observações': [canal, [detalhe, numVenda, cliente].filter(Boolean).join(' > ').toUpperCase(), categoria.toUpperCase()].filter(Boolean).join(' | '),
+          'Valor': (valorTarifa * -1).toFixed(2).replace('.', ','),
+          'Cliente/Fornecedor': clienteFornecedor,
+          'CNPJ': cnpj,
+          'Portador': portador,
+        };
+      });
+    }
+
+    // Nuvem Pago conversion
+    if (canal === 'NUVEM PAGO') {
+      const pedidos: Record<string, any> = {};
+      data.forEach(row => {
+        const pedidoRaw = row['Número do Pedido'];
+        if (!pedidoRaw) return;
+        const numeroPedido = String(Math.round(Number(pedidoRaw)));
+        const comprador = String(row['Nome do comprador'] || '').trim();
+        const dataPagamento = row['Data de pagamento'];
+        const parseV = (v: any) => {
+          if (!v) return 0;
+          const s = String(v).trim();
+          return s.includes(',') ? Number(s.replace(/\./g,'').replace(',','.')) : Number(s) || 0;
+        };
+        const taxa = parseV(row['Taxas']);
+        const juros = parseV(row['Juros']);
+        if (!dataPagamento) return;
+        const dataLinha = dataPagamento instanceof Date ? dataPagamento : new Date(dataPagamento);
+        if (!pedidos[numeroPedido]) {
+          pedidos[numeroPedido] = { pedido: numeroPedido, comprador, dataPagamento: dataLinha, valor: 0, juros: 0 };
+        }
+        pedidos[numeroPedido].valor += (taxa + juros) * -1;
+        pedidos[numeroPedido].juros += juros;
+      });
+
+      const catRow = categories.find(c => String(c.channel||c.canal||'').toUpperCase().trim() === 'NUVEM PAGO' && String(c.channel_category||c.categoria_canal||'').toUpperCase().trim() === 'TAXAS');
+      const categoriaERP = catRow?.erp_category || catRow?.categoria_erp || '';
+      const categoriaPai = catRow?.erp_parent_category || catRow?.categoria_pai_erp || '';
+
+      return Object.values(pedidos).map((item: any) => ({
+        'Data': item.dataPagamento.toLocaleDateString('pt-BR'),
+        'Competência': item.dataPagamento.toLocaleDateString('pt-BR'),
+        'Categoria': categoriaERP,
+        'Observações': `NUVEM PAGO: ${item.comprador.toUpperCase()} | PEDIDO: ${item.pedido}${item.juros > 0 ? ' | TAXA + JUROS' : ''}`,
+        'Valor': item.valor.toFixed(2).replace('.', ','),
+        'Cliente/Fornecedor': clienteFornecedor,
+        'CNPJ': cnpj,
+        'Portador': portador,
+      }));
+    }
+
+    return [];
+  }, [dataView, viewMode, filteredRaw, canal, categories, accounts]);
+
+  const ERP_COLS = ['Data', 'Competência', 'Categoria', 'Observações', 'Valor', 'Cliente/Fornecedor', 'CNPJ', 'Portador'];
+
   return (
     <div className="h-full flex flex-col relative">
       {/* Subheader */}
@@ -423,6 +531,24 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             )}
           </div>
           <div className="flex items-center gap-3">
+            {/* CANAL | ERP toggle — only in tabela mode */}
+            {viewMode === 'tabela' && (
+              <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                {(['canal', 'erp'] as const).map(dv => (
+                  <button
+                    key={dv}
+                    onClick={() => setDataView(dv)}
+                    className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
+                      dataView === dv
+                        ? 'bg-indigo-600 text-white'
+                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
+                    }`}
+                  >
+                    {dv.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            )}
             {/* Calendar date filter button */}
             <div className="relative" ref={calendarRef}>
               <button
@@ -562,7 +688,38 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
           <div className="h-full flex flex-col">
             {/* Table area */}
             <div className="flex-1 overflow-auto" style={{ overflowX: 'auto' }}>
-              {filteredRaw.length === 0 ? (
+              {dataView === 'erp' ? (
+                erpPreviewData.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <BarChart2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-500 dark:text-gray-400 text-lg">Sem preview ERP para {canal}</p>
+                    <p className="text-gray-400 dark:text-gray-500 mt-2">Verifique se o canal tem conversão implementada</p>
+                  </div>
+                ) : (
+                  <table className="w-full">
+                    <thead>
+                      <tr>
+                        {ERP_COLS.map(col => (
+                          <th key={col} className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 whitespace-nowrap">
+                            {col}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {erpPreviewData.map((row: any, i: number) => (
+                        <tr key={i} className="hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors">
+                          {ERP_COLS.map(col => (
+                            <td key={col} className="px-6 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                              {row[col] ?? '-'}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )
+              ) : filteredRaw.length === 0 ? (
                 <div className="p-12 text-center">
                   <BarChart2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500 dark:text-gray-400 text-lg">Nenhum dado para {canal}</p>
@@ -603,6 +760,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                   </tbody>
                 </table>
               )}
+              ) /* end canal view */}
             </div>
 
             {/* Pagination footer */}
