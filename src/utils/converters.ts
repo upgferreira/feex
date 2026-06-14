@@ -123,7 +123,7 @@ export function convertMLToBling(
       const parte2 = pedido
         ? [`PEDIDO DE VENDA: ${pedido}`, 'NF: XX/XXXXXX', detalhe.toUpperCase()].join(' > ')
         : detalhe.toUpperCase();
-      const obs = cleanText([parte1, parte2, categoria.toUpperCase(), `${formatDateToBR(dataInicial)} - ${formatDateToBR(dataFinal)}`, competencia].filter(Boolean).join(' | '));
+      const obs = cleanText([parte1, parte2, categoria.toUpperCase(), dataFormatada, competencia].filter(Boolean).join(' | '));
 
       resultado.push({
         'ID': '', 'Data': dataFormatada, 'Competencia': dataFormatada,
