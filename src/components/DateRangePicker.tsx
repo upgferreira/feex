@@ -10,7 +10,7 @@ interface DateRangePickerProps {
 type Preset = 'today' | 'week' | 'lastweek' | 'month' | 'lastmonth' | 'selectmonth' | 'custom';
 
 const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-const DAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
+const DAYS_SHORT = ['D','S','T','Q','Q','S','S'];
 
 function toISO(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -18,7 +18,7 @@ function toISO(d: Date) {
 function parseISO(s: string) {
   if (!s) return null;
   const [y,m,d] = s.split('-').map(Number);
-  return new Date(y, m-1, d);
+  return isNaN(y) ? null : new Date(y, m-1, d);
 }
 function formatBR(s: string) {
   if (!s) return 'dd/mm/aaaa';
@@ -26,104 +26,98 @@ function formatBR(s: string) {
   return `${d}/${m}/${y}`;
 }
 
-function Calendar({
-  value, onChange, label, forceMonthPicker = false
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  label: string;
-  forceMonthPicker?: boolean;
-}) {
+function DayCalendar({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   const today = new Date();
-  const sel = parseISO(value) || today;
-  const [viewYear, setViewYear] = useState(sel.getFullYear());
-  const [viewMonth, setViewMonth] = useState(sel.getMonth());
-  const [showMonths, setShowMonths] = useState(forceMonthPicker);
+  const sel = parseISO(value);
+  const init = sel || today;
+  const [vy, setVy] = useState(init.getFullYear());
+  const [vm, setVm] = useState(init.getMonth());
 
-  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(vy, vm + 1, 0).getDate();
+  const firstDay = new Date(vy, vm, 1).getDay();
   const cells: (number | null)[] = Array(firstDay).fill(null);
   for (let i = 1; i <= daysInMonth; i++) cells.push(i);
-  const selDay = parseISO(value);
 
-  const prevMonth = () => {
-    if (showMonths) { setViewYear(y => y - 1); return; }
-    if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); }
-    else setViewMonth(m => m - 1);
-  };
-  const nextMonth = () => {
-    if (showMonths) { setViewYear(y => y + 1); return; }
-    if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); }
-    else setViewMonth(m => m + 1);
-  };
-
-  const pickMonth = (i: number) => {
-    setViewMonth(i);
-    setShowMonths(false);
-    if (forceMonthPicker) {
-      // select full month
-      const first = toISO(new Date(viewYear, i, 1));
-      onChange(first);
-    }
-  };
+  const prev = () => { if (vm === 0) { setVm(11); setVy(y => y-1); } else setVm(m => m-1); };
+  const next = () => { if (vm === 11) { setVm(0); setVy(y => y+1); } else setVm(m => m+1); };
 
   return (
-    <div style={{ width: 200 }}>
-      <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">{label}</div>
-      <div className="border border-gray-300 dark:border-gray-600 rounded px-3 py-1.5 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 mb-3">
+    <div style={{width:195}}>
+      <div className="text-xs text-gray-400 mb-1">{label}</div>
+      <div className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm mb-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
         {formatBR(value)}
       </div>
-      <div className="flex items-center justify-between mb-2">
-        <button onClick={prevMonth} className="px-1.5 py-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400 text-sm">«</button>
-        <button onClick={() => setShowMonths(s => !s)} className="text-sm font-semibold text-gray-800 dark:text-gray-200 hover:text-green-600">
-          {showMonths ? viewYear : `${MONTHS[viewMonth]} ${viewYear}`}
-        </button>
-        <button onClick={nextMonth} className="px-1.5 py-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-gray-600 dark:text-gray-400 text-sm">»</button>
+      <div className="flex items-center justify-between mb-1.5">
+        <button onClick={prev} className="px-1 text-gray-500 hover:text-green-600">«</button>
+        <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">{MONTHS[vm]} {vy}</span>
+        <button onClick={next} className="px-1 text-gray-500 hover:text-green-600">»</button>
       </div>
+      <div className="grid grid-cols-7 mb-0.5">
+        {DAYS_SHORT.map((d,i) => <div key={i} className="text-center text-xs text-gray-400 py-0.5">{d}</div>)}
+      </div>
+      <div className="grid grid-cols-7">
+        {cells.map((day, i) => {
+          if (!day) return <div key={i}/>;
+          const iso = toISO(new Date(vy, vm, day));
+          const isSel = sel && toISO(sel) === iso;
+          const isToday = toISO(today) === iso;
+          return (
+            <button key={i} onClick={() => onChange(iso)}
+              className={`text-xs py-1 rounded transition-colors ${
+                isSel ? 'bg-green-600 text-white font-bold' :
+                isToday ? 'ring-1 ring-green-500 text-green-600 dark:text-green-400' :
+                'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+              }`}>
+              {day}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
-      {showMonths ? (
-        <div className="grid grid-cols-3 gap-1">
-          {MONTHS.map((m, i) => (
-            <button key={m} onClick={() => pickMonth(i)}
-              className={`py-1.5 text-xs rounded transition-colors ${viewMonth === i ? 'bg-green-600 text-white' : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>
+function MonthCalendar({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+  const today = new Date();
+  const sel = parseISO(value);
+  const init = sel || today;
+  const [vy, setVy] = useState(init.getFullYear());
+  const curMonth = sel ? sel.getMonth() : -1;
+  const curYear = sel ? sel.getFullYear() : -1;
+
+  return (
+    <div style={{width:195}}>
+      <div className="text-xs text-gray-400 mb-1">{label}</div>
+      <div className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm mb-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+        {sel ? `${String(sel.getMonth()+1).padStart(2,'0')}/${sel.getFullYear()}` : 'mm/aaaa'}
+      </div>
+      <div className="flex items-center justify-between mb-1.5">
+        <button onClick={() => setVy(y => y-1)} className="px-1 text-gray-500 hover:text-green-600">«</button>
+        <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">{vy}</span>
+        <button onClick={() => setVy(y => y+1)} className="px-1 text-gray-500 hover:text-green-600">»</button>
+      </div>
+      <div className="grid grid-cols-3 gap-1">
+        {MONTHS.map((m, i) => {
+          const isSel = curMonth === i && curYear === vy;
+          return (
+            <button key={m} onClick={() => onChange(toISO(new Date(vy, i, 1)))}
+              className={`py-1.5 text-xs rounded transition-colors ${
+                isSel ? 'bg-green-600 text-white font-semibold' :
+                'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+              }`}>
               {m}
             </button>
-          ))}
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-7 mb-1">
-            {DAYS.map(d => <div key={d} className="text-center text-xs text-gray-400 py-0.5">{d.slice(0,1)}</div>)}
-          </div>
-          <div className="grid grid-cols-7">
-            {cells.map((day, i) => {
-              if (!day) return <div key={i} />;
-              const iso = toISO(new Date(viewYear, viewMonth, day));
-              const isSel = selDay && toISO(selDay) === iso;
-              const isToday = toISO(today) === iso;
-              return (
-                <button key={i} onClick={() => onChange(iso)}
-                  className={`text-xs py-1.5 rounded transition-colors ${
-                    isSel ? 'bg-green-600 text-white font-bold' :
-                    isToday ? 'ring-1 ring-green-500 text-green-600 dark:text-green-400' :
-                    'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
-                  }`}>
-                  {day}
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 export const DateRangePicker: React.FC<DateRangePickerProps> = ({ startDate, endDate, onChange, onClose }) => {
-  const [preset, setPreset] = useState<Preset>(startDate ? 'custom' : 'custom');
+  const [preset, setPreset] = useState<Preset>('custom');
   const [start, setStart] = useState(startDate || '');
   const [end, setEnd] = useState(endDate || '');
-
   const today = new Date();
 
   const applyPreset = (p: Preset) => {
@@ -142,12 +136,20 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ startDate, end
       setStart(toISO(mon)); setEnd(toISO(sun));
     } else if (p === 'month') {
       setStart(toISO(new Date(today.getFullYear(), today.getMonth(), 1)));
-      setEnd(toISO(new Date(today.getFullYear(), today.getMonth() + 1, 0)));
+      setEnd(toISO(new Date(today.getFullYear(), today.getMonth()+1, 0)));
     } else if (p === 'lastmonth') {
-      setStart(toISO(new Date(today.getFullYear(), today.getMonth() - 1, 1)));
+      setStart(toISO(new Date(today.getFullYear(), today.getMonth()-1, 1)));
       setEnd(toISO(new Date(today.getFullYear(), today.getMonth(), 0)));
     }
-    // selectmonth and custom: user picks via calendar
+    // selectmonth and custom: user picks in calendar
+  };
+
+  const handleMonthPick = (iso: string) => {
+    const d = parseISO(iso);
+    if (!d) return;
+    const s = toISO(new Date(d.getFullYear(), d.getMonth(), 1));
+    const e = toISO(new Date(d.getFullYear(), d.getMonth()+1, 0));
+    setStart(s); setEnd(e);
   };
 
   const presets: { key: Preset; label: string }[] = [
@@ -160,42 +162,28 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ startDate, end
     { key: 'custom',      label: 'Customizado' },
   ];
 
-  const handleStartChange = (s: string) => {
-    setStart(s);
-    if (preset === 'selectmonth') {
-      const d = parseISO(s);
-      if (d) setEnd(toISO(new Date(d.getFullYear(), d.getMonth() + 1, 0)));
-    } else {
-      setPreset('custom');
-    }
-  };
-
-  // Layout: always show 2 calendars side by side when custom; 1 calendar when selectmonth; no calendar for simple presets
-  const showTwo = preset === 'custom';
-  const showOne = preset === 'selectmonth';
-  const showCals = showTwo || showOne;
+  const showCal = preset === 'custom' || preset === 'selectmonth';
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex overflow-hidden">
-      {/* Calendars — fixed width so presets don't compress */}
-      <div className="p-4 flex gap-5" style={{ minWidth: showTwo ? 460 : showOne ? 230 : 0, display: showCals ? 'flex' : 'none' }}>
-        <Calendar
-          label="Início do período"
-          value={start}
-          onChange={handleStartChange}
-          forceMonthPicker={preset === 'selectmonth'}
-        />
-        {showTwo && (
-          <Calendar
-            label="Fim do período"
-            value={end}
-            onChange={e => { setEnd(e); setPreset('custom'); }}
-          />
+      {/* Calendar area — fixed width regardless of preset */}
+      <div style={{width: preset === 'custom' ? 430 : preset === 'selectmonth' ? 215 : 0, overflow: 'hidden', transition: 'width 0.15s ease'}}>
+        {showCal && (
+          <div className="p-4 flex gap-4">
+            {preset === 'selectmonth' ? (
+              <MonthCalendar label="Mês" value={start} onChange={handleMonthPick} />
+            ) : (
+              <>
+                <DayCalendar label="Início do período" value={start} onChange={s => setStart(s)} />
+                <DayCalendar label="Fim do período" value={end} onChange={e => setEnd(e)} />
+              </>
+            )}
+          </div>
         )}
       </div>
 
       {/* Presets */}
-      <div className="border-l border-gray-200 dark:border-gray-700 p-3 flex flex-col gap-0.5" style={{ minWidth: 160 }}>
+      <div className="border-l border-gray-200 dark:border-gray-700 p-3 flex flex-col gap-0.5" style={{minWidth:160}}>
         {presets.map(p => (
           <button key={p.key} onClick={() => applyPreset(p.key)}
             className={`text-left px-3 py-2 text-sm rounded transition-colors ${
@@ -205,14 +193,8 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ startDate, end
           </button>
         ))}
         <div className="mt-auto pt-3 flex gap-2">
-          <button onClick={onClose}
-            className="flex-1 px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">
-            Cancelar
-          </button>
-          <button onClick={() => { onChange(start, end); onClose(); }}
-            className="flex-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 font-medium">
-            Filtrar
-          </button>
+          <button onClick={onClose} className="flex-1 px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600 rounded text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700">Cancelar</button>
+          <button onClick={() => { onChange(start, end); onClose(); }} className="flex-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 font-medium">Filtrar</button>
         </div>
       </div>
     </div>

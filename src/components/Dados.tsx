@@ -450,7 +450,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   // ── ERP Preview (Bling format) ────────────────────────────────────────────
   const erpPreviewData = useMemo(() => {
     console.log('erpPreviewData memo:', { dataView, viewMode, canal, filteredRawLen: filteredRaw.length, categoriesLen: categories.length, accountsLen: accounts.length });
-    if (dataView !== 'erp' || !['tabela', 'matriz'].includes(viewMode)) return [];
+    if (dataView !== 'erp' || !['tabela', 'matriz', 'dashboard'].includes(viewMode)) return [];
     if (!filteredRaw.length) return [];
 
     // Derive period from data — handle Excel serial, Date objects, and strings
@@ -555,6 +555,35 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
 
 
 
+
+  // ── ERP Dashboard data ───────────────────────────────────────────────────────
+  const erpDashboardData = useMemo(() => {
+    if (dataView !== 'erp' || viewMode !== 'dashboard') return { byPai: [], byCat: [], total: 0 };
+    if (!erpPreviewData.length) return { byPai: [], byCat: [], total: 0 };
+
+    const paiMap: Record<string, number> = {};
+    const catMap: Record<string, number> = {};
+    let total = 0;
+
+    erpPreviewData.forEach((row: any) => {
+      const obs = row['Observações'] || '';
+      const cat = row['Categoria'] || 'Sem categoria';
+      const parts = obs.split(' | ');
+      const catPart = parts[2] || cat;
+      const [pai, catName] = catPart.includes(' > ')
+        ? catPart.split(' > ').map((s: string) => s.trim())
+        : ['Sem categoria pai', catPart.trim()];
+      const valor = Math.abs(Number(String(row['Valor'] || '0').replace(',', '.')) || 0);
+      total += valor;
+      paiMap[pai] = (paiMap[pai] || 0) + valor;
+      catMap[catName] = (catMap[catName] || 0) + valor;
+    });
+
+    const sort = (m: Record<string, number>) =>
+      Object.entries(m).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+
+    return { byPai: sort(paiMap), byCat: sort(catMap), total };
+  }, [dataView, viewMode, erpPreviewData]);
 
   const ERP_COLS = ['Data', 'Competência', 'Categoria', 'Observações', 'Valor', 'Cliente/Fornecedor', 'CNPJ', 'Portador'];
 
@@ -686,8 +715,74 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       {/* Content */}
       <div className="flex-1 overflow-hidden relative">
 
-        {/* DASHBOARD */}
-        {viewMode === 'dashboard' && (
+        {/* ERP DASHBOARD */}
+        {viewMode === 'dashboard' && dataView === 'erp' && (
+          <div className="h-full overflow-auto p-6">
+            {erpDashboardData.byPai.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                <BarChart2 className="w-12 h-12 mb-3" />
+                <p className="text-lg">Sem dados ERP para o dashboard</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Categoria Pai */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wider">Categoria Pai</h3>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <PieChart>
+                      <Pie data={erpDashboardData.byPai} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, percent }) => `${name} ${(percent*100).toFixed(0)}%`} labelLine={false}>
+                        {erpDashboardData.byPai.map((_: any, i: number) => (
+                          <Cell key={i} fill={['#16a34a','#15803d','#22c55e','#4ade80','#86efac','#bbf7d0','#dcfce7','#f0fdf4'][i % 8]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v: any) => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="mt-3 space-y-1 max-h-36 overflow-y-auto">
+                    {erpDashboardData.byPai.map((d: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{background:['#16a34a','#15803d','#22c55e','#4ade80','#86efac','#bbf7d0','#dcfce7','#f0fdf4'][i%8]}} />
+                          <span className="text-gray-700 dark:text-gray-300 truncate max-w-[160px]">{d.name}</span>
+                        </div>
+                        <span className="text-gray-500 ml-2">{erpDashboardData.total > 0 ? (d.value/erpDashboardData.total*100).toFixed(1) : 0}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Categoria */}
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wider">Categoria</h3>
+                  <ResponsiveContainer width="100%" height={240}>
+                    <PieChart>
+                      <Pie data={erpDashboardData.byCat} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, percent }) => `${(percent*100).toFixed(0)}%`} labelLine={false}>
+                        {erpDashboardData.byCat.map((_: any, i: number) => (
+                          <Cell key={i} fill={['#16a34a','#2563eb','#dc2626','#d97706','#7c3aed','#0891b2','#be185d','#65a30d','#ea580c','#0d9488'][i % 10]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v: any) => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="mt-3 space-y-1 max-h-36 overflow-y-auto">
+                    {erpDashboardData.byCat.map((d: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{background:['#16a34a','#2563eb','#dc2626','#d97706','#7c3aed','#0891b2','#be185d','#65a30d','#ea580c','#0d9488'][i%10]}} />
+                          <span className="text-gray-700 dark:text-gray-300 truncate max-w-[160px]">{d.name}</span>
+                        </div>
+                        <span className="text-gray-500 ml-2">{new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(d.value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* CANAL DASHBOARD */}
+        {viewMode === 'dashboard' && dataView === 'canal' && (
           <div ref={dashboardRef} className="h-full overflow-auto p-6 pb-20">
             <div className="grid grid-cols-2 md:grid-cols-8 gap-3 mb-6">
               {statCards.map(card => (
