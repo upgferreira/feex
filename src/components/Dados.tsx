@@ -86,6 +86,15 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   const [canal, setCanal] = useState<string>(externalCanal || 'TODOS');
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
   const [dataView, setDataView] = useState<'canal' | 'erp'>('canal');
+
+  // Reload categories/accounts when switching to ERP view
+  const handleSetDataView = (dv: 'canal' | 'erp') => {
+    if (dv === 'erp') {
+      getCategories().then(setCategories).catch(console.error);
+      getAccounts().then(setAccounts).catch(console.error);
+    }
+    setDataView(dv);
+  };
   const [erpSortCol, setErpSortCol] = useState<string | null>(null);
   const [erpSortDir, setErpSortDir] = useState<'asc' | 'desc'>('asc');
   const [erpColFilters, setErpColFilters] = useState<Record<string, string>>({});
@@ -428,9 +437,12 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       getAccounts().then(setAccounts).catch(console.error);
     };
     load();
-    // Reload when window gets focus (user may have edited categories/accounts)
     window.addEventListener('focus', load);
-    return () => window.removeEventListener('focus', load);
+    window.addEventListener('categories-updated', load);
+    return () => {
+      window.removeEventListener('focus', load);
+      window.removeEventListener('categories-updated', load);
+    };
   }, []);
 
   // ── ERP Preview (Bling format) ────────────────────────────────────────────
@@ -574,7 +586,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             
                         <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
               {(['canal', 'erp'] as const).map(dv => (
-                <button key={dv} onClick={() => setDataView(dv)}
+                <button key={dv} onClick={() => handleSetDataView(dv)}
                   className={`px-3 py-1.5 text-xs font-semibold transition-colors ${dataView === dv ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}>
                   {dv.toUpperCase()}
                 </button>
