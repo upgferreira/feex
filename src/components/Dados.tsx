@@ -447,6 +447,60 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     };
   }, []);
 
+  // ── ERP MATRIZ data ──────────────────────────────────────────────────────────
+  const erpMatrizData = useMemo(() => {
+    if (dataView !== 'erp' || viewMode !== 'matriz') return [];
+    if (!erpPreviewData.length) return [];
+
+    // Group by Categoria (which is erp_category)
+    // Get pai from Observações or we need to store it separately
+    // Better: re-compute from erpPreviewData grouping by categoria
+    const groups: Record<string, { cat: string; valor: number; count: number }> = {};
+    let total = 0;
+
+    erpPreviewData.forEach((row: any) => {
+      const obs = row['Observações'] || '';
+      const cat = row['Categoria'] || 'Sem categoria';
+      // Extract pai from obs: "... | PAI > CAT | ..." or just use cat
+      // The obs format: "CANAL: CLIENT | PEDIDO > NF > DETALHE | PAI > CAT | DATA | COMP"
+      // Category display in obs is the 3rd pipe segment
+      const parts = obs.split(' | ');
+      const catPart = parts[2] || cat; // "PAI > CAT" or just "CAT"
+      const [pai, catName] = catPart.includes(' > ')
+        ? catPart.split(' > ').map((s: string) => s.trim())
+        : ['Sem categoria pai', catPart.trim()];
+
+      const valor = Number(String(row['Valor'] || '0').replace(',', '.')) || 0;
+      total += Math.abs(valor);
+
+      const key = pai + '|||' + catName;
+      if (!groups[key]) groups[key] = { cat: catName, valor: 0, count: 0 };
+      groups[key].valor += valor;
+      groups[key].count++;
+    });
+
+    // Group by pai
+    const paiGroups: Record<string, { pai: string; total: number; categorias: any[] }> = {};
+    Object.entries(groups).forEach(([key, g]) => {
+      const [pai] = key.split('|||');
+      if (!paiGroups[pai]) paiGroups[pai] = { pai, total: 0, categorias: [] };
+      paiGroups[pai].total += g.valor;
+      paiGroups[pai].categorias.push({
+        cat: g.cat,
+        valor: g.valor,
+        pct: total > 0 ? (Math.abs(g.valor) / total * 100).toFixed(1) : '0.0',
+      });
+    });
+
+    return Object.values(paiGroups)
+      .map(p => ({
+        ...p,
+        pct: total > 0 ? (Math.abs(p.total) / total * 100).toFixed(1) : '0.0',
+        categorias: p.categorias.sort((a, b) => Math.abs(b.valor) - Math.abs(a.valor)),
+      }))
+      .sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
+  }, [dataView, viewMode, erpPreviewData]);
+
   // ── ERP Preview (Bling format) ────────────────────────────────────────────
   const erpPreviewData = useMemo(() => {
     console.log('erpPreviewData memo:', { dataView, viewMode, canal, filteredRawLen: filteredRaw.length, categoriesLen: categories.length, accountsLen: accounts.length });
@@ -561,7 +615,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                 <Calendar className="w-4 h-4" />
               </button>
               {calendarOpen && (
-                <div className="absolute left-0 top-full mt-2 z-50">
+                <div className="absolute right-0 top-full mt-2 z-50" style={{right: 0}}>
                   <DateRangePicker
                     startDate={dateFilter.startDate}
                     endDate={dateFilter.endDate}
@@ -892,7 +946,69 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
         )}
 
         {/* MATRIZ */}
-        {viewMode === 'matriz' && (
+        {viewMode === 'matriz' && dataView === 'erp' && (
+          <div className="h-full overflow-auto">
+            {erpMatrizData.length === 0 ? (
+              <div className="p-12 text-center">
+                <BarChart2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 dark:text-gray-400 text-lg">Sem dados ERP para agrupar</p>
+              </div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-green-600 sticky top-0 z-10">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-1/2">Categoria Pai / Categoria ERP</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-white uppercase tracking-wider w-1/4">Valor</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-white uppercase tracking-wider w-1/4">%</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {erpMatrizData.map(pai => {
+                    const isExpanded = expandedPais.has(pai.pai);
+                    return (
+                      <React.Fragment key={pai.pai}>
+                        <tr className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                          onClick={() => setExpandedPais(prev => { const n = new Set(prev); if (n.has(pai.pai)) n.delete(pai.pai); else n.add(pai.pai); return n; })}>
+                          <td className="px-6 py-3">
+                            <div className="flex items-center gap-2">
+                              {isExpanded ? <ChevronDown className="w-4 h-4 text-green-500 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />}
+                              <span className="text-sm font-semibold text-gray-900 dark:text-white">{pai.pai}</span>
+                              <span className="text-xs text-gray-400 ml-1">({pai.categorias.length})</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white">{formatBRL(pai.total)}</td>
+                          <td className="px-6 py-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+                                <div className="h-full bg-green-500 rounded-full" style={{ width: `${Math.min(100, parseFloat(pai.pct))}%` }} />
+                              </div>
+                              <span className="text-sm font-semibold text-green-600 dark:text-green-400 w-10 text-right">{pai.pct}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                        {isExpanded && pai.categorias.map((cat: any) => (
+                          <tr key={cat.cat} className="hover:bg-green-50/30 dark:hover:bg-green-900/10">
+                            <td className="px-6 py-2.5 pl-14"><span className="text-sm text-gray-700 dark:text-gray-300">{cat.cat}</span></td>
+                            <td className="px-6 py-2.5 text-right text-sm text-gray-700 dark:text-gray-300">{formatBRL(cat.valor)}</td>
+                            <td className="px-6 py-2.5 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <div className="w-16 h-1 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+                                  <div className="h-full bg-green-300 rounded-full" style={{ width: `${Math.min(100, parseFloat(cat.pct))}%` }} />
+                                </div>
+                                <span className="text-sm text-gray-500 dark:text-gray-400 w-10 text-right">{cat.pct}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+        {viewMode === 'matriz' && dataView === 'canal' && (
           <div className="h-full overflow-auto">
             {matrizData.length === 0 ? (
               <div className="p-12 text-center">

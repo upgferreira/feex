@@ -36,12 +36,12 @@ function getFirstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).getDay();
 }
 
-function Calendar({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+function Calendar({ value, onChange, label, initialShowMonths }: { value: string; onChange: (v: string) => void; label: string; initialShowMonths?: boolean }) {
   const today = new Date();
   const sel = parseISO(value) || today;
   const [viewYear, setViewYear] = useState(sel.getFullYear());
   const [viewMonth, setViewMonth] = useState(sel.getMonth());
-  const [showMonths, setShowMonths] = useState(false);
+  const [showMonths, setShowMonths] = useState(initialShowMonths || false);
 
   const daysInMonth = getDaysInMonth(viewYear, viewMonth);
   const firstDay = getFirstDayOfMonth(viewYear, viewMonth);
@@ -146,13 +146,13 @@ export const DateRangePicker: React.FC<DateRangePickerProps> = ({ startDate, end
     { key: 'custom', label: 'Período customizado' },
   ];
 
-  const showTwoCalendars = preset === 'custom' || preset === 'selectmonth';
+  const showTwoCalendars = preset === 'custom';
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 flex overflow-hidden" style={{ minWidth: showTwoCalendars ? 580 : 320 }}>
       {/* Calendars */}
       <div className="p-4 flex gap-6">
-        <Calendar label="Início do período" value={start} onChange={s => { setStart(s); setPreset('custom'); }} />
+        <Calendar label="Início do período" value={start} onChange={s => { setStart(s); if (preset !== 'selectmonth') setPreset('custom'); }} initialShowMonths={preset === 'selectmonth'} />
         {showTwoCalendars && (
           <Calendar label="Fim do período" value={end} onChange={e => { setEnd(e); setPreset('custom'); }} />
         )}
