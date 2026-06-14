@@ -106,7 +106,10 @@ export function convertMLToBling(
     // Prefer the one with erp_category filled
     const withCat = matches.find(c => !!(c.erp_category || c.categoria_erp));
     const match = withCat || matches[0];
-    return match?.erp_category || match?.categoria_erp || '';
+    return {
+      cat: match?.erp_category || match?.categoria_erp || '',
+      pai: match?.erp_parent_category || match?.categoria_pai_erp || '',
+    };
   };
 
   const resultado: BlingRow[] = [];
