@@ -39,8 +39,10 @@ export const Exportacao: React.FC = () => {
   };
 
   const loadAccounts = async () => {
-    try { setAccounts(await getAccounts()); }
-    catch (e) { console.error('Erro ao carregar contas:', e); }
+    try {
+      const { data } = await supabase.from('financial_accounts').select('*').order('canal');
+      setAccounts(data || []);
+    } catch (e) { console.error('Erro ao carregar contas:', e); }
   };
 
   const loadExportRecords = async () => {
