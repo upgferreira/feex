@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip,
   BarChart, CartesianGrid, XAxis, YAxis, Bar,
