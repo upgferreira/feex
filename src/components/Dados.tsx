@@ -799,26 +799,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                       ))}
                     </tbody>
                   </table>
-                  {/* ERP filter popup */}
-                  {erpActiveFilter && (
-                    <div ref={erpFilterRef} className="absolute top-10 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 w-72">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">Filtrar: {erpActiveFilter}</span>
-                        <button onClick={() => setErpActiveFilter(null)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
-                      </div>
-                      <select autoFocus value={erpColFilters[erpActiveFilter] || ''}
-                        onChange={e => setErpColFilters(f => ({ ...f, [erpActiveFilter!]: e.target.value }))}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                        <option value="">Todos</option>
-                        {[...new Set(erpPreviewData.map((r: any) => String(r[erpActiveFilter] ?? '')).filter(Boolean))].sort().slice(0,50).map(v => (
-                          <option key={v} value={v}>{v}</option>
-                        ))}
-                      </select>
-                      {erpColFilters[erpActiveFilter] && (
-                        <button onClick={() => setErpColFilters(f => ({ ...f, [erpActiveFilter!]: '' }))} className="mt-2 w-full text-xs text-red-500 hover:text-red-700 text-center">Limpar</button>
-                      )}
-                    </div>
-                  )}
                 )
               ) : filteredRaw.length === 0 ? (
                 <div className="p-12 text-center">
@@ -862,6 +842,27 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                 </table>
               )}
             </div>
+
+            {/* ERP filter popup */}
+            {erpActiveFilter && (
+              <div ref={erpFilterRef} className="absolute top-12 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 w-72">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">Filtrar: {erpActiveFilter}</span>
+                  <button onClick={() => setErpActiveFilter(null)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
+                </div>
+                <select autoFocus value={erpColFilters[erpActiveFilter] || ''}
+                  onChange={e => setErpColFilters(f => ({ ...f, [erpActiveFilter!]: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
+                  <option value="">Todos</option>
+                  {[...new Set(erpPreviewData.map((r: any) => String(r[erpActiveFilter] ?? '')).filter(Boolean))].sort().slice(0,50).map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+                {erpColFilters[erpActiveFilter] && (
+                  <button onClick={() => setErpColFilters(f => ({ ...f, [erpActiveFilter!]: '' }))} className="mt-2 w-full text-xs text-red-500 hover:text-red-700 text-center">Limpar</button>
+                )}
+              </div>
+            )}
 
             {/* Pagination footer */}
             {totalPages > 1 && (
