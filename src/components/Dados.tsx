@@ -450,7 +450,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   // ── ERP Preview (Bling format) ────────────────────────────────────────────
   const erpPreviewData = useMemo(() => {
     console.log('erpPreviewData memo:', { dataView, viewMode, canal, filteredRawLen: filteredRaw.length, categoriesLen: categories.length, accountsLen: accounts.length });
-    if (dataView !== 'erp' || viewMode !== 'tabela') return [];
+    if (dataView !== 'erp' || !['tabela', 'matriz'].includes(viewMode)) return [];
     if (!filteredRaw.length) return [];
 
     // Derive period from data — handle Excel serial, Date objects, and strings
