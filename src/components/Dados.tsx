@@ -449,9 +449,10 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
 
     // Find account
     const conta = accounts.find(a => String(a.canal || '').toUpperCase().trim() === canal.toUpperCase());
+    console.log('ERP preview conta for', canal, ':', conta, 'from accounts:', accounts.map(a=>a.canal));
     const clienteFornecedor = conta?.fornecedor_nome_fantasia || canal;
-    const portador = conta?.caixa || '';
-    const cnpj = conta?.fornecedor_cnpj || '';
+    const portador          = conta?.caixa                   || '';
+    const cnpj              = conta?.fornecedor_cnpj         || '';
 
     // ML conversion
     if (canal === 'MERCADO LIVRE') {
@@ -475,14 +476,11 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
 
         const categoria = findCat(detalhe);
         const pedido = numVendaML ? `XXXXXX/${numVendaML}` : '';
-
-        const obs = [
-          ['MERCADO LIVRE', clienteML ? clienteML.toUpperCase() : ''].filter(Boolean).join(' > '),
-          pedido
-            ? [`PEDIDO DE VENDA: ${pedido}`, 'NF: XX/XXXXXX', detalhe.toUpperCase()].join(' > ')
-            : detalhe.toUpperCase(),
-          categoria.toUpperCase(),
-        ].filter(Boolean).join(' | ');
+        const parte1 = clienteML ? `MERCADO LIVRE: ${clienteML.toUpperCase()}` : 'MERCADO LIVRE';
+        const parte2 = pedido
+          ? [`PEDIDO DE VENDA: ${pedido}`, 'NF: XX/XXXXXX', detalhe.toUpperCase()].join(' > ')
+          : detalhe.toUpperCase();
+        const obs = [parte1, parte2, categoria.toUpperCase(), dataFormatada, competencia].filter(Boolean).join(' | ');
 
         return {
           'Data': dataFormatada,
