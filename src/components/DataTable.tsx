@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ArrowUp, ArrowDown, Filter } from 'lucide-react';
+import { ColumnFilter, FilterBadge } from './ColumnFilter';
 
 export interface DataTableColumn<T = any> {
   key: string;
@@ -31,28 +32,29 @@ function FormatBadge({ value }: { value: string }) {
 export { FormatBadge };
 
 export function DataTable<T = any>({
-  columns,
-  data,
-  rowKey,
-  actions,
-  emptyIcon,
-  emptyText = 'Nenhum registro encontrado',
-  emptySubText,
+  columns, data, rowKey, actions, emptyIcon, emptyText = 'Nenhum registro encontrado', emptySubText,
 }: DataTableProps<T>) {
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [colFilters, setColFilters] = useState<Record<string, string>>({});
+  const [colFilters, setColFilters] = useState<Record<string, string[]>>({});
   const [activeFilterCol, setActiveFilterCol] = useState<string | null>(null);
-  const filterRef = useRef<HTMLDivElement>(null);
+  const thRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (filterRef.current && !filterRef.current.contains(e.target as Node))
-        setActiveFilterCol(null);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+  const getOptions = (key: string): string[] =>
+    [...new Set(data.map((r: any) => String(r[key] ?? '')))].sort();
+
+  const displayed = [...data]
+    .filter(row =>
+      Object.entries(colFilters).every(([k, vals]) => {
+        if (!vals || vals.length === 0) return true;
+        return vals.includes(String((row as any)[k] ?? ''));
+      })
+    )
+    .sort((a: any, b: any) => {
+      if (!sortCol) return 0;
+      const va = String(a[sortCol] ?? ''), vb = String(b[sortCol] ?? '');
+      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    });
 
   const handleHeaderClick = (e: React.MouseEvent, key: string) => {
     if (e.ctrlKey || e.metaKey) {
@@ -64,39 +66,47 @@ export function DataTable<T = any>({
     }
   };
 
-  const getOptions = (key: string) =>
-    [...new Set(data.map((r: any) => r[key]).filter(Boolean))].sort();
+  const activeFilters = Object.entries(colFilters).filter(([, v]) => v && v.length > 0);
 
-  const displayed = [...data]
-    .filter(row =>
-      Object.entries(colFilters).every(([k, v]) =>
-        !v || String((row as any)[k] ?? '').toLowerCase().includes(v.toLowerCase())
-      )
-    )
-    .sort((a: any, b: any) => {
-      if (!sortCol) return 0;
-      const va = String(a[sortCol] ?? ''), vb = String(b[sortCol] ?? '');
-      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
-    });
-
-  const thPx = (col: DataTableColumn) =>
-    col.width === 'compact' ? 'px-3' : 'px-6';
-  const tdPx = (col: DataTableColumn) =>
-    col.width === 'compact' ? 'px-3' : 'px-6';
+  const thPx = (col: DataTableColumn) => col.width === 'compact' ? 'px-3' : 'px-6';
+  const tdPx = (col: DataTableColumn) => col.width === 'compact' ? 'px-3' : 'px-6';
   const tdWrap = (col: DataTableColumn) =>
-    col.width === 'wrap' ? 'break-words min-w-[160px] max-w-xs' : 'whitespace-nowrap';
+    col.width === 'wrap' ? 'break-words min-w-[120px] max-w-[300px] whitespace-normal' : 'whitespace-nowrap';
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col relative">
+      {/* Active filter badges */}
+      {activeFilters.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 px-4 py-2 bg-blue-50 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-900/20 flex-shrink-0">
+          {activeFilters.map(([key, vals]) => {
+            const col = columns.find(c => c.key === key);
+            return (
+              <FilterBadge
+                key={key}
+                label={col?.label || key}
+                count={vals.length}
+                onRemove={() => setColFilters(f => { const n = {...f}; delete n[key]; return n; })}
+              />
+            );
+          })}
+          {activeFilters.length > 1 && (
+            <button onClick={() => setColFilters({})} className="text-xs text-gray-500 hover:text-red-500 underline">
+              Limpar todos
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="flex-1 overflow-auto">
         <table className="w-full">
           <thead>
             <tr>
               {columns.map(col => {
-                const hasFilter = !!colFilters[col.key];
+                const hasFilter = !!(colFilters[col.key]?.length);
                 return (
                   <th
                     key={col.key}
+                    ref={el => thRefs.current[col.key] = el}
                     className={`${thPx(col)} py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none transition-colors whitespace-nowrap ${
                       hasFilter
                         ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
@@ -132,16 +142,14 @@ export function DataTable<T = any>({
               displayed.map(row => (
                 <tr key={rowKey(row)} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150">
                   {columns.map(col => (
-                    <td key={col.key} className={`${tdPx(col)} py-4 text-sm text-gray-900 dark:text-gray-100 ${tdWrap(col)}`}>
+                    <td key={col.key} className={`${tdPx(col)} py-3 text-sm text-gray-900 dark:text-gray-100 ${tdWrap(col)}`}>
                       {col.render
                         ? col.render((row as any)[col.key], row)
                         : String((row as any)[col.key] ?? '-')}
                     </td>
                   ))}
                   {actions && (
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {actions(row)}
-                    </td>
+                    <td className="px-6 py-3 whitespace-nowrap">{actions(row)}</td>
                   )}
                 </tr>
               ))
@@ -150,36 +158,22 @@ export function DataTable<T = any>({
         </table>
       </div>
 
-      {/* Ctrl+click filter popup */}
-      {activeFilterCol && (
-        <div ref={filterRef} className="absolute top-10 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 w-72">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-gray-900 dark:text-white">
-              {columns.find(c => c.key === activeFilterCol)?.label}
-            </span>
-            <button onClick={() => setActiveFilterCol(null)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
-          </div>
-          <select
-            autoFocus
-            value={colFilters[activeFilterCol] || ''}
-            onChange={e => setColFilters(f => ({ ...f, [activeFilterCol!]: e.target.value }))}
-            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          >
-            <option value="">Todos</option>
-            {getOptions(activeFilterCol).map(v => (
-              <option key={String(v)} value={String(v)}>{String(v)}</option>
-            ))}
-          </select>
-          {colFilters[activeFilterCol] && (
-            <button
-              onClick={() => setColFilters(f => ({ ...f, [activeFilterCol!]: '' }))}
-              className="mt-2 w-full text-xs text-red-500 hover:text-red-700 text-center"
-            >
-              Limpar filtro
-            </button>
-          )}
-        </div>
-      )}
+      {/* Column filter popup */}
+      {activeFilterCol && (() => {
+        const col = columns.find(c => c.key === activeFilterCol)!;
+        const anchorRef = { current: thRefs.current[activeFilterCol] } as React.RefObject<HTMLElement>;
+        return (
+          <ColumnFilter
+            column={activeFilterCol}
+            label={col?.label || activeFilterCol}
+            options={getOptions(activeFilterCol)}
+            selected={colFilters[activeFilterCol] || []}
+            onChange={vals => setColFilters(f => ({ ...f, [activeFilterCol]: vals }))}
+            onClose={() => setActiveFilterCol(null)}
+            anchorRef={anchorRef}
+          />
+        );
+      })()}
     </div>
   );
 }

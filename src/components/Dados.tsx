@@ -97,9 +97,10 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   };
   const [erpSortCol, setErpSortCol] = useState<string | null>(null);
   const [erpSortDir, setErpSortDir] = useState<'asc' | 'desc'>('asc');
-  const [erpColFilters, setErpColFilters] = useState<Record<string, string>>({});
+  const [erpColFilters, setErpColFilters] = useState<Record<string, string[]>>({});
   const [erpActiveFilter, setErpActiveFilter] = useState<string | null>(null);
   const erpFilterRef = useRef<HTMLDivElement>(null);
+  const erpThRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
   const [dateFilter, setDateFilter] = useState({ startDate: '', endDate: '' });
   const [exportPanelOpen, setExportPanelOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -502,8 +503,8 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
 
   const erpDisplayData = useMemo(() => {
     let data = [...erpPreviewData];
-    Object.entries(erpColFilters).forEach(([k, v]) => {
-      if (v) data = data.filter(r => String(r[k] ?? '').toLowerCase().includes(v.toLowerCase()));
+    Object.entries(erpColFilters).forEach(([k, vals]) => {
+      if (vals?.length) data = data.filter(r => vals.includes(String(r[k] ?? '')));
     });
     if (erpSortCol) {
       data.sort((a, b) => {
@@ -707,7 +708,8 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                           const hasFilter = !!erpColFilters[col];
                           return (
                             <th key={col}
-                              onClick={e => handleErpColClick(e, col)}
+                              ref={el => erpThRefs.current[col] = el as HTMLTableCellElement}
+                              onClick={() => setErpActiveFilter(prev => prev === col ? null : col)}
                               className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors ${
                                 hasFilter
                                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
@@ -727,7 +729,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                       {erpDisplayData.map((row: any, i: number) => (
                         <tr key={i} className="hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors">
                           {ERP_COLS.map(col => (
-                            <td key={col} className="px-6 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                            <td key={col} className={`px-6 py-3 text-sm text-gray-900 dark:text-gray-100 ${col === 'Observações' ? 'break-words max-w-xs whitespace-normal' : 'whitespace-nowrap'}`}>
                               {row[col] ?? '-'}
                             </td>
                           ))}
@@ -780,25 +782,21 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             </div>
 
             {/* ERP filter popup */}
-            {erpActiveFilter && (
-              <div ref={erpFilterRef} className="absolute top-12 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 w-72">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">Filtrar: {erpActiveFilter}</span>
-                  <button onClick={() => setErpActiveFilter(null)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
-                </div>
-                <select autoFocus value={erpColFilters[erpActiveFilter] || ''}
-                  onChange={e => setErpColFilters(f => ({ ...f, [erpActiveFilter!]: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                  <option value="">Todos</option>
-                  {[...new Set(erpPreviewData.map((r: any) => String(r[erpActiveFilter] ?? '')).filter(Boolean))].sort().slice(0,50).map(v => (
-                    <option key={v} value={v}>{v}</option>
-                  ))}
-                </select>
-                {erpColFilters[erpActiveFilter] && (
-                  <button onClick={() => setErpColFilters(f => ({ ...f, [erpActiveFilter!]: '' }))} className="mt-2 w-full text-xs text-red-500 hover:text-red-700 text-center">Limpar</button>
-                )}
-              </div>
-            )}
+            {erpActiveFilter && (() => {
+              const thRef = erpThRefs.current[erpActiveFilter];
+              const anchorRef = { current: thRef } as React.RefObject<HTMLElement>;
+              return (
+                <ColumnFilter
+                  column={erpActiveFilter}
+                  label={erpActiveFilter}
+                  options={[...new Set(erpPreviewData.map((r: any) => String(r[erpActiveFilter] ?? '')).filter(Boolean))].sort()}
+                  selected={erpColFilters[erpActiveFilter] || []}
+                  onChange={vals => setErpColFilters(f => ({ ...f, [erpActiveFilter!]: vals }))}
+                  onClose={() => setErpActiveFilter(null)}
+                  anchorRef={anchorRef}
+                />
+              );
+            })()}
 
             {/* Pagination footer */}
             {totalPages > 1 && (
