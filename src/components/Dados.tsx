@@ -409,6 +409,16 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     </div>
   );
 
+  // ── Categories + Accounts for ERP preview ──────────────────────────────────
+  const { getCategories, getAccounts } = useAdmin();
+  const [categories, setCategories] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
+
+  useEffect(() => {
+    getCategories().then(setCategories).catch(console.error);
+    getAccounts().then(setAccounts).catch(console.error);
+  }, []);
+
   // ── ERP Preview (Bling format) ────────────────────────────────────────────
   const erpPreviewData = useMemo(() => {
     if (dataView !== 'erp' || viewMode !== 'tabela') return [];
