@@ -9,6 +9,7 @@ import { useFileData } from '../hooks/useFileData';
 import { useAuth } from '../hooks/useAuth';
 import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
+import { convertToBling, formatDateToBR, formatValueToBR, cleanText, BlingRow } from '../utils/converters';
 
 export const Exportacao: React.FC = () => {
   const { files, getAllChannelData } = useFileData();
@@ -314,10 +315,7 @@ export const Exportacao: React.FC = () => {
     const channelData = getAllChannelData(canal);
     if (erp === 'BLING') {
       try {
-        let result: any[] = [];
-        if (canal === 'MERCADO LIVRE') result = convertMercadoLivreToBling(channelData, dataInicial, dataFinal, competencia);
-        else if (canal === 'NUVEM PAGO')  result = convertNuvemPagoToBling(channelData, dataInicial, dataFinal, competencia);
-        else result = channelData;
+        const result = convertToBling(canal, channelData, dataInicial, dataFinal, competencia, categories, accounts);
         return result?.length ? result : generateEmptyBlingTemplate();
       } catch (e) {
         console.error('Erro na conversão:', e);
