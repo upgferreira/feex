@@ -209,13 +209,17 @@ export function convertNuvemPagoToBling(
 
   return Object.values(pedidos).map((item: any) => {
     const dataFormatada = item.dataPagamento.toLocaleDateString('pt-BR');
-    const catCompleta = categoriaPai && categoriaERP ? `${categoriaPai.toUpperCase()} > ${categoriaERP.toUpperCase()}` : categoriaERP;
+    const catCompleta = categoriaPai && categoriaERP
+      ? `${categoriaPai.toUpperCase()} > ${categoriaERP.toUpperCase()}`
+      : categoriaERP.toUpperCase();
+    const dataFormatadaItem = item.dataPagamento.toLocaleDateString('pt-BR');
+    const lineCompetencia = `${String(item.dataPagamento.getMonth() + 1).padStart(2,'0')}/${item.dataPagamento.getFullYear()}`;
     const obs = cleanText([
       `NUVEM PAGO: ${item.comprador.toUpperCase()}`,
       [`PEDIDO DE VENDA: XXXXXX/${item.pedido}`, 'NF: XX/XXXXXX', item.juros > 0 ? 'TAXA + JUROS' : 'TAXA'].join(' > '),
       catCompleta,
-      `${formatDateToBR(dataInicial)} - ${formatDateToBR(dataFinal)}`,
-      competencia,
+      dataFormatadaItem,
+      lineCompetencia,
     ].filter(Boolean).join(' | '));
 
     return {
