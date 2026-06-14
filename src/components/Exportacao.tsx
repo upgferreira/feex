@@ -40,7 +40,7 @@ export const Exportacao: React.FC = () => {
 
   const loadAccounts = async () => {
     try {
-      const { data } = await supabase.from('financial_accounts').select('*').order('canal');
+      const { data } = await supabase.from('financial_accounts').select('*').order('canal', { ascending: true });
       setAccounts(data || []);
     } catch (e) { console.error('Erro ao carregar contas:', e); }
   };
