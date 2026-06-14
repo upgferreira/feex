@@ -423,8 +423,14 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   const [accounts, setAccounts] = useState<any[]>([]);
 
   useEffect(() => {
-    getCategories().then(setCategories).catch(console.error);
-    getAccounts().then(setAccounts).catch(console.error);
+    const load = () => {
+      getCategories().then(setCategories).catch(console.error);
+      getAccounts().then(setAccounts).catch(console.error);
+    };
+    load();
+    // Reload when window gets focus (user may have edited categories/accounts)
+    window.addEventListener('focus', load);
+    return () => window.removeEventListener('focus', load);
   }, []);
 
   // ── ERP Preview (Bling format) ────────────────────────────────────────────
