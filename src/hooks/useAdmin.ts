@@ -208,7 +208,7 @@ export const useAdmin = () => {
     const { data, error } = await supabase
       .from('financial_categories')
       .select('*')
-      .order('canal', { ascending: true });
+      .order('channel', { ascending: true });
 
     if (error) {
       console.error('Error fetching categories:', error);
@@ -261,7 +261,7 @@ export const useAdmin = () => {
     const { data, error } = await supabase
       .from('financial_accounts')
       .select('*')
-      .order('canal', { ascending: true });
+      .order('channel', { ascending: true });
 
     if (error) {
       console.error('Error fetching accounts:', error);
