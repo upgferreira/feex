@@ -133,7 +133,10 @@ export function convertMLToBling(
       if (resultado.length < 3) {
         console.log('ML row date debug:', { dataTarifa, typeOf: typeof dataTarifa, dataLinha: dataLinha.toISOString(), dataFormatada, month: dataLinha.getMonth()+1, year: dataLinha.getFullYear() });
       }
-      const categoria = findCat(detalhe);
+      const { cat: categoria, pai: categoriaPai } = findCat(detalhe);
+      const catDisplay = categoriaPai && categoria
+        ? `${categoriaPai.toUpperCase()} > ${categoria.toUpperCase()}`
+        : categoria.toUpperCase();
       const pedido = numVendaML ? `XXXXXX/${numVendaML}` : '';
 
       const parte1 = cliente ? `MERCADO LIVRE: ${cliente.toUpperCase()}` : 'MERCADO LIVRE';
@@ -141,7 +144,7 @@ export function convertMLToBling(
         ? [`PEDIDO DE VENDA: ${pedido}`, 'NF: XX/XXXXXX', detalhe.toUpperCase()].join(' > ')
         : detalhe.toUpperCase();
       const lineCompetencia = `${String(dataLinha.getMonth() + 1).padStart(2,'0')}/${dataLinha.getFullYear()}`;
-      const obs = cleanText([parte1, parte2, categoria.toUpperCase(), dataFormatada, lineCompetencia].filter(Boolean).join(' | '));
+      const obs = cleanText([parte1, parte2, catDisplay, dataFormatada, lineCompetencia].filter(Boolean).join(' | '));
 
       resultado.push({
         'ID': '', 'Data': dataFormatada, 'Competencia': dataFormatada,
