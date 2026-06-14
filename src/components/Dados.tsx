@@ -709,11 +709,19 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                           return (
                             <th key={col}
                               ref={el => erpThRefs.current[col] = el as HTMLTableCellElement}
-                              onClick={() => setErpActiveFilter(prev => prev === col ? null : col)}
+                              onClick={e => {
+                                if (e.ctrlKey || e.metaKey) {
+                                  e.preventDefault();
+                                  setErpActiveFilter(prev => prev === col ? null : col);
+                                } else {
+                                  if (erpSortCol === col) setErpSortDir(d => d === 'asc' ? 'desc' : 'asc');
+                                  else { setErpSortCol(col); setErpSortDir('asc'); }
+                                }
+                              }}
                               className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors ${
                                 hasFilter
                                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                                  : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40'
+                                  : 'bg-green-600 text-white hover:bg-green-700'
                               }`}>
                               <div className="flex items-center gap-1">
                                 {col}
