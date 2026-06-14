@@ -84,6 +84,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
       const { error } = await supabase.from('financial_categories').insert(buildData(newRow));
       if (error) throw error;
       await loadData(); setAddingRow(false); setNewRow({});
+      window.dispatchEvent(new CustomEvent('categories-updated'));
     } catch (e: any) { setSaveError(e?.message || 'Erro ao salvar'); }
     finally { setSaving(false); }
   };
@@ -95,6 +96,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
       const { error } = await supabase.from('financial_categories').update(buildData(editingRow)).eq('id', editingRow.id);
       if (error) throw error;
       await loadData(); setEditingRow(null); setSelectedId(null);
+      window.dispatchEvent(new CustomEvent('categories-updated'));
     } catch (e: any) { setSaveError(e?.message || 'Erro ao salvar'); }
     finally { setSaving(false); }
   };
@@ -105,6 +107,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
     try {
       await supabase.from('financial_categories').delete().eq('id', selectedId);
       await loadData(); setSelectedId(null);
+      window.dispatchEvent(new CustomEvent('categories-updated'));
     } catch (e: any) { setSaveError(e?.message || 'Erro ao excluir'); }
   };
 
@@ -164,14 +167,14 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                   const isSelected = c.id === selectedId;
                   const isEditing = editingRow?.id === c.id;
                   return (
-                    <tr key={i} onClick={() => setSelectedId(isSelected ? null : c.id)}
+                    <tr key={i}
                       className={`cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
-                      <td className="px-4 py-3 text-center">
-                        <input type="checkbox" checked={isSelected} onChange={() => {}} onClick={e => e.stopPropagation()}
-                          className="rounded border-gray-300 text-blue-600" />
+                      <td className="px-4 py-3 text-center" onClick={() => setSelectedId(isSelected ? null : c.id)}>
+                        <input type="checkbox" checked={isSelected} readOnly
+                          className="rounded border-gray-300 text-blue-600 cursor-pointer" />
                       </td>
                       {COLS.map(col => (
-                        <td key={col.key} className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                        <td key={col.key} onClick={() => !isEditing && setSelectedId(isSelected ? null : c.id)} className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap">
                           {isEditing ? (
                             col.type === 'channel' ? (
                               <select value={editingRow[col.key] || ''} onChange={e => setEditingRow((r: any) => ({...r, [col.key]: e.target.value}))}
