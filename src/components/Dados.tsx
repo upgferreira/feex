@@ -760,7 +760,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                   </tbody>
                 </table>
               )}
-              ) /* end canal view */}
             </div>
 
             {/* Pagination footer */}
