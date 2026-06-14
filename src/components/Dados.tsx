@@ -480,7 +480,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
         const parte2 = pedido
           ? [`PEDIDO DE VENDA: ${pedido}`, 'NF: XX/XXXXXX', detalhe.toUpperCase()].join(' > ')
           : detalhe.toUpperCase();
-        const obs = [parte1, parte2, categoria.toUpperCase(), dataFormatada, competencia].filter(Boolean).join(' | ');
+        const obs = [parte1, parte2, categoria.toUpperCase(), dataFormatada].filter(Boolean).join(' | ');
 
         return {
           'Data': dataFormatada,
