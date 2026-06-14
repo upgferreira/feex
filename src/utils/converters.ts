@@ -17,7 +17,13 @@ export interface BlingRow {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 export function normalizeText(text: string) {
   if (!text) return '';
-  return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s-]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // remove accents
+    .replace(/[^a-zA-Z0-9\s]/g, ' ')  // remove special chars including 'do', punctuation
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase();
 }
 
 export function convertExcelDate(serialDate: number): string {
@@ -90,12 +96,16 @@ export function convertMLToBling(
 
   const findCat = (detalhe: string) => {
     const norm = normalizeText(detalhe);
-    const match = categories.find(c => {
+    // Find all matches for this channel+category
+    const matches = categories.filter(c => {
       const ch = String(c.channel || c.canal || '').toUpperCase().trim();
       if (ch !== 'MERCADO LIVRE') return false;
       const key = normalizeText(c.channel_category || c.categoria_canal || '');
-      return key === norm || key.includes(norm) || norm.includes(key);
+      return key === norm;
     });
+    // Prefer the one with erp_category filled
+    const withCat = matches.find(c => !!(c.erp_category || c.categoria_erp));
+    const match = withCat || matches[0];
     return match?.erp_category || match?.categoria_erp || '';
   };
 
@@ -116,6 +126,10 @@ export function convertMLToBling(
       if (dataLinha < dataInicialObj || dataLinha > dataFinalObj) return;
 
       const dataFormatada = dataLinha.toLocaleDateString('pt-BR');
+      // Debug first 3 rows
+      if (resultado.length < 3) {
+        console.log('ML row date debug:', { dataTarifa, typeOf: typeof dataTarifa, dataLinha: dataLinha.toISOString(), dataFormatada, month: dataLinha.getMonth()+1, year: dataLinha.getFullYear() });
+      }
       const categoria = findCat(detalhe);
       const pedido = numVendaML ? `XXXXXX/${numVendaML}` : '';
 
@@ -123,7 +137,8 @@ export function convertMLToBling(
       const parte2 = pedido
         ? [`PEDIDO DE VENDA: ${pedido}`, 'NF: XX/XXXXXX', detalhe.toUpperCase()].join(' > ')
         : detalhe.toUpperCase();
-      const obs = cleanText([parte1, parte2, categoria.toUpperCase(), dataFormatada, competencia].filter(Boolean).join(' | '));
+      const lineCompetencia = `${String(dataLinha.getMonth() + 1).padStart(2,'0')}/${dataLinha.getFullYear()}`;
+      const obs = cleanText([parte1, parte2, categoria.toUpperCase(), dataFormatada, lineCompetencia].filter(Boolean).join(' | '));
 
       resultado.push({
         'ID': '', 'Data': dataFormatada, 'Competencia': dataFormatada,
