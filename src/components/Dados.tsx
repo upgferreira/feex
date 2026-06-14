@@ -12,6 +12,7 @@ import {
 import { useFileData } from '../hooks/useFileData';
 import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
+import { convertToBling, toDateStr } from '../utils/converters';
 
 function formatBRL(v: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -429,115 +430,36 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   // ── ERP Preview (Bling format) ────────────────────────────────────────────
   const erpPreviewData = useMemo(() => {
     if (dataView !== 'erp' || viewMode !== 'tabela') return [];
-    const data = filteredRaw;
-    if (!data.length) return [];
+    if (!filteredRaw.length) return [];
 
-    // Normalize text helper
-    const norm = (t: string) => t?.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w\s-]/g,'').replace(/\s+/g,' ').trim().toUpperCase() || '';
+    // Derive period from data
+    const dates = filteredRaw
+      .map((r: any) => r['Data da tarifa'] || r['Data de pagamento'])
+      .filter(Boolean)
+      .map((d: any) => d instanceof Date ? d : new Date(d))
+      .filter((d: Date) => !isNaN(d.getTime()))
+      .sort((a: Date, b: Date) => a.getTime() - b.getTime());
 
-    // Find category
-    const findCat = (detalhe: string) => {
-      const n = norm(detalhe);
-      const match = categories.find(c => {
-        const ch = String(c.channel || c.canal || '').toUpperCase().trim();
-        if (ch !== canal && canal !== 'TODOS') return false;
-        const key = norm(c.channel_category || c.categoria_canal || '');
-        return key === n || key.includes(n) || n.includes(key);
-      });
-      return match?.erp_category || match?.categoria_erp || '';
-    };
+    const dataInicial = dates.length ? dates[0].toISOString().split('T')[0] : '';
+    const dataFinal   = dates.length ? dates[dates.length - 1].toISOString().split('T')[0] : '';
+    const dateObj     = dates.length ? dates[0] : new Date();
+    const competencia = `${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
 
-    // Find account
-    const conta = accounts.find(a => String(a.canal || '').toUpperCase().trim() === canal.toUpperCase());
-    console.log('ERP preview conta for', canal, ':', conta, 'from accounts:', accounts.map(a=>a.canal));
-    const clienteFornecedor = conta?.fornecedor_nome_fantasia || canal;
-    const portador          = conta?.caixa                   || '';
-    const cnpj              = conta?.fornecedor_cnpj         || '';
+    const rows = convertToBling(canal, filteredRaw, dataInicial, dataFinal, competencia, categories, accounts);
 
-    // ML conversion
-    if (canal === 'MERCADO LIVRE') {
-      return data.map(row => {
-        const dataTarifa  = row['Data da tarifa'];
-        const detalhe     = String(row['Detalhe']         || '');
-        const valorTarifa = Number(row['Valor da tarifa']) || 0;
-        const numVendaML  = String(row['Número da venda'] || '');
-        const clienteML   = String(row['Cliente']         || '');
-
-        let dataFormatada = '';
-        if (typeof dataTarifa === 'number') {
-          const d = new Date(new Date(1900,0,1).getTime()+(dataTarifa-1)*86400000);
-          if (dataTarifa>59) d.setTime(d.getTime()-86400000);
-          dataFormatada = d.toLocaleDateString('pt-BR');
-        } else if (dataTarifa instanceof Date) {
-          dataFormatada = dataTarifa.toLocaleDateString('pt-BR');
-        } else if (dataTarifa) {
-          dataFormatada = new Date(dataTarifa).toLocaleDateString('pt-BR');
-        }
-
-        const categoria = findCat(detalhe);
-        const pedido = numVendaML ? `XXXXXX/${numVendaML}` : '';
-        const parte1 = clienteML ? `MERCADO LIVRE: ${clienteML.toUpperCase()}` : 'MERCADO LIVRE';
-        const parte2 = pedido
-          ? [`PEDIDO DE VENDA: ${pedido}`, 'NF: XX/XXXXXX', detalhe.toUpperCase()].join(' > ')
-          : detalhe.toUpperCase();
-        const obs = [parte1, parte2, categoria.toUpperCase(), dataFormatada].filter(Boolean).join(' | ');
-
-        return {
-          'Data': dataFormatada,
-          'Competência': dataFormatada,
-          'Categoria': categoria,
-          'Observações': obs,
-          'Valor': (valorTarifa * -1).toFixed(2).replace('.', ','),
-          'Cliente/Fornecedor': clienteFornecedor,
-          'CNPJ': cnpj,
-          'Portador': portador,
-        };
-      });
-    }
-
-    // Nuvem Pago conversion
-    if (canal === 'NUVEM PAGO') {
-      const pedidos: Record<string, any> = {};
-      data.forEach(row => {
-        const pedidoRaw = row['Número do Pedido'];
-        if (!pedidoRaw) return;
-        const numeroPedido = String(Math.round(Number(pedidoRaw)));
-        const comprador = String(row['Nome do comprador'] || '').trim();
-        const dataPagamento = row['Data de pagamento'];
-        const parseV = (v: any) => {
-          if (!v) return 0;
-          const s = String(v).trim();
-          return s.includes(',') ? Number(s.replace(/\./g,'').replace(',','.')) : Number(s) || 0;
-        };
-        const taxa = parseV(row['Taxas']);
-        const juros = parseV(row['Juros']);
-        if (!dataPagamento) return;
-        const dataLinha = dataPagamento instanceof Date ? dataPagamento : new Date(dataPagamento);
-        if (!pedidos[numeroPedido]) {
-          pedidos[numeroPedido] = { pedido: numeroPedido, comprador, dataPagamento: dataLinha, valor: 0, juros: 0 };
-        }
-        pedidos[numeroPedido].valor += (taxa + juros) * -1;
-        pedidos[numeroPedido].juros += juros;
-      });
-
-      const catRow = categories.find(c => String(c.channel||c.canal||'').toUpperCase().trim() === 'NUVEM PAGO' && String(c.channel_category||c.categoria_canal||'').toUpperCase().trim() === 'TAXAS');
-      const categoriaERP = catRow?.erp_category || catRow?.categoria_erp || '';
-      const categoriaPai = catRow?.erp_parent_category || catRow?.categoria_pai_erp || '';
-
-      return Object.values(pedidos).map((item: any) => ({
-        'Data': item.dataPagamento.toLocaleDateString('pt-BR'),
-        'Competência': item.dataPagamento.toLocaleDateString('pt-BR'),
-        'Categoria': categoriaERP,
-        'Observações': `NUVEM PAGO: ${item.comprador.toUpperCase()} | PEDIDO: ${item.pedido}${item.juros > 0 ? ' | TAXA + JUROS' : ''}`,
-        'Valor': item.valor.toFixed(2).replace('.', ','),
-        'Cliente/Fornecedor': clienteFornecedor,
-        'CNPJ': cnpj,
-        'Portador': portador,
-      }));
-    }
-
-    return [];
+    // Map to display columns
+    return rows.map(r => ({
+      'Data':               r['Data'],
+      'Competência':        r['Competencia'],
+      'Categoria':          r['Categoria'],
+      'Observações':        r['Observacoes'],
+      'Valor':              r['Valor'],
+      'Cliente/Fornecedor': r['Cliente/Fornecedor'],
+      'CNPJ':               r['CNPJ'],
+      'Portador':           r['Portador'],
+    }));
   }, [dataView, viewMode, filteredRaw, canal, categories, accounts]);
+
 
   const ERP_COLS = ['Data', 'Competência', 'Categoria', 'Observações', 'Valor', 'Cliente/Fornecedor', 'CNPJ', 'Portador'];
 
