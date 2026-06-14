@@ -14,6 +14,7 @@ import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
 import { convertToBling, toDateStr } from '../utils/converters';
 import { ColumnFilter, FilterBadge } from './ColumnFilter';
+import { DateRangePicker } from './DateRangePicker';
 
 function formatBRL(v: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -560,13 +561,13 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                 <Calendar className="w-4 h-4" />
               </button>
               {calendarOpen && (
-                <div className="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3 flex items-center gap-2 whitespace-nowrap">
-                  <input type="date" value={dateFilter.startDate} onChange={e => setDateFilter(f => ({ ...f, startDate: e.target.value }))} className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
-                  <span className="text-xs text-gray-400">até</span>
-                  <input type="date" value={dateFilter.endDate} onChange={e => setDateFilter(f => ({ ...f, endDate: e.target.value }))} className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
-                  {(dateFilter.startDate || dateFilter.endDate) && (
-                    <button onClick={() => { setDateFilter({ startDate: '', endDate: '' }); setCalendarOpen(false); }} className="text-xs text-red-500 hover:text-red-700 ml-1">Limpar</button>
-                  )}
+                <div className="absolute left-0 top-full mt-2 z-50">
+                  <DateRangePicker
+                    startDate={dateFilter.startDate}
+                    endDate={dateFilter.endDate}
+                    onChange={(s, e) => setDateFilter({ startDate: s, endDate: e })}
+                    onClose={() => setCalendarOpen(false)}
+                  />
                 </div>
               )}
             </div>
@@ -718,7 +719,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                                   else { setErpSortCol(col); setErpSortDir('asc'); }
                                 }
                               }}
-                              className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors ${
+                              className={`${['Data','Competência'].includes(col) ? 'px-3' : 'px-6'} py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors ${
                                 hasFilter
                                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                                   : 'bg-green-600 text-white hover:bg-green-700'
@@ -737,7 +738,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                       {erpDisplayData.map((row: any, i: number) => (
                         <tr key={i} className="hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors">
                           {ERP_COLS.map(col => (
-                            <td key={col} className={`px-6 py-3 text-sm text-gray-900 dark:text-gray-100 ${col === 'Observações' ? 'break-words max-w-xs whitespace-normal' : 'whitespace-nowrap'}`}>
+                            <td key={col} className={`${['Data','Competência'].includes(col) ? 'px-3' : 'px-6'} py-3 text-sm text-gray-900 dark:text-gray-100 ${col === 'Observações' ? 'break-words max-w-xs whitespace-normal' : 'whitespace-nowrap'}`}>
                               {row[col] ?? '-'}
                             </td>
                           ))}

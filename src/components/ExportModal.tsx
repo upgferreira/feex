@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Download, Calendar, Building2 } from 'lucide-react';
+import { DateRangePicker } from './DateRangePicker';
+import { X, Download, Building2 } from 'lucide-react';
 
 interface ExportModalProps {
   isOpen: boolean;
