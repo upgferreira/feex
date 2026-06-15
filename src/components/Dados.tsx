@@ -587,6 +587,48 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     return { byPai: sort(paiMap), byCat: sort(catMap), total };
   }, [dataView, viewMode, erpPreviewData]);
 
+  // ── ERP Stat Cards (same 8 as canal) ────────────────────────────────────────
+  const erpStatCards = useMemo(() => {
+    if (!erpPreviewData.length) return [];
+    const vals = erpPreviewData.map((r: any) => Math.abs(Number(String(r['Valor']||'0').replace(',','.')) || 0));
+    const total = vals.reduce((s: number, v: number) => s + v, 0);
+    const count = vals.length;
+    const cats = new Set(erpPreviewData.map((r: any) => r['Categoria']).filter(Boolean)).size;
+    const ports = new Set(erpPreviewData.map((r: any) => r['Portador']).filter(Boolean)).size;
+    const media = count > 0 ? total / count : 0;
+    const maior = vals.length ? Math.max(...vals) : 0;
+    const menor = vals.length ? Math.min(...vals) : 0;
+    const clientes = new Set(erpPreviewData.map((r: any) => r['Cliente/Fornecedor']).filter(Boolean)).size;
+    const iconCls = 'w-8 h-8 p-1.5 rounded-lg';
+    return [
+      { label: 'Total Débitos',    value: formatBRL(total),         icon: <TrendingDown className={`${iconCls} bg-red-50 text-red-500`} /> },
+      { label: 'Registros',        value: count.toLocaleString(),   icon: <Receipt className={`${iconCls} bg-purple-50 text-purple-500`} /> },
+      { label: 'Categorias',       value: cats.toString(),          icon: <ShoppingCart className={`${iconCls} bg-orange-50 text-orange-500`} /> },
+      { label: 'Portadores',       value: ports.toString(),         icon: <CreditCard className={`${iconCls} bg-teal-50 text-teal-500`} /> },
+      { label: 'Clientes/Forn.',   value: clientes.toString(),      icon: <DollarSign className={`${iconCls} bg-blue-50 text-blue-500`} /> },
+      { label: 'Média/Lançamento', value: formatBRL(media),         icon: <TrendingUp className={`${iconCls} bg-green-50 text-green-500`} /> },
+      { label: 'Maior Débito',     value: formatBRL(maior),         icon: <TrendingDown className={`${iconCls} bg-red-50 text-red-400`} /> },
+      { label: 'Menor Débito',     value: formatBRL(menor),         icon: <TrendingUp className={`${iconCls} bg-green-50 text-green-400`} /> },
+    ];
+  }, [erpPreviewData]);
+
+  // ── ERP Receita por Dia ───────────────────────────────────────────────────────
+  const erpReceitaDia = useMemo(() => {
+    if (!erpPreviewData.length) return [];
+    const map: Record<string, number> = {};
+    erpPreviewData.forEach((r: any) => {
+      const d = r['Data'] || '';
+      const v = Math.abs(Number(String(r['Valor']||'0').replace(',','.')) || 0);
+      map[d] = (map[d] || 0) + v;
+    });
+    return Object.entries(map).map(([date, valor]) => ({ date, valor }))
+      .sort((a, b) => {
+        const [da, ma, ya] = a.date.split('/').map(Number);
+        const [db, mb, yb] = b.date.split('/').map(Number);
+        return new Date(ya,ma-1,da).getTime() - new Date(yb,mb-1,db).getTime();
+      });
+  }, [erpPreviewData]);
+
   const ERP_COLS = ['Data', 'Competência', 'Categoria', 'Observações', 'Valor', 'Cliente/Fornecedor', 'CNPJ', 'Portador'];
 
   const erpDisplayData = useMemo(() => {
@@ -720,91 +762,48 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                         {/* ERP DASHBOARD */}
         {viewMode === 'dashboard' && dataView === 'erp' && (
           <div ref={dashboardRef} className="h-full overflow-auto p-6 pb-20">
+            <div className="grid grid-cols-2 md:grid-cols-8 gap-3 mb-6">
+              {erpStatCards.map(card => (
+                <div key={card.label} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">{card.icon}</div>
+                    <div className="ml-3">
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{card.label}</p>
+                      <p className="text-lg font-semibold text-gray-900 dark:text-white">{card.value}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
             {erpPreviewData.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-                <BarChart2 className="w-12 h-12 mb-3" />
-                <p className="text-lg">Sem dados ERP para o dashboard</p>
+              <div className="p-12 text-center">
+                <BarChart2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 dark:text-gray-400 text-lg">Sem dados ERP para {canal}</p>
+                <p className="text-gray-400 dark:text-gray-500 mt-2">Selecione um canal e mude para o modo ERP</p>
               </div>
             ) : (
-              <>
-                {/* KPI Cards */}
-                {(() => {
-                  const vals = erpPreviewData.map((r: any) => Number(String(r['Valor']||'0').replace(',','.')) || 0);
-                  const total = vals.reduce((s: number, v: number) => s + v, 0);
-                  const totalAbs = Math.abs(total);
-                  const count = vals.length;
-                  const cats = new Set(erpPreviewData.map((r: any) => r['Categoria']).filter(Boolean)).size;
-                  const ports = new Set(erpPreviewData.map((r: any) => r['Portador']).filter(Boolean)).size;
-                  const minV = Math.abs(Math.min(...vals));
-                  const maxV = Math.abs(Math.max(...vals));
-                  return (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-                      {[
-                        { label: 'Total Lançamentos', value: formatBRL(total),    icon: DollarSign,   color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' },
-                        { label: 'Total Débitos',     value: formatBRL(totalAbs), icon: TrendingDown, color: 'bg-red-50 dark:bg-red-900/20 text-red-600' },
-                        { label: 'Registros',         value: count.toLocaleString('pt-BR'), icon: Receipt, color: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600' },
-                        { label: 'Categorias',        value: cats.toString(),     icon: ShoppingCart, color: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600' },
-                        { label: 'Portadores',        value: ports.toString(),    icon: CreditCard,   color: 'bg-teal-50 dark:bg-teal-900/20 text-teal-600' },
-                        { label: 'Média/Lançamento',  value: count > 0 ? formatBRL(totalAbs/count) : 'R$ 0,00', icon: TrendingUp, color: 'bg-green-50 dark:bg-green-900/20 text-green-600' },
-                        { label: 'Maior Débito',      value: formatBRL(minV),     icon: TrendingDown, color: 'bg-red-50 dark:bg-red-900/20 text-red-500' },
-                        { label: 'Menor Débito',      value: formatBRL(maxV),     icon: TrendingUp,   color: 'bg-green-50 dark:bg-green-900/20 text-green-500' },
-                      ].map((card, i) => (
-                        <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${card.color}`}><card.icon className="w-5 h-5" /></div>
-                          <div><p className="text-xs text-gray-500 dark:text-gray-400">{card.label}</p><p className="text-sm font-bold text-gray-900 dark:text-white">{card.value}</p></div>
-                        </div>
-                      ))}
+              <div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {erpDashboardData.byPai.length > 0 && <PieSection data={erpDashboardData.byPai} title="Distribuição por Categoria Pai" tooltipLabel="Valor" />}
+                  {erpDashboardData.byCat.length > 0 && <PieSection data={erpDashboardData.byCat} title="Distribuição por Categoria" tooltipLabel="Valor" />}
+                </div>
+                {erpReceitaDia.length > 0 && (
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mt-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Lançamentos por Dia</h3>
+                    <div className="h-64">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={erpReceitaDia} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" angle={-45} textAnchor="end" height={100} fontSize={12} />
+                          <YAxis />
+                          <Tooltip formatter={(v: any) => [formatBRL(v), 'Valor']} labelFormatter={(l: any) => `Data: ${l}`} />
+                          <Bar dataKey="valor" fill="#16a34a" name="Valor" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
-                  );
-                })()}
-
-                {/* Bar chart by categoria */}
-                {erpDashboardData.byCat.length > 0 && (
-                  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-6">
-                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wider">Distribuição por Categoria</h3>
-                    <ResponsiveContainer width="100%" height={220}>
-                      <BarChart data={erpDashboardData.byCat.slice(0,10)} margin={{top:5,right:20,left:20,bottom:60}}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
-                        <XAxis dataKey="name" tick={{fontSize:10,fill:'#6b7280'}} angle={-30} textAnchor="end" interval={0} />
-                        <YAxis tick={{fontSize:10,fill:'#6b7280'}} tickFormatter={(v:any) => `R$${(v/1000).toFixed(0)}k`} />
-                        <Tooltip formatter={(v:any) => formatBRL(v)} />
-                        <Bar dataKey="value" fill="#16a34a" radius={[4,4,0,0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
                   </div>
                 )}
-
-                {/* Two pie charts: Categoria Pai | Categoria */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {[
-                    { title: 'Categoria Pai', data: erpDashboardData.byPai, colors: ['#16a34a','#15803d','#22c55e','#4ade80','#86efac','#bbf7d0','#dcfce7','#f0fdf4'] },
-                    { title: 'Categoria',     data: erpDashboardData.byCat, colors: ['#16a34a','#2563eb','#dc2626','#d97706','#7c3aed','#0891b2','#be185d','#65a30d','#ea580c','#0d9488'] },
-                  ].map(({ title, data, colors }) => (
-                    <div key={title} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wider">{title}</h3>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <PieChart>
-                          <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}>
-                            {data.map((_: any, i: number) => <Cell key={i} fill={colors[i % colors.length]} />)}
-                          </Pie>
-                          <Tooltip formatter={(v: any) => formatBRL(v)} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                      <div className="mt-2 space-y-1 max-h-28 overflow-y-auto">
-                        {data.map((d: any, i: number) => (
-                          <div key={i} className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{background: colors[i % colors.length]}} />
-                              <span className="text-gray-700 dark:text-gray-300 truncate max-w-[140px]">{d.name}</span>
-                            </div>
-                            <span className="text-gray-500 ml-2">{erpDashboardData.total > 0 ? (d.value/erpDashboardData.total*100).toFixed(1) : 0}%</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
+              </div>
             )}
           </div>
         )}
@@ -1082,10 +1081,9 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
               <table className="w-full">
                 <thead>
                   <tr className="bg-green-600 sticky top-0 z-10">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Categoria Pai / Categoria ERP</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Observações</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-white uppercase tracking-wider">Valor</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-white uppercase tracking-wider">%</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-1/2">Categoria Pai / Categoria</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-white uppercase tracking-wider w-1/4">Valor</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-white uppercase tracking-wider w-1/4">%</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -1102,7 +1100,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                               <span className="text-xs text-gray-400 ml-1">({pai.categorias.length})</span>
                             </div>
                           </td>
-                          <td className="px-6 py-3 text-xs text-gray-400"></td>
                           <td className="px-6 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white">{formatBRL(pai.total)}</td>
                           <td className="px-6 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
@@ -1114,9 +1111,15 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                           </td>
                         </tr>
                         {isExpanded && pai.categorias.map((cat: any) => (
-                          <tr key={cat.cat} className="hover:bg-green-50/30 dark:hover:bg-green-900/10">
-                            <td className="px-6 py-2.5 pl-14"><span className="text-sm text-gray-700 dark:text-gray-300">{cat.cat}</span></td>
-                            <td className="px-6 py-2.5 text-xs text-gray-500 dark:text-gray-400 max-w-xs break-words">{cat.obs?.[0] || ''}</td>
+                          <React.Fragment key={cat.cat}>
+                          <tr className="hover:bg-green-50/30 dark:hover:bg-green-900/10 cursor-pointer"
+                            onClick={() => setExpandedPais(prev => { const n = new Set(prev); const k = pai.pai+'|||'+cat.cat; if (n.has(k)) n.delete(k); else n.add(k); return n; })}>
+                            <td className="px-6 py-2.5 pl-10">
+                              <div className="flex items-center gap-2">
+                                {expandedPais.has(pai.pai+'|||'+cat.cat) ? <ChevronDown className="w-3 h-3 text-green-400 flex-shrink-0" /> : <ChevronRight className="w-3 h-3 text-gray-300 flex-shrink-0" />}
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{cat.cat}</span>
+                              </div>
+                            </td>
                             <td className="px-6 py-2.5 text-right text-sm text-gray-700 dark:text-gray-300">{formatBRL(cat.valor)}</td>
                             <td className="px-6 py-2.5 text-right">
                               <div className="flex items-center justify-end gap-2">
@@ -1127,6 +1130,12 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                               </div>
                             </td>
                           </tr>
+                          {expandedPais.has(pai.pai+'|||'+cat.cat) && (cat.obs || []).map((ob: string, oi: number) => (
+                            <tr key={oi} className="bg-gray-50/50 dark:bg-gray-700/30">
+                              <td colSpan={3} className="px-6 py-1.5 pl-20 text-xs text-gray-500 dark:text-gray-400">{ob}</td>
+                            </tr>
+                          ))}
+                          </React.Fragment>
                         ))}
                       </React.Fragment>
                     );

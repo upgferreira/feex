@@ -5,9 +5,10 @@ interface FooterProps {
   onCategoryClick: () => void;
   onMappingClick: () => void;
   onMethodsClick: () => void;
+  onHelpClick: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onBoxClick, onCategoryClick, onMappingClick, onMethodsClick }) => {
+export const Footer: React.FC<FooterProps> = ({ onBoxClick, onCategoryClick, onMappingClick, onMethodsClick, onHelpClick }) => {
   const linkBtn = (label: string, onClick: () => void) => (
     <button
       onClick={onClick}
@@ -29,6 +30,8 @@ export const Footer: React.FC<FooterProps> = ({ onBoxClick, onCategoryClick, onM
           + clique para filtrar
         </div>
         <div className="flex items-center gap-1">
+          {linkBtn('? AJUDA', onHelpClick)}
+          <span className="text-gray-300 dark:text-gray-600 text-xs">|</span>
           {linkBtn('MAPEAMENTO', onMappingClick)}
           <span className="text-gray-300 dark:text-gray-600 text-xs">|</span>
           {linkBtn('MEIOS', onMethodsClick)}
