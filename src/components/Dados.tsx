@@ -345,8 +345,8 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
 
   const tableData = useMemo(() => {
     let data = [...filteredRaw];
-    Object.entries(colFilters).forEach(([col, val]) => {
-      if (val) data = data.filter((r: any) => r[col]?.toString().toLowerCase().includes(val.toLowerCase()));
+    Object.entries(colFilters).forEach(([col, vals]) => {
+      if (vals?.length) data = data.filter((r: any) => vals.includes(String(r[col] ?? '')));
     });
     if (sortCol) {
       data.sort((a: any, b: any) => {
@@ -715,68 +715,117 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       {/* Content */}
       <div className="flex-1 overflow-hidden relative">
 
-        {/* ERP DASHBOARD */}
+                {/* ERP DASHBOARD */}
         {viewMode === 'dashboard' && dataView === 'erp' && (
-          <div className="h-full overflow-auto p-6">
-            {erpDashboardData.byPai.length === 0 ? (
+          <div ref={dashboardRef} className="h-full overflow-auto p-6 space-y-6">
+            {erpPreviewData.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-gray-400">
                 <BarChart2 className="w-12 h-12 mb-3" />
                 <p className="text-lg">Sem dados ERP para o dashboard</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Categoria Pai */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wider">Categoria Pai</h3>
-                  <ResponsiveContainer width="100%" height={240}>
-                    <PieChart>
-                      <Pie data={erpDashboardData.byPai} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, percent }) => `${name} ${(percent*100).toFixed(0)}%`} labelLine={false}>
-                        {erpDashboardData.byPai.map((_: any, i: number) => (
-                          <Cell key={i} fill={['#16a34a','#15803d','#22c55e','#4ade80','#86efac','#bbf7d0','#dcfce7','#f0fdf4'][i % 8]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(v: any) => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v)} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="mt-3 space-y-1 max-h-36 overflow-y-auto">
-                    {erpDashboardData.byPai.map((d: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{background:['#16a34a','#15803d','#22c55e','#4ade80','#86efac','#bbf7d0','#dcfce7','#f0fdf4'][i%8]}} />
-                          <span className="text-gray-700 dark:text-gray-300 truncate max-w-[160px]">{d.name}</span>
+              <>
+                {/* 8 KPI cards - reuse canal cards but from ERP data */}
+                {(() => {
+                  const total = erpPreviewData.reduce((s: number, r: any) => s + (Number(String(r['Valor']||'0').replace(',','.')) || 0), 0);
+                  const totalAbs = Math.abs(total);
+                  const count = erpPreviewData.length;
+                  const cats = [...new Set(erpPreviewData.map((r: any) => r['Categoria']).filter(Boolean))].length;
+                  const portadores = [...new Set(erpPreviewData.map((r: any) => r['Portador']).filter(Boolean))].length;
+                  return (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      {[
+                        { label: 'Total Lançamentos', value: formatBRL(total),       icon: DollarSign,    color: 'text-blue-600' },
+                        { label: 'Total Débitos',     value: formatBRL(totalAbs),    icon: TrendingDown,  color: 'text-red-600' },
+                        { label: 'Registros',         value: count.toLocaleString(), icon: Receipt,       color: 'text-purple-600' },
+                        { label: 'Categorias',        value: cats.toLocaleString(),  icon: ShoppingCart,  color: 'text-orange-600' },
+                        { label: 'Portadores',        value: portadores.toString(),  icon: CreditCard,    color: 'text-teal-600' },
+                        { label: 'Média/Lançamento',  value: count > 0 ? formatBRL(totalAbs/count) : 'R$ 0,00', icon: TrendingUp, color: 'text-green-600' },
+                        { label: 'Maior Débito',      value: formatBRL(Math.abs(Math.min(...erpPreviewData.map((r:any) => Number(String(r['Valor']||'0').replace(',','.')))))), icon: TrendingDown, color: 'text-red-500' },
+                        { label: 'Menor Débito',      value: formatBRL(Math.abs(Math.max(...erpPreviewData.map((r:any) => Number(String(r['Valor']||'0').replace(',','.')))))), icon: TrendingUp,   color: 'text-green-500' },
+                      ].map((card, i) => (
+                        <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex items-center gap-3">
+                          <div className={`p-2 rounded-lg bg-gray-50 dark:bg-gray-700 ${card.color}`}>
+                            <card.icon className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">{card.label}</p>
+                            <p className="text-sm font-bold text-gray-900 dark:text-white">{card.value}</p>
+                          </div>
                         </div>
-                        <span className="text-gray-500 ml-2">{erpDashboardData.total > 0 ? (d.value/erpDashboardData.total*100).toFixed(1) : 0}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                      ))}
+                    </div>
+                  );
+                })()}
 
-                {/* Categoria */}
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
-                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wider">Categoria</h3>
-                  <ResponsiveContainer width="100%" height={240}>
-                    <PieChart>
-                      <Pie data={erpDashboardData.byCat} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, percent }) => `${(percent*100).toFixed(0)}%`} labelLine={false}>
-                        {erpDashboardData.byCat.map((_: any, i: number) => (
-                          <Cell key={i} fill={['#16a34a','#2563eb','#dc2626','#d97706','#7c3aed','#0891b2','#be185d','#65a30d','#ea580c','#0d9488'][i % 10]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(v: any) => new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v)} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="mt-3 space-y-1 max-h-36 overflow-y-auto">
-                    {erpDashboardData.byCat.map((d: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{background:['#16a34a','#2563eb','#dc2626','#d97706','#7c3aed','#0891b2','#be185d','#65a30d','#ea580c','#0d9488'][i%10]}} />
-                          <span className="text-gray-700 dark:text-gray-300 truncate max-w-[160px]">{d.name}</span>
+                {/* Bar chart by categoria */}
+                {erpDashboardData.byCat.length > 0 && (
+                  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wider">Distribuição por Categoria</h3>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <BarChart data={erpDashboardData.byCat.slice(0, 10)} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#6b7280' }} angle={-30} textAnchor="end" interval={0} />
+                        <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
+                        <Tooltip formatter={(v: any) => formatBRL(v)} />
+                        <Bar dataKey="value" fill="#16a34a" radius={[4,4,0,0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+
+                {/* Two pie charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wider">Categoria Pai</h3>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <PieChart>
+                        <Pie data={erpDashboardData.byPai} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}>
+                          {erpDashboardData.byPai.map((_: any, i: number) => (
+                            <Cell key={i} fill={['#16a34a','#15803d','#22c55e','#4ade80','#86efac','#bbf7d0','#dcfce7','#f0fdf4'][i%8]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v: any) => formatBRL(v)} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="mt-2 space-y-1 max-h-28 overflow-y-auto">
+                      {erpDashboardData.byPai.map((d: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{background:['#16a34a','#15803d','#22c55e','#4ade80','#86efac','#bbf7d0','#dcfce7','#f0fdf4'][i%8]}} />
+                            <span className="text-gray-700 dark:text-gray-300 truncate max-w-[140px]">{d.name}</span>
+                          </div>
+                          <span className="text-gray-500 ml-2">{erpDashboardData.total > 0 ? (d.value/erpDashboardData.total*100).toFixed(1) : 0}%</span>
                         </div>
-                        <span className="text-gray-500 ml-2">{new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(d.value)}</span>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4 uppercase tracking-wider">Categoria</h3>
+                    <ResponsiveContainer width="100%" height={220}>
+                      <PieChart>
+                        <Pie data={erpDashboardData.byCat} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}>
+                          {erpDashboardData.byCat.map((_: any, i: number) => (
+                            <Cell key={i} fill={['#16a34a','#2563eb','#dc2626','#d97706','#7c3aed','#0891b2','#be185d','#65a30d','#ea580c','#0d9488'][i%10]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(v: any) => formatBRL(v)} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="mt-2 space-y-1 max-h-28 overflow-y-auto">
+                      {erpDashboardData.byCat.map((d: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{background:['#16a34a','#2563eb','#dc2626','#d97706','#7c3aed','#0891b2','#be185d','#65a30d','#ea580c','#0d9488'][i%10]}} />
+                            <span className="text-gray-700 dark:text-gray-300 truncate max-w-[140px]">{d.name}</span>
+                          </div>
+                          <span className="text-gray-500 ml-2">{formatBRL(d.value)}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
         )}

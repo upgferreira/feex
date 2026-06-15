@@ -3,12 +3,11 @@ import React from 'react';
 interface FooterProps {
   onBoxClick: () => void;
   onCategoryClick: () => void;
-  onIntegrationsClick: () => void;
   onMappingClick: () => void;
   onMethodsClick: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onBoxClick, onCategoryClick, onIntegrationsClick, onMappingClick, onMethodsClick }) => {
+export const Footer: React.FC<FooterProps> = ({ onBoxClick, onCategoryClick, onMappingClick, onMethodsClick }) => {
   const linkBtn = (label: string, onClick: () => void) => (
     <button
       onClick={onClick}
@@ -37,8 +36,6 @@ export const Footer: React.FC<FooterProps> = ({ onBoxClick, onCategoryClick, onI
           {linkBtn('CAIXAS', onBoxClick)}
           <span className="text-gray-300 dark:text-gray-600 text-xs">|</span>
           {linkBtn('CATEGORIAS', onCategoryClick)}
-          <span className="text-gray-300 dark:text-gray-600 text-xs">|</span>
-          {linkBtn('MEIOS', onIntegrationsClick)}
         </div>
       </div>
     </footer>

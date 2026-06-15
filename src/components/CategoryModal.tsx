@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, ArrowUp, ArrowDown, Filter, Check, X as XIcon, Pencil, Trash2 } from 'lucide-react';
 import { FullscreenModal } from './FullscreenModal';
+import { invalidateCache } from '../hooks/useCache';
+import { ColumnFilter, FilterBadge } from './ColumnFilter';
 import { supabase } from '../lib/supabase';
 
 interface CategoryModalProps { isOpen: boolean; onClose: () => void; }
@@ -24,7 +26,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
   const [loading, setLoading] = useState(false);
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [colFilters, setColFilters] = useState<Record<string, string>>({});
+  const [colFilters, setColFilters] = useState<Record<string, string[]>>({});
+  const thRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
   const [activeFilterCol, setActiveFilterCol] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [addingRow, setAddingRow] = useState(false);
@@ -32,7 +35,6 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
   const [newRow, setNewRow] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = React.useState<string | null>(null);
-  const filterRef = useRef<HTMLDivElement>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -65,7 +67,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
   const getOptions = (key: string) => [...new Set(categories.map(c => c[key]).filter(Boolean))].sort();
 
   const displayed = categories
-    .filter(c => Object.entries(colFilters).every(([k, v]) => !v || (c[k] || '').toLowerCase().includes(v.toLowerCase())))
+    .filter(c => Object.entries(colFilters).every(([k, vals]) => !vals?.length || vals.includes(String(c[k] ?? ''))))
     .sort((a, b) => {
       if (!sortCol) return 0;
       return sortDir === 'asc' ? (a[sortCol] || '').localeCompare(b[sortCol] || '') : (b[sortCol] || '').localeCompare(a[sortCol] || '');
@@ -84,6 +86,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
       const { error } = await supabase.from('financial_categories').insert(buildData(newRow));
       if (error) throw error;
       await loadData(); setAddingRow(false); setNewRow({});
+      invalidateCache('categories');
+      invalidateCache('accounts');
       window.dispatchEvent(new CustomEvent('categories-updated'));
     } catch (e: any) { setSaveError(e?.message || 'Erro ao salvar'); }
     finally { setSaving(false); }
@@ -96,6 +100,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
       const { error } = await supabase.from('financial_categories').update(buildData(editingRow)).eq('id', editingRow.id);
       if (error) throw error;
       await loadData(); setEditingRow(null); setSelectedId(null);
+      invalidateCache('categories');
+      invalidateCache('accounts');
       window.dispatchEvent(new CustomEvent('categories-updated'));
     } catch (e: any) { setSaveError(e?.message || 'Erro ao salvar'); }
     finally { setSaving(false); }
@@ -107,6 +113,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
     try {
       await supabase.from('financial_categories').delete().eq('id', selectedId);
       await loadData(); setSelectedId(null);
+      invalidateCache('categories');
+      invalidateCache('accounts');
       window.dispatchEvent(new CustomEvent('categories-updated'));
     } catch (e: any) { setSaveError(e?.message || 'Erro ao excluir'); }
   };
@@ -151,7 +159,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                 <tr>
                   <th className="w-10 px-4 py-3 sticky top-0 bg-gray-50 dark:bg-gray-700 z-10" />
                   {COLS.map(c => (
-                    <th key={c.key} className={thCls(c.key)} onClick={e => handleColClick(e, c.key)}>
+                    <th key={c.key} ref={el => thRefs.current[c.key] = el as HTMLTableCellElement} className={thCls(c.key)} onClick={e => handleColClick(e, c.key)}>
                       <div className="flex items-center gap-1">
                         {c.label}
                         {sortCol === c.key && (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
@@ -254,23 +262,20 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
             </table>
           )}
 
-          {activeFilterCol && (
-            <div ref={filterRef} className="absolute top-0 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 w-64">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-medium text-gray-900 dark:text-white">{COLS.find(c => c.key === activeFilterCol)?.label}</span>
-                <button onClick={() => setActiveFilterCol(null)} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
-              </div>
-              <select autoFocus value={colFilters[activeFilterCol] || ''}
-                onChange={e => setColFilters(f => ({...f, [activeFilterCol!]: e.target.value}))}
-                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100">
-                <option value="">Todos</option>
-                {getOptions(activeFilterCol).map(v => <option key={String(v)} value={String(v)}>{String(v)}</option>)}
-              </select>
-              {colFilters[activeFilterCol] && (
-                <button onClick={() => setColFilters(f => ({...f, [activeFilterCol!]: ''}))} className="mt-2 w-full text-xs text-red-500 hover:text-red-700 text-center">Limpar</button>
-              )}
-            </div>
-          )}
+          {activeFilterCol && (() => {
+            const anchorRef = { current: thRefs.current[activeFilterCol] } as React.RefObject<HTMLElement>;
+            return (
+              <ColumnFilter
+                column={activeFilterCol}
+                label={COLS.find(c => c.key === activeFilterCol)?.label || activeFilterCol}
+                options={getOptions(activeFilterCol).map(String)}
+                selected={colFilters[activeFilterCol] || []}
+                onChange={vals => setColFilters(f => ({...f, [activeFilterCol!]: vals}))}
+                onClose={() => setActiveFilterCol(null)}
+                anchorRef={anchorRef}
+              />
+            );
+          })()}
         </div>
 
         {saveError && (

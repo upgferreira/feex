@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, ArrowUp, ArrowDown, Filter, Check, X as XIcon, Pencil, Trash2 } from 'lucide-react';
 import { FullscreenModal } from './FullscreenModal';
+import { ColumnFilter, FilterBadge } from './ColumnFilter';
 import { supabase } from '../lib/supabase';
 
 interface MethodsModalProps { isOpen: boolean; onClose: () => void; }
@@ -19,7 +20,8 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
   const [loading, setLoading]         = useState(false);
   const [sortCol, setSortCol]         = useState<string | null>(null);
   const [sortDir, setSortDir]         = useState<'asc' | 'desc'>('asc');
-  const [colFilters, setColFilters]   = useState<Record<string, string>>({});
+  const [colFilters, setColFilters]   = useState<Record<string, string[]>>({});
+  const thRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
   const [activeFilterCol, setActiveFilterCol] = useState<string | null>(null);
   const [selectedId, setSelectedId]   = useState<string | null>(null);
   const [addingRow, setAddingRow]     = useState(false);
@@ -27,7 +29,6 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
   const [newRow, setNewRow]           = useState<Record<string, string>>({});
   const [saving, setSaving]           = useState(false);
   const [saveError, setSaveError]     = React.useState<string | null>(null);
-  const filterRef = useRef<HTMLDivElement>(null);
 
   const load = async () => {
     setLoading(true);
@@ -60,7 +61,7 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
   const getOptions = (key: string) => [...new Set(methods.map(m => String(m[key] ?? '')).filter(Boolean))].sort();
 
   const displayed = methods
-    .filter(m => Object.entries(colFilters).every(([k, v]) => !v || String(m[k] ?? '').toLowerCase().includes(v.toLowerCase())))
+    .filter(m => Object.entries(colFilters).every(([k, vals]) => !vals?.length || vals.includes(String(m[k] ?? ''))))
     .sort((a, b) => !sortCol ? 0 : sortDir === 'asc'
       ? String(a[sortCol] ?? '').localeCompare(String(b[sortCol] ?? ''))
       : String(b[sortCol] ?? '').localeCompare(String(a[sortCol] ?? '')));
@@ -165,7 +166,7 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
                 <tr>
                   <th className="w-10 px-4 py-3 sticky top-0 bg-gray-50 dark:bg-gray-700 z-10" />
                   {COLS.map(c => (
-                    <th key={c.key} className={thCls(c.key)} onClick={e => handleColClick(e, c.key)}>
+                    <th key={c.key} ref={el => thRefs.current[c.key] = el as HTMLTableCellElement} className={thCls(c.key)} onClick={e => handleColClick(e, c.key)}>
                       <div className="flex items-center gap-1">
                         {c.label}
                         {sortCol === c.key && (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
