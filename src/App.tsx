@@ -11,6 +11,7 @@ import { BoxModal } from './components/BoxModal';
 import { IntegrationsModal } from './components/IntegrationsModal';
 import { MappingModal } from './components/MappingModal';
 import { MethodsModal } from './components/MethodsModal';
+import { HelpModal } from './components/HelpModal';
 import { useAuth } from './hooks/useAuth';
 import { useAdmin } from './hooks/useAdmin';
 import { useDarkMode } from './hooks/useDarkMode';
@@ -25,6 +26,7 @@ function App() {
   const [integrationsModalOpen, setIntegrationsModalOpen] = useState(false);
   const [mappingModalOpen, setMappingModalOpen] = useState(false);
   const [methodsModalOpen, setMethodsModalOpen] = useState(false);
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
   const [selectedCanal, setSelectedCanal] = useState<string>('TODOS');
   const { user, loading } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdmin();
@@ -83,7 +85,6 @@ function App() {
           onViewChange={setCurrentView}
           onCategoryClick={() => setCategoryModalOpen(true)}
           onBoxClick={() => setBoxModalOpen(true)}
-          onIntegrationsClick={() => setIntegrationsModalOpen(true)}
           isAdmin={isAdmin}
           canais={canais}
           selectedCanal={selectedCanal}
@@ -95,15 +96,16 @@ function App() {
         <Footer
           onBoxClick={() => setBoxModalOpen(true)}
           onCategoryClick={() => setCategoryModalOpen(true)}
-          onIntegrationsClick={() => setIntegrationsModalOpen(true)}
           onMappingClick={() => setMappingModalOpen(true)}
           onMethodsClick={() => setMethodsModalOpen(true)}
+          onHelpClick={() => setHelpModalOpen(true)}
         />
         <CategoryModal isOpen={categoryModalOpen} onClose={() => setCategoryModalOpen(false)} />
         <BoxModal isOpen={boxModalOpen} onClose={() => setBoxModalOpen(false)} />
         <IntegrationsModal isOpen={integrationsModalOpen} onClose={() => setIntegrationsModalOpen(false)} />
         <MappingModal isOpen={mappingModalOpen} onClose={() => setMappingModalOpen(false)} />
         <MethodsModal isOpen={methodsModalOpen} onClose={() => setMethodsModalOpen(false)} />
+        <HelpModal isOpen={helpModalOpen} onClose={() => setHelpModalOpen(false)} />
     </div>
   );
 }
