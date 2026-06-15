@@ -51,13 +51,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
 
   useEffect(() => { if (isOpen) loadData(); }, [isOpen]);
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (filterRef.current && !filterRef.current.contains(e.target as Node)) setActiveFilterCol(null);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
+
 
   const handleColClick = (e: React.MouseEvent, key: string) => {
     if (e.ctrlKey || e.metaKey) { e.preventDefault(); setActiveFilterCol(prev => prev === key ? null : key); }
