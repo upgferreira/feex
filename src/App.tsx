@@ -10,6 +10,7 @@ import { CategoryModal } from './components/CategoryModal';
 import { BoxModal } from './components/BoxModal';
 import { IntegrationsModal } from './components/IntegrationsModal';
 import { MappingModal } from './components/MappingModal';
+import { MethodsModal } from './components/MethodsModal';
 import { useAuth } from './hooks/useAuth';
 import { useAdmin } from './hooks/useAdmin';
 import { useDarkMode } from './hooks/useDarkMode';
@@ -23,6 +24,7 @@ function App() {
   const [boxModalOpen, setBoxModalOpen] = useState(false);
   const [integrationsModalOpen, setIntegrationsModalOpen] = useState(false);
   const [mappingModalOpen, setMappingModalOpen] = useState(false);
+  const [methodsModalOpen, setMethodsModalOpen] = useState(false);
   const [selectedCanal, setSelectedCanal] = useState<string>('TODOS');
   const { user, loading } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdmin();
@@ -95,11 +97,13 @@ function App() {
           onCategoryClick={() => setCategoryModalOpen(true)}
           onIntegrationsClick={() => setIntegrationsModalOpen(true)}
           onMappingClick={() => setMappingModalOpen(true)}
+          onMethodsClick={() => setMethodsModalOpen(true)}
         />
         <CategoryModal isOpen={categoryModalOpen} onClose={() => setCategoryModalOpen(false)} />
         <BoxModal isOpen={boxModalOpen} onClose={() => setBoxModalOpen(false)} />
         <IntegrationsModal isOpen={integrationsModalOpen} onClose={() => setIntegrationsModalOpen(false)} />
         <MappingModal isOpen={mappingModalOpen} onClose={() => setMappingModalOpen(false)} />
+        <MethodsModal isOpen={methodsModalOpen} onClose={() => setMethodsModalOpen(false)} />
     </div>
   );
 }
