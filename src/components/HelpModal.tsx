@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Upload, BarChart2, Download, Map, Grid, HelpCircle, ChevronRight, ChevronDown, BookOpen, Layers, Database } from 'lucide-react';
+import { X, Upload, BarChart2, Download, Map, HelpCircle, ChevronRight, ChevronDown, BookOpen, Layers, Database } from 'lucide-react';
 
 interface HelpModalProps { isOpen: boolean; onClose: () => void; }
 

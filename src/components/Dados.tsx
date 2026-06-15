@@ -449,7 +449,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
 
   // ── ERP Preview (Bling format) ────────────────────────────────────────────
   const erpPreviewData = useMemo(() => {
-    console.log('erpPreviewData memo:', { dataView, viewMode, canal, filteredRawLen: filteredRaw.length, categoriesLen: categories.length, accountsLen: accounts.length });
     if (dataView !== 'erp' || !['tabela', 'matriz', 'dashboard'].includes(viewMode)) return [];
     if (!filteredRaw.length) return [];
 
@@ -476,7 +475,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       .filter((d: Date | null): d is Date => d !== null && !isNaN(d.getTime()))
       .sort((a: Date, b: Date) => a.getTime() - b.getTime());
 
-    console.log('dates derived:', dates.length, dates[0], dates[dates.length-1]);
 
     const dataInicial = dates.length ? dates[0].toISOString().split('T')[0] : '';
     const dataFinal   = dates.length ? dates[dates.length - 1].toISOString().split('T')[0] : '';
@@ -484,7 +482,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     const competencia = `${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
 
     const rows = convertToBling(canal, filteredRaw, dataInicial, dataFinal, competencia, categories, accounts);
-    console.log('convertToBling result:', rows.length, 'rows for canal:', canal, 'dataInicial:', dataInicial, 'dataFinal:', dataFinal);
 
     // Map to display columns
     return rows.map(r => ({
