@@ -85,6 +85,7 @@ function App() {
           onViewChange={setCurrentView}
           onCategoryClick={() => setCategoryModalOpen(true)}
           onBoxClick={() => setBoxModalOpen(true)}
+          onIntegrationsClick={() => setIntegrationsModalOpen(true)}
           isAdmin={isAdmin}
           canais={canais}
           selectedCanal={selectedCanal}
