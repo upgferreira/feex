@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { getCached, setCached, invalidateCache } from './useCache';
 import { useAuth } from './useAuth';
 
 export interface AdminStats {
