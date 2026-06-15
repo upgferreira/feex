@@ -46,7 +46,7 @@ export const useFileData = () => {
     try {
       const { data, error } = await supabase
         .from('imported_files')
-        .select('id, channel, type, year, competence, start_period, end_period, file_name, source_file_name, size, upload_date, file_data, file_headers, user_id')
+        .select('id, channel, type, year, competence, start_period, end_period, file_name, source_file_name, size, upload_date, file_headers, user_id')
         .eq('user_id', user.id)
         .order('upload_date', { ascending: false });
 
