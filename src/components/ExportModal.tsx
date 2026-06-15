@@ -40,11 +40,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     }
   }, [isERPSelected]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = () => {
     
+    console.log('Export validation:', { canal, erp, dataInicial, dataFinal, formatos });
     if (!canal || !erp || !dataInicial || !dataFinal || formatos.length === 0) {
-      alert('Preencha todos os campos obrigatórios');
+      alert('Preencha todos os campos obrigatórios: Canal=' + canal + ' ERP=' + erp + ' Início=' + dataInicial + ' Fim=' + dataFinal + ' Formatos=' + formatos.length);
       return;
     }
 
@@ -80,9 +80,9 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md mx-4">
-        <div className="flex items-center justify-between mb-6">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-end">
+      <div className="bg-white dark:bg-gray-800 h-full w-full max-w-lg flex flex-col shadow-2xl">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex items-center gap-3">
             <Download className="w-6 h-6 text-blue-600" />
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Configurar Exportação</h3>
@@ -95,7 +95,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex flex-col flex-1 p-6 space-y-4 overflow-y-auto">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Canal *
@@ -180,13 +180,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               Cancelar
             </button>
             <button
-              type="submit"
+              type="button"
+              onClick={handleSubmit as any}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
             >
               Gerar Exportação
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

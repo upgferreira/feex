@@ -127,6 +127,9 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
 
   // Matriz state
   const [expandedPais, setExpandedPais] = useState<Set<string>>(new Set());
+  const [matrizSortCol, setMatrizSortCol] = useState<'pai' | 'total' | 'pct'>('total');
+  const [matrizSortDir, setMatrizSortDir] = useState<'asc' | 'desc'>('desc');
+  const [groupByPedido, setGroupByPedido] = useState(false);
 
   React.useEffect(() => {
     if (externalCanal) { setCanal(externalCanal); setPage(1); setColFilters({}); }
@@ -149,8 +152,26 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   }, [canal, files, getAllChannelData]);
 
   const filteredRaw = useMemo((): any[] => {
-    if (!dateFilter.startDate && !dateFilter.endDate) return rawData;
-    return rawData.filter((r: any) => {
+    let base = rawData;
+    // Group by pedido if enabled (ML: Número da venda, NP: Número do Pedido)
+    if (groupByPedido && canal !== 'TODOS') {
+      const grouped: Record<string, any> = {};
+      base.forEach((r: any) => {
+        const pedido = r['Número da venda'] || r['Número do Pedido'] || r['numero_pedido'] || JSON.stringify(r).slice(0,20);
+        if (!grouped[pedido]) grouped[pedido] = { ...r };
+        else {
+          // Sum numeric fields
+          Object.keys(r).forEach(k => {
+            if (typeof r[k] === 'number' && typeof grouped[pedido][k] === 'number') {
+              grouped[pedido][k] += r[k];
+            }
+          });
+        }
+      });
+      base = Object.values(grouped);
+    }
+    if (!dateFilter.startDate && !dateFilter.endDate) return base;
+    return base.filter((r: any) => {
       let dateStr = '';
       if (canal === 'MERCADO LIVRE') dateStr = formatDate(r['Data da tarifa']);
       else if (canal === 'TODOS') dateStr = r.DATA?.toString() || '';
@@ -676,6 +697,15 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             {/* Calendar date filter button */}
             <div className="relative" ref={calendarRef}>
               <button
+                onClick={() => setGroupByPedido(g => !g)}
+                title="Agrupar por número de pedido"
+                className={`p-1.5 rounded border transition-colors text-xs font-bold ${
+                  groupByPedido
+                    ? 'bg-purple-600 text-white border-purple-600'
+                    : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
+                }`}
+              >#</button>
+              <button
                 onClick={() => setCalendarOpen(o => !o)}
                 className={`p-1.5 rounded border transition-colors ${
                   (dateFilter.startDate || dateFilter.endDate)
@@ -1153,13 +1183,18 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/2">Categoria Pai / Categoria</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/4">Valor</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/4">%</th>
+                    <th onClick={() => { setMatrizSortCol('pai'); setMatrizSortDir(d => matrizSortCol === 'pai' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'); }} className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 select-none">Categoria Pai / Categoria {matrizSortCol === 'pai' ? (matrizSortDir === 'asc' ? '↑' : '↓') : ''}</th>
+                    <th onClick={() => { setMatrizSortCol('total'); setMatrizSortDir(d => matrizSortCol === 'total' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'); }} className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 select-none">Valor {matrizSortCol === 'total' ? (matrizSortDir === 'asc' ? '↑' : '↓') : ''}</th>
+                    <th onClick={() => { setMatrizSortCol('pct'); setMatrizSortDir(d => matrizSortCol === 'pct' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'); }} className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 select-none">% {matrizSortCol === 'pct' ? (matrizSortDir === 'asc' ? '↑' : '↓') : ''}</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {matrizData.map(pai => {
+                  {[...matrizData].sort((a, b) => {
+                  const mul = matrizSortDir === 'asc' ? 1 : -1;
+                  if (matrizSortCol === 'pai') return mul * a.pai.localeCompare(b.pai);
+                  if (matrizSortCol === 'total') return mul * (a.total - b.total);
+                  return mul * (parseFloat(a.pct) - parseFloat(b.pct));
+                }).map(pai => {
                     const isExpanded = expandedPais.has(pai.pai);
                     return (
                       <React.Fragment key={pai.pai}>
@@ -1182,10 +1217,11 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                           <td className="px-6 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white">{formatBRL(pai.total)}</td>
                           <td className="px-6 py-3 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">{formatBRL(pai.total)}</span>
+                              <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
                                 <div className="h-full bg-blue-500 rounded-full" style={{ width: `${Math.min(100, parseFloat(pai.pct))}%` }} />
                               </div>
-                              <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 w-10 text-right">{pai.pct}%</span>
+                              <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 w-8 text-right">{pai.pct}%</span>
                             </div>
                           </td>
                         </tr>
