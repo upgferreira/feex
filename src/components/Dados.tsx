@@ -35,46 +35,59 @@ const CANAIS = ['AMAZON', 'MAGAZINE LUIZA', 'MERCADO LIVRE', 'SHEIN', 'SHOPEE'];
 const ROWS_PER_PAGE = 100;
 const COLORS = ['#3B82F6','#EF4444','#10B981','#F59E0B','#8B5CF6','#EC4899','#06B6D4','#84CC16'];
 
+// ML group classification — maps Detalhe → group
 const ML_GRUPO_MAP: Record<string, string> = {
-  "Cancelamento da tarifa de devolução por envio externo ou intermunicipal": "Cancelamentos de tarifas",
-  "Cancelamento da tarifa de manutenção da Minha página": "Cancelamentos de tarifas",
-  "Cancelamento da tarifa de venda": "Cancelamentos de tarifas",
-  "Cancelamento da tarifa por campanhas de publicidade - Product Ads": "Cancelamentos de tarifas",
-  "Cancelamento da tarifa por devolução": "Cancelamentos de tarifas",
-  "Cancelamento da tarifa por envio interno ao município": "Cancelamentos de tarifas",
-  "Cancelamento da tarifa por serviço de armazenamento Full": "Cancelamentos de tarifas",
-  "Cancelamento da tarifa por serviço de coleta Full": "Cancelamentos de tarifas",
-  "Estorno da tarifa de manutenção do eShop": "Cancelamentos de tarifas",
-  "Estorno da tarifa de venda": "Cancelamentos de tarifas",
-  "Estorno do custo de envio externo ou inter municipal": "Cancelamentos de tarifas",
-  "Estorno do custo de gestão da venda": "Cancelamentos de tarifas",
-  "Estorno do custo de Mercado Envios": "Cancelamentos de tarifas",
-  "Tarifa de devolução": "Tarifa do Mercado Envios",
-  "Tarifa de devolução por envio externo ou intermunicipal": "Tarifa do Mercado Envios",
-  "Tarifa de devolução por envio interno no município": "Tarifa do Mercado Envios",
-  "Tarifa de envio extra ou intermunicipal": "Tarifa do Mercado Envios",
-  "Tarifa de envio interno à cidade": "Tarifa do Mercado Envios",
-  "Tarifa do Mercado Envios": "Tarifa do Mercado Envios",
-  "Tarifa por envio interno ao município": "Tarifa do Mercado Envios",
-  "Tarifa de manutenção da Minha página": "Tarifas da Minha página",
-  "Custo de gestão da venda": "Tarifas de venda",
-  "Custo por inconformidade no Envios Full": "Tarifas de venda",
-  "Tarifa de venda": "Tarifas de venda",
-  "Cancelamento do custo por inconformidade no Envios Full": "Tarifas do Mercado Envios Full",
-  "Custo de armazenamento prolongado no Full": "Tarifas do Mercado Envios Full",
-  "Custo do serviço de coleta Full": "Tarifas do Mercado Envios Full",
-  "Custo por retirada de estoque Full": "Tarifas do Mercado Envios Full",
-  "Custo por retirada ou descarte de estoque Full": "Tarifas do Mercado Envios Full",
-  "Tarifa pelo serviço de armazenamento": "Tarifas do Mercado Envios Full",
-  "Tarifa pelo serviço de armazenamento Full": "Tarifas do Mercado Envios Full",
-  "Tarifa por estoque antigo no Full": "Tarifas do Mercado Envios Full",
-  "Tarifas dos serviços do Mercado Pago": "Tarifas dos serviços do Mercado Pago",
-  "Campanhas de publicidade - Product Ads": "Tarifas por campanha de publicidade",
-  "Tarifa por campanha de publicidade no Google Ads pelo Mercado Shops": "Tarifas por campanha de publicidade",
-  "Taxa de parcelamento (equivalente ao acréscimo no preço pago pelo comprador)": "Taxas de parcelamento",
-  "Taxas de parcelamento": "Taxas de parcelamento",
+  // ── TAXAS ──────────────────────────────────────────────────────────────────
+  "Custo de gestão da venda":                                                      "Taxas",
+  "Tarifa de venda":                                                               "Taxas",
+  "Taxa de parcelamento (equivalente ao acréscimo no preço pago pelo comprador)":  "Taxas",
+  "Taxas de parcelamento":                                                         "Taxas",
+  "Taxa de parcelamento":                                                          "Taxas",
+  "Custo por vender no Mercado Livre":                                             "Taxas",
+  "Custo por cobrar no Mercado Pago":                                              "Taxas",
+  "Taxas de recebimento":                                                          "Taxas",
+  "Taxa de recebimento":                                                           "Taxas",
+  "Tarifa de venda com afiliados":                                                 "Taxas",
+  "Custo por inconformidade no Envios Full":                                       "Taxas",
+  "Tarifas dos serviços do Mercado Pago":                                          "Taxas",
+
+  // ── FRETES ─────────────────────────────────────────────────────────────────
+  "Cancelamento da tarifa de devolução por envio externo ou intermunicipal":       "Fretes",
+  "Cancelamento da tarifa por envio interno ao município":                         "Fretes",
+  "Cancelamento da tarifa de envio extra ou intermunicipal":                       "Fretes",
+  "Estorno do custo de envio externo ou inter municipal":                          "Fretes",
+  "Estorno do custo de Mercado Envios":                                            "Fretes",
+  "Tarifa de devolução por envio externo ou intermunicipal":                       "Fretes",
+  "Tarifa de devolução por envio interno no município":                            "Fretes",
+  "Tarifa de envio interno à cidade":                                              "Fretes",
+  "Tarifa por envio interno ao município":                                         "Fretes",
+  "Tarifa de envio extra ou intermunicipal":                                       "Fretes",
+  "Tarifa do Mercado Envios":                                                      "Fretes",
+  "Tarifa de devolução":                                                           "Fretes",
+
+  // ── OUTROS ─────────────────────────────────────────────────────────────────
+  "Cancelamento da tarifa de manutenção da Minha página":                         "Outros",
+  "Cancelamento da tarifa de venda":                                               "Outros",
+  "Cancelamento da tarifa por campanhas de publicidade - Product Ads":             "Outros",
+  "Cancelamento da tarifa por devolução":                                          "Outros",
+  "Cancelamento da tarifa por serviço de armazenamento Full":                      "Outros",
+  "Cancelamento da tarifa por serviço de coleta Full":                             "Outros",
+  "Estorno da tarifa de manutenção do eShop":                                      "Outros",
+  "Estorno da tarifa de venda":                                                    "Outros",
+  "Estorno do custo de gestão da venda":                                           "Outros",
+  "Cancelamento do custo por inconformidade no Envios Full":                       "Outros",
+  "Custo de armazenamento prolongado no Full":                                     "Outros",
+  "Custo do serviço de coleta Full":                                               "Outros",
+  "Custo por retirada de estoque Full":                                            "Outros",
+  "Custo por retirada ou descarte de estoque Full":                                "Outros",
+  "Tarifa pelo serviço de armazenamento":                                          "Outros",
+  "Tarifa pelo serviço de armazenamento Full":                                     "Outros",
+  "Tarifa por estoque antigo no Full":                                             "Outros",
+  "Tarifa de manutenção da Minha página":                                          "Outros",
+  "Tarifa de manutenção do eShop":                                                 "Outros",
+  "Campanhas de publicidade - Product Ads":                                        "Outros",
+  "Tarifa por campanha de publicidade no Google Ads pelo Mercado Shops":           "Outros",
   "Cancelamento da Taxa de parcelamento (equivalente ao acréscimo no preço pago pelo comprador)": "Outros",
-  "Tarifa de manutenção do eShop": "Outros",
 };
 
 type ViewMode = 'dashboard' | 'tabela' | 'matriz';
@@ -187,8 +200,8 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     });
   }, [rawData, dateFilter, canal]);
 
-  const ML_FRETES_GRUPOS = ['Tarifa do Mercado Envios', 'Tarifas do Mercado Envios Full'];
-  const ML_TAXAS_GRUPOS = ['Tarifas de venda', 'Tarifas dos serviços do Mercado Pago', 'Taxas de parcelamento'];
+  const ML_FRETES_GRUPOS = ['Fretes'];
+  const ML_TAXAS_GRUPOS = ['Taxas'];
 
   const stats = useMemo(() => {
     const empty = { vendas: 0, receita: 0, taxas: 0, fretes: 0, outros: 0, margemBruta: 0, margemLiquida: 0, ticketMedio: 0 };
