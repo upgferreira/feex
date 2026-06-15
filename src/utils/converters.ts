@@ -96,14 +96,24 @@ export function convertMLToBling(
 
   const findCat = (detalhe: string) => {
     const norm = normalizeText(detalhe);
-    // Find all matches for this channel+category
-    const matches = categories.filter(c => {
+    // 1. Exact normalized match
+    let matches = categories.filter(c => {
       const ch = String(c.channel || c.canal || '').toUpperCase().trim();
       if (ch !== 'MERCADO LIVRE') return false;
       const key = normalizeText(c.channel_category || c.categoria_canal || '');
       return key === norm;
     });
-    // Prefer the one with erp_category filled
+    // 2. If no exact match, try partial (one contains the other)
+    if (!matches.length) {
+      matches = categories.filter(c => {
+        const ch = String(c.channel || c.canal || '').toUpperCase().trim();
+        if (ch !== 'MERCADO LIVRE') return false;
+        const key = normalizeText(c.channel_category || c.categoria_canal || '');
+        if (!key || !norm) return false;
+        return key.includes(norm) || norm.includes(key);
+      });
+    }
+    // 3. Prefer the one with erp_category filled
     const withCat = matches.find(c => !!(c.erp_category || c.categoria_erp));
     const match = withCat || matches[0];
     return {
@@ -129,10 +139,7 @@ export function convertMLToBling(
       if (dataLinha < dataInicialObj || dataLinha > dataFinalObj) return;
 
       const dataFormatada = dataLinha.toLocaleDateString('pt-BR');
-      // Debug first 3 rows
-      if (resultado.length < 3) {
-        console.log('ML row date debug:', { dataTarifa, typeOf: typeof dataTarifa, dataLinha: dataLinha.toISOString(), dataFormatada, month: dataLinha.getMonth()+1, year: dataLinha.getFullYear() });
-      }
+
       const { cat: categoria, pai: categoriaPai } = findCat(detalhe);
       const catDisplay = categoriaPai && categoria
         ? `${categoriaPai.toUpperCase()} > ${categoria.toUpperCase()}`
