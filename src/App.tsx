@@ -13,6 +13,7 @@ import { MappingModal } from './components/MappingModal';
 import { MethodsModal } from './components/MethodsModal';
 import { HelpModal } from './components/HelpModal';
 import { useAuth } from './hooks/useAuth';
+import { supabase } from './lib/supabase';
 import { useAdmin } from './hooks/useAdmin';
 import { useDarkMode } from './hooks/useDarkMode';
 import { useFileData } from './hooks/useFileData';
@@ -34,6 +35,37 @@ function App() {
   const { files, subscribe } = useFileData();
 
   // Unique canal list from imported files
+  // ── Bling OAuth callback ──────────────────────────────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const state = params.get('state');
+    if (!code || !state) return;
+    window.history.replaceState({}, document.title, window.location.pathname);
+    const exchangeCode = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bling_getToken`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type':  'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({ code }),
+          }
+        );
+        const data = await res.json();
+        if (data.ok) alert('✅ Bling conectado com sucesso!');
+        else { console.error('Bling error:', data); alert('Erro ao conectar o Bling. Tente novamente.'); }
+      } catch (e) { console.error(e); }
+    };
+    exchangeCode();
+  }, []);
+
   const canais = useMemo(() => {
     return Array.from(new Set(files.map(f => f.canal))).sort();
   }, [files]);
