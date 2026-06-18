@@ -34,11 +34,11 @@ export const Footer: React.FC<FooterProps> = ({ onBoxClick, onCategoryClick, onM
           <span className="text-gray-300 dark:text-gray-600 text-xs">|</span>
           {linkBtn('MAPEAMENTO', onMappingClick)}
           <span className="text-gray-300 dark:text-gray-600 text-xs">|</span>
-          {linkBtn('MEIOS', onMethodsClick)}
-          <span className="text-gray-300 dark:text-gray-600 text-xs">|</span>
-          {linkBtn('CAIXAS', onBoxClick)}
-          <span className="text-gray-300 dark:text-gray-600 text-xs">|</span>
           {linkBtn('CATEGORIAS', onCategoryClick)}
+          <span className="text-gray-300 dark:text-gray-600 text-xs">|</span>
+          {linkBtn('CONTAS', onBoxClick)}
+          <span className="text-gray-300 dark:text-gray-600 text-xs">|</span>
+          {linkBtn('MÉTODOS', onMethodsClick)}
         </div>
       </div>
     </footer>
