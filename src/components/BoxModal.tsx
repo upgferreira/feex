@@ -123,7 +123,7 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
   const selectedRow = accounts.find(a => a.id === selectedId);
 
   return (
-    <FullscreenModal isOpen={isOpen} onClose={onClose} title="Mapeamento de Caixas">
+    <FullscreenModal isOpen={isOpen} onClose={onClose} title="Contas Financeiras">
       <div className="flex flex-col h-full">
         <div className="px-6 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-gray-50 dark:bg-gray-900">
           <div className="flex items-center gap-3">
@@ -181,7 +181,7 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
                   const mul = blingSortDir === 'asc' ? 1 : -1;
                   return mul * String(a[blingSortCol] ?? '').localeCompare(String(b[blingSortCol] ?? ''));
                 });
-                const blingCols: [string, string][] = [['id','ID'],['descricao','Descrição'],['tipo','Tipo'],['aliasIntegracao','Alias']];
+                const blingCols: [string, string][] = [['descricao','Descrição'],['tipo','Tipo'],['aliasIntegracao','Alias'],['id','ID']];
                 return (
                   <table className="w-full">
                     <thead>
