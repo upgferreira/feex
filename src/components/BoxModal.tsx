@@ -28,6 +28,15 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
   const [newRow, setNewRow] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = React.useState<string | null>(null);
+  const [viewMode, setViewMode]         = useState<'app' | 'erp'>('app');
+  const [blingContas, setBlingContas]   = useState<any[]>([]);
+  const [blingLoading, setBlingLoading] = useState(false);
+  const [blingError, setBlingError]     = useState<string | null>(null);
+  const [blingSortCol, setBlingSortCol] = useState<string>('descricao');
+  const [blingSortDir, setBlingSortDir] = useState<'asc' | 'desc'>('asc');
+  const [blingColFilters, setBlingColFilters] = useState<Record<string, string[]>>({});
+  const [blingActiveFilter, setBlingActiveFilter] = useState<string | null>(null);
+  const blingThRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
 
   const load = async () => {
     setLoading(true);
@@ -38,9 +47,24 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { if (isOpen) load(); }, [isOpen]);
+  useEffect(() => { if (isOpen) { load(); setViewMode('app'); } }, [isOpen]);
 
-
+  const fetchBlingContas = async (force = false) => {
+    if (!force && blingContas.length > 0) return;
+    setBlingLoading(true); setBlingError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setBlingError('Não autenticado'); return; }
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bling_getContasFinanceiras`,
+        { method: 'GET', headers: { 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY } }
+      );
+      const json = await res.json();
+      if (json.error) { setBlingError(json.error); return; }
+      setBlingContas(json.data || []);
+    } catch (e: any) { setBlingError(e.message); }
+    finally { setBlingLoading(false); }
+  };
 
   const handleColClick = (e: React.MouseEvent, key: string) => {
     if (e.ctrlKey || e.metaKey) { e.preventDefault(); setActiveFilterCol(prev => prev === key ? null : key); }
@@ -102,8 +126,18 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
     <FullscreenModal isOpen={isOpen} onClose={onClose} title="Mapeamento de Caixas">
       <div className="flex flex-col h-full">
         <div className="px-6 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-gray-50 dark:bg-gray-900">
-          <span className="text-xs text-gray-400">{displayed.length} registro(s)</span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400">{viewMode === 'app' ? `${displayed.length} registro(s)` : `${blingContas.length} contas`}</span>
+            <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              {(['app', 'erp'] as const).map(m => (
+                <button key={m} onClick={() => { setViewMode(m); if (m === 'erp' && blingContas.length === 0) fetchBlingContas(); }}
+                  className={`px-3 py-1 text-xs font-semibold transition-colors ${viewMode === m ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}>
+                  {m.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+          {viewMode === 'app' && <div className="flex items-center gap-2">
             <button onClick={() => selectedId && setEditingRow({...selectedRow})} disabled={!selectedId}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800">
               <Pencil className="w-3.5 h-3.5" /> Editar
@@ -116,13 +150,92 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <Plus className="w-4 h-4" /> Adicionar
             </button>
-          </div>
+          </div>}
         </div>
 
         <div className="flex-1 overflow-auto relative">
-          {loading ? (
+
+          {/* ERP (Bling) contas view */}
+          {viewMode === 'erp' && (
+            <div className="h-full overflow-auto">
+              {blingLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+                </div>
+              ) : blingError ? (
+                <div className="flex flex-col items-center justify-center h-64 gap-3">
+                  <p className="text-red-500 text-sm">{blingError}</p>
+                  <button onClick={() => fetchBlingContas(true)} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Tentar novamente</button>
+                </div>
+              ) : blingContas.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 gap-3">
+                  <p className="text-gray-500 text-sm">Nenhuma conta encontrada no Bling</p>
+                  <button onClick={() => fetchBlingContas(true)} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Carregar</button>
+                </div>
+              ) : (() => {
+                let filtered = [...blingContas];
+                Object.entries(blingColFilters).forEach(([k, vals]) => {
+                  if (vals?.length) filtered = filtered.filter((r: any) => vals.includes(String(r[k] ?? '')));
+                });
+                const sorted = filtered.sort((a: any, b: any) => {
+                  const mul = blingSortDir === 'asc' ? 1 : -1;
+                  return mul * String(a[blingSortCol] ?? '').localeCompare(String(b[blingSortCol] ?? ''));
+                });
+                const blingCols: [string, string][] = [['id','ID'],['descricao','Descrição'],['tipo','Tipo'],['aliasIntegracao','Alias']];
+                return (
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                        {blingCols.map(([key, h]) => (
+                          <th key={key}
+                            ref={el => { blingThRefs.current[key] = el as HTMLTableCellElement; }}
+                            onClick={e => {
+                              if (e.ctrlKey || e.metaKey) { e.preventDefault(); setBlingActiveFilter(prev => prev === key ? null : key); }
+                              else { if (blingSortCol === key) setBlingSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setBlingSortCol(key); setBlingSortDir('asc'); } }
+                            }}
+                            className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer select-none whitespace-nowrap ${blingColFilters[key]?.length ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'}`}>
+                            <div className="flex items-center gap-1">
+                              {h}
+                              {blingSortCol === key ? (blingSortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : null}
+                              {blingColFilters[key]?.length ? <Filter className="w-3 h-3" /> : null}
+                            </div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {sorted.map((conta: any) => (
+                        <tr key={conta.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="px-4 py-3 text-xs text-gray-400 font-mono">{conta.id}</td>
+                          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">{conta.descricao}</td>
+                          <td className="px-4 py-3 text-sm text-gray-500">{conta.tipo ?? '-'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-500">{conta.aliasIntegracao ?? '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                );
+              })()}
+              {blingActiveFilter && (() => {
+                const anchorRef = { current: blingThRefs.current[blingActiveFilter] } as React.RefObject<HTMLElement>;
+                const options = [...new Set(blingContas.map((c: any) => String(c[blingActiveFilter] ?? '')).filter(Boolean))].sort();
+                return (
+                  <ColumnFilter
+                    column={blingActiveFilter}
+                    label={blingActiveFilter}
+                    options={options}
+                    selected={blingColFilters[blingActiveFilter] || []}
+                    onChange={vals => setBlingColFilters(f => ({ ...f, [blingActiveFilter!]: vals }))}
+                    onClose={() => setBlingActiveFilter(null)}
+                    anchorRef={anchorRef}
+                  />
+                );
+              })()}
+            </div>
+          )}
+          {viewMode === 'app' && loading ? (
             <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" /></div>
-          ) : (
+          ) : viewMode === 'app' ? (
             <table className="w-full">
               <thead>
                 <tr>
@@ -192,7 +305,7 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
                 )}
               </tbody>
             </table>
-          )}
+          ) : null}
 
           {activeFilterCol && (() => {
             const anchorRef = { current: thRefs.current[activeFilterCol] } as React.RefObject<HTMLElement>;
