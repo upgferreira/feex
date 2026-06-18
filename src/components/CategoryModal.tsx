@@ -43,6 +43,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
   const [blingEditRow, setBlingEditRow] = useState<any | null>(null);
   const [blingAddRow, setBlingAddRow]   = useState<any | null>(null);
   const [blingActing, setBlingActing]   = useState(false);
+  const [blingSelectedIds, setBlingSelectedIds] = useState<Set<number>>(new Set());
 
   const loadData = async () => {
     setLoading(true);
@@ -228,10 +229,22 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
               ) : (
                 <>
                   {/* ERP Toolbar */}
-                  <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-900">
-                    <span className="text-xs text-gray-400">{blingCats.length} categorias no Bling</span>
+                  <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-900 flex-shrink-0">
+                    <span className="text-xs text-gray-400">{blingCats.length} categorias · {blingSelectedIds.size} selecionada(s)</span>
                     <div className="flex gap-2">
-                      <button onClick={() => setBlingEditRow(null) || setBlingAddRow({ descricao: '', tipo: 1, idCategoriaPai: 0 })}
+                      <button
+                        onClick={() => { const sel = blingCats.find((c: any) => blingSelectedIds.has(c.id)); if (sel) { setBlingAddRow(null); setBlingEditRow({...sel}); }}}
+                        disabled={blingSelectedIds.size !== 1}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 bg-white dark:bg-gray-800">
+                        <Pencil className="w-3.5 h-3.5" /> Editar
+                      </button>
+                      <button
+                        onClick={async () => { if (!window.confirm(`Excluir ${blingSelectedIds.size} categoria(s)?`)) return; for (const id of blingSelectedIds) await blingAction('delete', id, null); setBlingSelectedIds(new Set()); }}
+                        disabled={blingSelectedIds.size === 0 || blingActing}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 text-red-600 border-red-300 hover:bg-red-50 bg-white dark:bg-gray-800">
+                        <Trash2 className="w-3.5 h-3.5" /> Excluir
+                      </button>
+                      <button onClick={() => { setBlingEditRow(null); setBlingAddRow({ descricao: '', tipo: 1, idCategoriaPai: 0 }); }}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                         <Plus className="w-3.5 h-3.5" /> Adicionar
                       </button>
@@ -240,7 +253,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                   <table className="w-full">
                     <thead>
                       <tr className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
-                        {['Tipo','Categoria Pai','Categoria','Grupo','Padrão','ID Cat. Pai','ID Categoria',''].map(h => (
+                        {['','Tipo','Categoria Pai','Categoria','Grupo','Padrão','ID Cat. Pai','ID Categoria',''].map(h => (
                           <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
@@ -285,8 +298,10 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                         const tipoColor = cat.tipo === 1 ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400';
                         const pai = blingCats.find((c: any) => c.id === cat.idCategoriaPai);
                         return (
-                          <tr key={cat.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${blingSelectedId === cat.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
-                            onClick={() => setBlingSelectedId(blingSelectedId === cat.id ? null : cat.id)}>
+                          <tr key={cat.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${blingSelectedIds.has(cat.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
+                            <td className="px-3 py-2.5 text-center" onClick={() => setBlingSelectedIds(prev => { const n = new Set(prev); if (n.has(cat.id)) n.delete(cat.id); else n.add(cat.id); return n; })}>
+                              <input type="checkbox" readOnly checked={blingSelectedIds.has(cat.id)} className="rounded border-gray-300 text-blue-600 cursor-pointer" />
+                            </td>
                             <td className="px-4 py-2.5">
                               {isEditing ? (
                                 <select value={blingEditRow.tipo} onChange={e => setBlingEditRow((r: any) => ({...r, tipo: Number(e.target.value)}))}
@@ -307,16 +322,11 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                             <td className="px-4 py-2.5 text-xs text-gray-400 font-mono">{cat.idCategoriaPai || '-'}</td>
                             <td className="px-4 py-2.5 text-xs text-gray-400 font-mono">{cat.id}</td>
                             <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
-                              {isEditing ? (
+                              {isEditing && (
                                 <div className="flex gap-1">
                                   <button onClick={() => blingAction('put', cat.id, blingEditRow)} disabled={blingActing}
                                     className="p-1 text-green-600 hover:bg-green-50 rounded"><Check className="w-4 h-4" /></button>
                                   <button onClick={() => setBlingEditRow(null)} className="p-1 text-red-500 hover:bg-red-50 rounded"><XIcon className="w-4 h-4" /></button>
-                                </div>
-                              ) : (
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100">
-                                  <button onClick={() => setBlingEditRow({...cat})} className="p-1 text-blue-500 hover:bg-blue-50 rounded"><Pencil className="w-3.5 h-3.5" /></button>
-                                  <button onClick={() => blingAction('delete', cat.id, null)} disabled={blingActing} className="p-1 text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
                                 </div>
                               )}
                             </td>
@@ -331,7 +341,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
           )}
           {/* APP (FEEX) categories view */}
           {viewMode === 'app' && (
-            <div className="flex-1 overflow-auto relative">
+            <div className="h-full overflow-auto relative">
             {loading ? (
             <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" /></div>
           ) : (
