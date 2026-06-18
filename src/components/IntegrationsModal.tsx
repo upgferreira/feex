@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FullscreenModal } from './FullscreenModal';
 import { supabase } from '../lib/supabase';
-import { CheckCircle, XCircle, ExternalLink, RefreshCw } from 'lucide-react';
+import { CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 
 interface IntegrationsModalProps { isOpen: boolean; onClose: () => void; }
 
@@ -43,7 +43,6 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
   const [blingConnected, setBlingConnected] = useState(false);
   const [blingExpiry, setBlingExpiry]       = useState<string | null>(null);
   const [checking, setChecking]             = useState(false);
-  const [refreshing, setRefreshing]         = useState(false);
 
   const checkBlingStatus = async () => {
     setChecking(true);
@@ -61,32 +60,7 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
     finally { setChecking(false); }
   };
 
-  const refreshBlingToken = async () => {
-    setRefreshing(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bling_getRefreshToken`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type':  'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-          },
-        }
-      );
-      const data = await res.json();
-      if (data.ok) {
-        setBlingExpiry(data.expires_at);
-        alert('✅ Token renovado com sucesso!');
-      } else {
-        alert('Erro ao renovar token. Reconecte o Bling.');
-      }
-    } catch (e) { console.error(e); }
-    finally { setRefreshing(false); }
-  };
+
 
   const disconnectBling = async () => {
     if (!confirm('Desconectar o Bling?')) return;
@@ -135,13 +109,8 @@ export const IntegrationsModal: React.FC<IntegrationsModalProps> = ({ isOpen, on
                   </span>
                 )}
                 <div className="flex gap-1 mt-1 w-full">
-                  <button onClick={refreshBlingToken} disabled={refreshing}
-                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded border border-blue-200 dark:border-blue-700 hover:bg-blue-100">
-                    <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-                    Renovar
-                  </button>
                   <button onClick={disconnectBling}
-                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded border border-red-200 dark:border-red-700 hover:bg-red-100">
+                    className="w-full flex items-center justify-center gap-1 px-2 py-1 text-xs bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded border border-red-200 dark:border-red-700 hover:bg-red-100">
                     <XCircle className="w-3 h-3" />
                     Desconectar
                   </button>
