@@ -219,7 +219,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
           )}
           {/* APP (FEEX) categories view */}
           {viewMode === 'app' && (
-          {loading ? (
+            <div className="flex-1 overflow-auto relative">
+            {loading ? (
             <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" /></div>
           ) : (
             <table className="w-full">
@@ -330,6 +331,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
             </table>
           )}
 
+          </div>
           )}
 
           {activeFilterCol && (() => {
