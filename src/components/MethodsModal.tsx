@@ -320,7 +320,7 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
               })()}
             </div>
           )}
-          {viewMode === 'app' && loading ? (
+          {viewMode === 'app' && (loading ? (
             <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" /></div>
           ) : (
             <table className="w-full">
@@ -398,9 +398,9 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
                 )}
               </tbody>
             </table>
-          )}
+          ))}
 
-          {activeFilterCol && (
+          {viewMode === 'app' && activeFilterCol && (
             <div className="absolute top-0 left-1/2 -translate-x-1/2 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-4 w-64">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-medium text-gray-900 dark:text-white">{COLS.find(c => c.key === activeFilterCol)?.label}</span>
