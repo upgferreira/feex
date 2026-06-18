@@ -313,7 +313,7 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
                     {blingActiveFilter && (() => {
                       const anchorRef = { current: blingThRefs.current[blingActiveFilter] } as React.RefObject<HTMLElement>;
                       const options = [...new Set(blingMetodos.map((c:any)=>String(c[blingActiveFilter]??'')).filter(Boolean))].sort();
-                      return <ColumnFilter column={blingActiveFilter} label={blingActiveFilter} options={options} selected={blingColFilters[blingActiveFilter]||[]} onChange={vals=>setBlingColFilters(f=>{...f,[blingActiveFilter!]:vals})} onClose={()=>setBlingActiveFilter(null)} anchorRef={anchorRef} />;
+                      return <ColumnFilter column={blingActiveFilter} label={blingActiveFilter} options={options} selected={blingColFilters[blingActiveFilter]||[]} onChange={vals=>setBlingColFilters(f=>({...f,[blingActiveFilter!]:vals}))} onClose={()=>setBlingActiveFilter(null)} anchorRef={anchorRef} />;
                     })()}
                   </>
                 );
