@@ -46,7 +46,9 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
   const [blingSelectedIds, setBlingSelectedIds] = useState<Set<number>>(new Set());
   const [blingSortCol, setBlingSortCol] = useState<string>('descricao');
   const [blingSortDir, setBlingSortDir] = useState<'asc' | 'desc'>('asc');
-  const [blingFilter, setBlingFilter] = useState<string>('');
+  const [blingColFilters, setBlingColFilters] = useState<Record<string, string[]>>({});
+  const [blingActiveFilter, setBlingActiveFilter] = useState<string | null>(null);
+  const blingThRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
 
   const loadData = async () => {
     setLoading(true);
@@ -183,9 +185,9 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
   return (
     <FullscreenModal isOpen={isOpen} onClose={onClose} title="Mapeamento de Categorias">
       <div className="flex flex-col h-full">
-        {viewMode === 'app' && <div className="px-6 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-gray-50 dark:bg-gray-900">
+        <div className="px-6 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-gray-50 dark:bg-gray-900">
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400">{displayed.length} registro(s)</span>
+            <span className="text-xs text-gray-400">{viewMode === 'app' ? `${displayed.length} registro(s)` : `${blingCats.length} categorias`}</span>
             <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
               {(['app', 'erp'] as const).map(m => (
                 <button key={m} onClick={() => { setViewMode(m); if (m === 'erp' && blingCats.length === 0) fetchBlingCats(); }}
@@ -195,7 +197,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
               ))}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          {viewMode === 'app' && <div className="flex items-center gap-2">
             <button onClick={() => { if (!selectedId) return; setEditingRow({...selectedRow}); }}
               disabled={!selectedId}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800">
@@ -209,8 +211,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <Plus className="w-4 h-4" /> Adicionar
             </button>
-          </div>
-        </div>}
+          </div>}
+        </div>
 
         <div className="flex-1 overflow-auto relative">
           {/* ERP (Bling) categories view */}
@@ -254,13 +256,12 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                       </button>
                     </div>
                   </div>
-                  <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
-                    <input value={blingFilter} onChange={e => setBlingFilter(e.target.value)}
-                      placeholder="Buscar categoria..." className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
-                  </div>
-                  {(() => {
-                    const filtered = blingCats.filter((c: any) => !blingFilter || c.descricao?.toLowerCase().includes(blingFilter.toLowerCase()));
-                    const sorted = [...filtered].sort((a: any, b: any) => {
+                    {(() => {
+                    let filtered = [...blingCats];
+                    Object.entries(blingColFilters).forEach(([k, vals]) => {
+                      if (vals?.length) filtered = filtered.filter((r: any) => vals.includes(String(r[k] ?? '')));
+                    });
+                    const sorted = filtered.sort((a: any, b: any) => {
                       const mul = blingSortDir === 'asc' ? 1 : -1;
                       const av = String(a[blingSortCol] ?? ''), bv = String(b[blingSortCol] ?? '');
                       return mul * av.localeCompare(bv);
@@ -270,9 +271,19 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                     <thead>
                       <tr className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
                         {[['',''],['tipo','Tipo'],['','Categoria Pai'],['descricao','Categoria'],['grupo','Grupo'],['padrao','Padrão'],['idCategoriaPai','ID Cat. Pai'],['id','ID Categoria'],['','']].map(([key, h]) => (
-                          <th key={h} onClick={() => { if (key) { if (blingSortCol === key) setBlingSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setBlingSortCol(key); setBlingSortDir('asc'); } }}}
-                          className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap ${key ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 select-none' : ''} text-gray-500 dark:text-gray-400`}>
-                          {h}{blingSortCol === key && key ? (blingSortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                          <th key={h}
+                          ref={el => { if (key) blingThRefs.current[key] = el as HTMLTableCellElement; }}
+                          onClick={e => {
+                            if (!key) return;
+                            if (e.ctrlKey || e.metaKey) { e.preventDefault(); setBlingActiveFilter(prev => prev === key ? null : key); }
+                            else { if (blingSortCol === key) setBlingSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setBlingSortCol(key); setBlingSortDir('asc'); } }
+                          }}
+                          className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap ${key ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 select-none' : ''} ${blingColFilters[key]?.length ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
+                          <div className="flex items-center gap-1">
+                            {h}
+                            {blingSortCol === key && key ? (blingSortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : null}
+                            {blingColFilters[key]?.length ? <Filter className="w-3 h-3" /> : null}
+                          </div>
                         </th>
                         ))}
                       </tr>
@@ -360,6 +371,21 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                       })}
                     </tbody>
                   </table>
+                    );
+                  })()}
+                  {blingActiveFilter && (() => {
+                    const anchorRef = { current: blingThRefs.current[blingActiveFilter] } as React.RefObject<HTMLElement>;
+                    const options = [...new Set(blingCats.map((c: any) => String(c[blingActiveFilter] ?? '')).filter(Boolean))].sort();
+                    return (
+                      <ColumnFilter
+                        column={blingActiveFilter}
+                        label={blingActiveFilter}
+                        options={options}
+                        selected={blingColFilters[blingActiveFilter] || []}
+                        onChange={vals => setBlingColFilters(f => ({ ...f, [blingActiveFilter!]: vals }))}
+                        onClose={() => setBlingActiveFilter(null)}
+                        anchorRef={anchorRef}
+                      />
                     );
                   })()}
                 </>
