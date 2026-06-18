@@ -44,6 +44,9 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
   const [blingAddRow, setBlingAddRow]   = useState<any | null>(null);
   const [blingActing, setBlingActing]   = useState(false);
   const [blingSelectedIds, setBlingSelectedIds] = useState<Set<number>>(new Set());
+  const [blingSortCol, setBlingSortCol] = useState<string>('descricao');
+  const [blingSortDir, setBlingSortDir] = useState<'asc' | 'desc'>('asc');
+  const [blingFilter, setBlingFilter] = useState<string>('');
 
   const loadData = async () => {
     setLoading(true);
@@ -60,7 +63,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
 
   useEffect(() => { if (isOpen) { loadData(); setViewMode('app'); } }, [isOpen]);
 
-  const fetchBlingCats = async () => {
+  const fetchBlingCats = async (force = false) => {
+    if (!force && blingCats.length > 0) return; // use cache
     setBlingLoading(true); setBlingError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -179,7 +183,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
   return (
     <FullscreenModal isOpen={isOpen} onClose={onClose} title="Mapeamento de Categorias">
       <div className="flex flex-col h-full">
-        <div className="px-6 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-gray-50 dark:bg-gray-900">
+        {viewMode === 'app' && <div className="px-6 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-gray-50 dark:bg-gray-900">
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-400">{displayed.length} registro(s)</span>
             <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -206,7 +210,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
               <Plus className="w-4 h-4" /> Adicionar
             </button>
           </div>
-        </div>
+        </div>}
 
         <div className="flex-1 overflow-auto relative">
           {/* ERP (Bling) categories view */}
@@ -250,11 +254,26 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                       </button>
                     </div>
                   </div>
-                  <table className="w-full">
+                  <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+                    <input value={blingFilter} onChange={e => setBlingFilter(e.target.value)}
+                      placeholder="Buscar categoria..." className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" />
+                  </div>
+                  {(() => {
+                    const filtered = blingCats.filter((c: any) => !blingFilter || c.descricao?.toLowerCase().includes(blingFilter.toLowerCase()));
+                    const sorted = [...filtered].sort((a: any, b: any) => {
+                      const mul = blingSortDir === 'asc' ? 1 : -1;
+                      const av = String(a[blingSortCol] ?? ''), bv = String(b[blingSortCol] ?? '');
+                      return mul * av.localeCompare(bv);
+                    });
+                    return (
+                <table className="w-full">
                     <thead>
                       <tr className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
-                        {['','Tipo','Categoria Pai','Categoria','Grupo','Padrão','ID Cat. Pai','ID Categoria',''].map(h => (
-                          <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                        {[['',''],['tipo','Tipo'],['','Categoria Pai'],['descricao','Categoria'],['grupo','Grupo'],['padrao','Padrão'],['idCategoriaPai','ID Cat. Pai'],['id','ID Categoria'],['','']].map(([key, h]) => (
+                          <th key={h} onClick={() => { if (key) { if (blingSortCol === key) setBlingSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setBlingSortCol(key); setBlingSortDir('asc'); } }}}
+                          className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider whitespace-nowrap ${key ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 select-none' : ''} text-gray-500 dark:text-gray-400`}>
+                          {h}{blingSortCol === key && key ? (blingSortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                        </th>
                         ))}
                       </tr>
                     </thead>
@@ -292,7 +311,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                           </td>
                         </tr>
                       )}
-                      {blingCats.map((cat: any) => {
+                      {sorted.map((cat: any) => {
                         const isEditing = blingEditRow?.id === cat.id;
                         const tipoLabel = cat.tipo === 1 ? 'Despesa' : cat.tipo === 2 ? 'Receita' : '-';
                         const tipoColor = cat.tipo === 1 ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400';
@@ -310,12 +329,18 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                                 </select>
                               ) : <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${tipoColor}`}>{tipoLabel}</span>}
                             </td>
-                            <td className="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300">{pai?.descricao ?? '-'}</td>
+                            <td className="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300">
+                              {cat.idCategoriaPai ? (pai?.descricao ?? '-') : cat.descricao}
+                            </td>
                             <td className="px-4 py-2.5">
-                              {isEditing ? (
-                                <input value={blingEditRow.descricao} onChange={e => setBlingEditRow((r: any) => ({...r, descricao: e.target.value}))}
-                                  onClick={e => e.stopPropagation()} className="w-48 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" />
-                              ) : <span className="text-sm text-gray-900 dark:text-gray-100">{cat.descricao}</span>}
+                              {cat.idCategoriaPai ? (
+                                isEditing ? (
+                                  <input value={blingEditRow.descricao} onChange={e => setBlingEditRow((r: any) => ({...r, descricao: e.target.value}))}
+                                    onClick={e => e.stopPropagation()} className="w-48 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" />
+                                ) : <span className="text-sm text-gray-900 dark:text-gray-100">{cat.descricao}</span>
+                              ) : (
+                                <span className="text-xs text-gray-400 italic">—</span>
+                              )}
                             </td>
                             <td className="px-4 py-2.5 text-sm text-gray-500">{cat.grupo ?? '-'}</td>
                             <td className="px-4 py-2.5 text-sm text-gray-500">{cat.padrao ? 'Sim' : '-'}</td>
@@ -335,6 +360,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                       })}
                     </tbody>
                   </table>
+                    );
+                  })()}
                 </>
               )}
             </div>
