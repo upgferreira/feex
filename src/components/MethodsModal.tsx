@@ -184,7 +184,7 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
         {/* Toolbar */}
         <div className="px-6 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-gray-50 dark:bg-gray-900">
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400">{viewMode === 'app' ? `${displayed.length} registro(s)` : `${blingMetodos.length} métodos`}</span>
+            <span className="text-xs text-gray-400">{viewMode === 'app' ? `${displayed.length} registro(s)` : `${blingMetodos.length} métodos · ${blingSelectedIds.size} selecionado(s)`}</span>
             <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
               {(['app', 'erp'] as const).map(m => (
                 <button key={m} onClick={() => { setViewMode(m); if (m === 'erp' && blingMetodos.length === 0) fetchBlingMetodos(); }}
@@ -194,6 +194,22 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
               ))}
             </div>
           </div>
+          {viewMode === 'erp' && <div className="flex items-center gap-2">
+            <button onClick={() => { const s = blingMetodos.find((m:any) => blingSelectedIds.has(m.id)); if(s) { setBlingAddRow(null); setBlingEditRow({...s}); } }}
+              disabled={blingSelectedIds.size !== 1}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border disabled:opacity-40 text-gray-700 dark:text-gray-300 border-gray-300 hover:bg-gray-100 bg-white dark:bg-gray-800">
+              <Pencil className="w-3.5 h-3.5" /> Editar
+            </button>
+            <button onClick={async () => { if(!window.confirm('Excluir ' + blingSelectedIds.size + ' método(s)?')) return; for(const id of blingSelectedIds) await blingAction('delete',id,null); }}
+              disabled={blingSelectedIds.size === 0 || blingActing}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border disabled:opacity-40 text-red-600 border-red-300 hover:bg-red-50 bg-white dark:bg-gray-800">
+              <Trash2 className="w-3.5 h-3.5" /> Excluir
+            </button>
+            <button onClick={() => { setBlingEditRow(null); setBlingAddRow({descricao:'',tipoPagamento:1,situacao:1,finalidade:1}); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+              <Plus className="w-3.5 h-3.5" /> Adicionar
+            </button>
+          </div>}
           {viewMode === 'app' && <div className="flex items-center gap-2">
             <button onClick={() => selectedId && setEditingRow({...selectedRow})} disabled={!selectedId}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800">
@@ -237,25 +253,6 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
                 const bCols: [string,string][] = [['descricao','Descrição'],['tipoPagamento','Tipo Pagamento'],['situacao','Situação'],['fixa','Fixa'],['padrao','Padrão'],['finalidade','Finalidade'],['id','ID']];
                 return (
                   <>
-                    <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-900 flex-shrink-0">
-                      <span className="text-xs text-gray-400">{sorted.length} método(s) · {blingSelectedIds.size} selecionado(s)</span>
-                      <div className="flex gap-2">
-                        <button onClick={() => { const s = blingMetodos.find((m:any) => blingSelectedIds.has(m.id)); if(s) { setBlingAddRow(null); setBlingEditRow({...s}); } }}
-                          disabled={blingSelectedIds.size !== 1}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border disabled:opacity-40 text-gray-700 dark:text-gray-300 border-gray-300 hover:bg-gray-100 bg-white dark:bg-gray-800">
-                          <Pencil className="w-3.5 h-3.5" /> Editar
-                        </button>
-                        <button onClick={async () => { if(!window.confirm('Excluir ' + blingSelectedIds.size + ' método(s)?')) return; for(const id of blingSelectedIds) await blingAction('delete',id,null); }}
-                          disabled={blingSelectedIds.size === 0 || blingActing}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border disabled:opacity-40 text-red-600 border-red-300 hover:bg-red-50 bg-white dark:bg-gray-800">
-                          <Trash2 className="w-3.5 h-3.5" /> Excluir
-                        </button>
-                        <button onClick={() => { setBlingEditRow(null); setBlingAddRow({descricao:'',tipoPagamento:1,situacao:1,finalidade:1}); }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                          <Plus className="w-3.5 h-3.5" /> Adicionar
-                        </button>
-                      </div>
-                    </div>
                     <table className="w-full">
                       <thead>
                         <tr className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
