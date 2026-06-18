@@ -49,7 +49,30 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
     finally { setLoading(false); }
   };
 
-  useEffect(() => { if (isOpen) loadData(); }, [isOpen]);
+  useEffect(() => { if (isOpen) { loadData(); setViewMode('app'); } }, [isOpen]);
+
+  const fetchBlingCats = async () => {
+    setBlingLoading(true); setBlingError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setBlingError('Não autenticado'); return; }
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bling_getCategorias`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+        }
+      );
+      const json = await res.json();
+      if (json.error) { setBlingError(json.error); return; }
+      setBlingCats(json.data || []);
+    } catch (e: any) { setBlingError(e.message); }
+    finally { setBlingLoading(false); }
+  };
 
 
 
@@ -126,7 +149,17 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
     <FullscreenModal isOpen={isOpen} onClose={onClose} title="Mapeamento de Categorias">
       <div className="flex flex-col h-full">
         <div className="px-6 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-gray-50 dark:bg-gray-900">
-          <span className="text-xs text-gray-400">{displayed.length} registro(s)</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400">{displayed.length} registro(s)</span>
+            <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              {(['app', 'erp'] as const).map(m => (
+                <button key={m} onClick={() => { setViewMode(m); if (m === 'erp' && blingCats.length === 0) fetchBlingCats(); }}
+                  className={`px-3 py-1 text-xs font-semibold transition-colors ${viewMode === m ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}>
+                  {m.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <button onClick={() => { if (!selectedId) return; setEditingRow({...selectedRow}); }}
               disabled={!selectedId}
@@ -145,6 +178,47 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
         </div>
 
         <div className="flex-1 overflow-auto relative">
+          {/* ERP (Bling) categories view */}
+          {viewMode === 'erp' && (
+            <div className="h-full overflow-auto">
+              {blingLoading ? (
+                <div className="flex items-center justify-center h-64">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+                </div>
+              ) : blingError ? (
+                <div className="flex flex-col items-center justify-center h-64 gap-3">
+                  <p className="text-red-500 text-sm">{blingError}</p>
+                  <button onClick={fetchBlingCats} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Tentar novamente</button>
+                </div>
+              ) : blingCats.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-64 gap-3">
+                  <p className="text-gray-500 text-sm">Nenhuma categoria encontrada no Bling</p>
+                  <button onClick={fetchBlingCats} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Carregar</button>
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ID</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nome</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Categoria Pai</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {blingCats.map((cat: any) => (
+                      <tr key={cat.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-6 py-3 text-sm text-gray-500 dark:text-gray-400 font-mono">{cat.id}</td>
+                        <td className="px-6 py-3 text-sm text-gray-900 dark:text-gray-100">{cat.descricao}</td>
+                        <td className="px-6 py-3 text-sm text-gray-500 dark:text-gray-400">{cat.categoriaPai?.descricao ?? '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+          {/* APP (FEEX) categories view */}
+          {viewMode === 'app' && (
           {loading ? (
             <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" /></div>
           ) : (
@@ -254,6 +328,8 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                 )}
               </tbody>
             </table>
+          )}
+
           )}
 
           {activeFilterCol && (() => {
