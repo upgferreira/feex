@@ -34,7 +34,11 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
   const [editingRow, setEditingRow] = useState<any | null>(null);
   const [newRow, setNewRow] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = React.useState<string | null>(null);
+  const [saveError, setSaveError]   = React.useState<string | null>(null);
+  const [viewMode, setViewMode]     = useState<'app' | 'erp'>('app');
+  const [blingCats, setBlingCats]   = useState<any[]>([]);
+  const [blingLoading, setBlingLoading] = useState(false);
+  const [blingError, setBlingError] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
