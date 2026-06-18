@@ -38,7 +38,11 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
   const [viewMode, setViewMode]     = useState<'app' | 'erp'>('app');
   const [blingCats, setBlingCats]   = useState<any[]>([]);
   const [blingLoading, setBlingLoading] = useState(false);
-  const [blingError, setBlingError] = useState<string | null>(null);
+  const [blingError, setBlingError]   = useState<string | null>(null);
+  const [blingSelectedId, setBlingSelectedId] = useState<number | null>(null);
+  const [blingEditRow, setBlingEditRow] = useState<any | null>(null);
+  const [blingAddRow, setBlingAddRow]   = useState<any | null>(null);
+  const [blingActing, setBlingActing]   = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -78,6 +82,29 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
   };
 
 
+
+  const blingAction = async (action: 'post' | 'put' | 'delete', id: number | null, body: any) => {
+    setBlingActing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const base = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+      const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY };
+      let res;
+      if (action === 'post') {
+        res = await fetch(`${base}/bling_postCategoriasFinanceiras`, { method: 'POST', headers, body: JSON.stringify(body) });
+      } else if (action === 'put') {
+        res = await fetch(`${base}/bling_putCategoriasFinanceirasID?id=${id}`, { method: 'POST', headers, body: JSON.stringify(body) });
+      } else {
+        res = await fetch(`${base}/bling_deleteCategoriasFinanceirasID?id=${id}`, { method: 'POST', headers, body: JSON.stringify({}) });
+      }
+      const json = await res.json();
+      if (json.error) { setBlingError(json.error); return; }
+      setBlingEditRow(null); setBlingAddRow(null); setBlingSelectedId(null);
+      await fetchBlingCats();
+    } catch (e: any) { setBlingError(e.message); }
+    finally { setBlingActing(false); }
+  };
 
   const handleColClick = (e: React.MouseEvent, key: string) => {
     if (e.ctrlKey || e.metaKey) { e.preventDefault(); setActiveFilterCol(prev => prev === key ? null : key); }
@@ -199,24 +226,106 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
                   <button onClick={fetchBlingCats} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Carregar</button>
                 </div>
               ) : (
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">ID</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nome</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Categoria Pai</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {blingCats.map((cat: any) => (
-                      <tr key={cat.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="px-6 py-3 text-sm text-gray-500 dark:text-gray-400 font-mono">{cat.id}</td>
-                        <td className="px-6 py-3 text-sm text-gray-900 dark:text-gray-100">{cat.descricao}</td>
-                        <td className="px-6 py-3 text-sm text-gray-500 dark:text-gray-400">{cat.categoriaPai?.descricao ?? '-'}</td>
+                <>
+                  {/* ERP Toolbar */}
+                  <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-900">
+                    <span className="text-xs text-gray-400">{blingCats.length} categorias no Bling</span>
+                    <div className="flex gap-2">
+                      <button onClick={() => setBlingEditRow(null) || setBlingAddRow({ descricao: '', tipo: 1, idCategoriaPai: 0 })}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        <Plus className="w-3.5 h-3.5" /> Adicionar
+                      </button>
+                    </div>
+                  </div>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                        {['Tipo','Categoria Pai','Categoria','Grupo','Padrão','ID Cat. Pai','ID Categoria',''].map(h => (
+                          <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      {blingAddRow && (
+                        <tr className="bg-blue-50/50 dark:bg-blue-900/10">
+                          <td className="px-3 py-2">
+                            <select value={blingAddRow.tipo} onChange={e => setBlingAddRow((r: any) => ({...r, tipo: Number(e.target.value)}))}
+                              className="w-24 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white">
+                              <option value={1}>Despesa</option>
+                              <option value={2}>Receita</option>
+                            </select>
+                          </td>
+                          <td className="px-3 py-2">
+                            <select value={blingAddRow.idCategoriaPai} onChange={e => setBlingAddRow((r: any) => ({...r, idCategoriaPai: Number(e.target.value)}))}
+                              className="w-36 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white">
+                              <option value={0}>— Sem pai —</option>
+                              {blingCats.filter((c: any) => !c.idCategoriaPai).map((c: any) => (
+                                <option key={c.id} value={c.id}>{c.descricao}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="px-3 py-2">
+                            <input autoFocus value={blingAddRow.descricao} onChange={e => setBlingAddRow((r: any) => ({...r, descricao: e.target.value}))}
+                              placeholder="Nome da categoria"
+                              className="w-48 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" />
+                          </td>
+                          <td colSpan={4} />
+                          <td className="px-3 py-2">
+                            <div className="flex gap-1">
+                              <button onClick={() => blingAction('post', null, blingAddRow)} disabled={blingActing}
+                                className="p-1 text-green-600 hover:bg-green-50 rounded"><Check className="w-4 h-4" /></button>
+                              <button onClick={() => setBlingAddRow(null)} className="p-1 text-red-500 hover:bg-red-50 rounded"><XIcon className="w-4 h-4" /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      {blingCats.map((cat: any) => {
+                        const isEditing = blingEditRow?.id === cat.id;
+                        const tipoLabel = cat.tipo === 1 ? 'Despesa' : cat.tipo === 2 ? 'Receita' : '-';
+                        const tipoColor = cat.tipo === 1 ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400';
+                        const pai = blingCats.find((c: any) => c.id === cat.idCategoriaPai);
+                        return (
+                          <tr key={cat.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${blingSelectedId === cat.id ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+                            onClick={() => setBlingSelectedId(blingSelectedId === cat.id ? null : cat.id)}>
+                            <td className="px-4 py-2.5">
+                              {isEditing ? (
+                                <select value={blingEditRow.tipo} onChange={e => setBlingEditRow((r: any) => ({...r, tipo: Number(e.target.value)}))}
+                                  onClick={e => e.stopPropagation()} className="w-24 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white">
+                                  <option value={1}>Despesa</option><option value={2}>Receita</option>
+                                </select>
+                              ) : <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${tipoColor}`}>{tipoLabel}</span>}
+                            </td>
+                            <td className="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300">{pai?.descricao ?? '-'}</td>
+                            <td className="px-4 py-2.5">
+                              {isEditing ? (
+                                <input value={blingEditRow.descricao} onChange={e => setBlingEditRow((r: any) => ({...r, descricao: e.target.value}))}
+                                  onClick={e => e.stopPropagation()} className="w-48 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" />
+                              ) : <span className="text-sm text-gray-900 dark:text-gray-100">{cat.descricao}</span>}
+                            </td>
+                            <td className="px-4 py-2.5 text-sm text-gray-500">{cat.grupo ?? '-'}</td>
+                            <td className="px-4 py-2.5 text-sm text-gray-500">{cat.padrao ? 'Sim' : '-'}</td>
+                            <td className="px-4 py-2.5 text-xs text-gray-400 font-mono">{cat.idCategoriaPai || '-'}</td>
+                            <td className="px-4 py-2.5 text-xs text-gray-400 font-mono">{cat.id}</td>
+                            <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
+                              {isEditing ? (
+                                <div className="flex gap-1">
+                                  <button onClick={() => blingAction('put', cat.id, blingEditRow)} disabled={blingActing}
+                                    className="p-1 text-green-600 hover:bg-green-50 rounded"><Check className="w-4 h-4" /></button>
+                                  <button onClick={() => setBlingEditRow(null)} className="p-1 text-red-500 hover:bg-red-50 rounded"><XIcon className="w-4 h-4" /></button>
+                                </div>
+                              ) : (
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100">
+                                  <button onClick={() => setBlingEditRow({...cat})} className="p-1 text-blue-500 hover:bg-blue-50 rounded"><Pencil className="w-3.5 h-3.5" /></button>
+                                  <button onClick={() => blingAction('delete', cat.id, null)} disabled={blingActing} className="p-1 text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </>
               )}
             </div>
           )}
