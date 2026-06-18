@@ -61,7 +61,7 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setBlingError('Não autenticado'); return; }
       const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bling_getCategorias`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bling_getCategoriasFinanceiras`,
         {
           method: 'GET',
           headers: {
