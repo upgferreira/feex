@@ -29,6 +29,20 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
   const [newRow, setNewRow]           = useState<Record<string, string>>({});
   const [saving, setSaving]           = useState(false);
   const [saveError, setSaveError]     = React.useState<string | null>(null);
+  // ERP Bling métodos
+  const [viewMode, setViewMode]         = useState<'app' | 'erp'>('app');
+  const [blingMetodos, setBlingMetodos] = useState<any[]>([]);
+  const [blingLoading, setBlingLoading] = useState(false);
+  const [blingError, setBlingError]     = useState<string | null>(null);
+  const [blingSelectedIds, setBlingSelectedIds] = useState<Set<number>>(new Set());
+  const [blingEditRow, setBlingEditRow] = useState<any | null>(null);
+  const [blingAddRow, setBlingAddRow]   = useState<any | null>(null);
+  const [blingActing, setBlingActing]   = useState(false);
+  const [blingSortCol, setBlingSortCol] = useState<string>('descricao');
+  const [blingSortDir, setBlingSortDir] = useState<'asc' | 'desc'>('asc');
+  const [blingColFilters, setBlingColFilters] = useState<Record<string, string[]>>({});
+  const [blingActiveFilter, setBlingActiveFilter] = useState<string | null>(null);
+  const blingThRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
 
   const load = async () => {
     setLoading(true);
@@ -43,7 +57,43 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
     finally { setLoading(false); }
   };
 
-  useEffect(() => { if (isOpen) load(); }, [isOpen]);
+  useEffect(() => { if (isOpen) { load(); setViewMode('app'); } }, [isOpen]);
+
+  const fetchBlingMetodos = async (force = false) => {
+    if (!force && blingMetodos.length > 0) return;
+    setBlingLoading(true); setBlingError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { setBlingError('Não autenticado'); return; }
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/bling_getMetodosFinanceiros`,
+        { method: 'GET', headers: { 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY } }
+      );
+      const json = await res.json();
+      if (json.error) { setBlingError(json.error); return; }
+      setBlingMetodos(json.data || []);
+    } catch (e: any) { setBlingError(e.message); }
+    finally { setBlingLoading(false); }
+  };
+
+  const blingAction = async (action: 'post' | 'put' | 'delete', id: number | null, body: any) => {
+    setBlingActing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const base = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+      const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY };
+      let res;
+      if (action === 'post') res = await fetch(`${base}/bling_postMetodosFinanceiros`, { method: 'POST', headers, body: JSON.stringify(body) });
+      else if (action === 'put') res = await fetch(`${base}/bling_putMetodosFinanceirosID?id=${id}`, { method: 'POST', headers, body: JSON.stringify(body) });
+      else res = await fetch(`${base}/bling_deleteMetodosFinanceirosID?id=${id}`, { method: 'POST', headers, body: JSON.stringify({}) });
+      const json = await res.json();
+      if (json.error) { setBlingError(json.error); return; }
+      setBlingEditRow(null); setBlingAddRow(null); setBlingSelectedIds(new Set());
+      await fetchBlingMetodos(true);
+    } catch (e: any) { setBlingError(e.message); }
+    finally { setBlingActing(false); }
+  };
 
 
 
@@ -133,8 +183,18 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
       <div className="flex flex-col h-full">
         {/* Toolbar */}
         <div className="px-6 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-gray-50 dark:bg-gray-900">
-          <span className="text-xs text-gray-400">{displayed.length} registro(s)</span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400">{viewMode === 'app' ? `${displayed.length} registro(s)` : `${blingMetodos.length} métodos`}</span>
+            <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              {(['app', 'erp'] as const).map(m => (
+                <button key={m} onClick={() => { setViewMode(m); if (m === 'erp' && blingMetodos.length === 0) fetchBlingMetodos(); }}
+                  className={`px-3 py-1 text-xs font-semibold transition-colors ${viewMode === m ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}>
+                  {m.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+          {viewMode === 'app' && <div className="flex items-center gap-2">
             <button onClick={() => selectedId && setEditingRow({...selectedRow})} disabled={!selectedId}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800">
               <Pencil className="w-3.5 h-3.5" /> Editar
@@ -152,7 +212,115 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
 
         {/* Table */}
         <div className="flex-1 overflow-auto relative">
-          {loading ? (
+          {/* ERP Métodos view */}
+          {viewMode === 'erp' && (
+            <div className="h-full overflow-auto">
+              {blingLoading ? (
+                <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" /></div>
+              ) : blingError ? (
+                <div className="flex flex-col items-center justify-center h-64 gap-3">
+                  <p className="text-red-500 text-sm">{blingError}</p>
+                  <button onClick={() => fetchBlingMetodos(true)} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Tentar novamente</button>
+                </div>
+              ) : (() => {
+                const TIPO_MAP: Record<number,string> = {1:'Dinheiro',2:'Cheque',3:'Cartão Crédito',4:'Cartão Débito',10:'Vale Alimentação',
+              11:'Vale Refeição',15:'Boleto',16:'Depósito',17:'PIX Dinâmico',18:'Transferência',
+              20:'PIX Estático',99:'Outros'};
+                let filtered = [...blingMetodos];
+                Object.entries(blingColFilters).forEach(([k, vals]) => {
+                  if (vals?.length) filtered = filtered.filter((r: any) => vals.includes(String(r[k] ?? '')));
+                });
+                const sorted = [...filtered].sort((a: any, b: any) => {
+                  const mul = blingSortDir === 'asc' ? 1 : -1;
+                  return mul * String(a[blingSortCol] ?? '').localeCompare(String(b[blingSortCol] ?? ''));
+                });
+                const bCols: [string,string][] = [['descricao','Descrição'],['tipoPagamento','Tipo Pagamento'],['situacao','Situação'],['fixa','Fixa'],['padrao','Padrão'],['finalidade','Finalidade'],['id','ID']];
+                return (
+                  <>
+                    <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-900 flex-shrink-0">
+                      <span className="text-xs text-gray-400">{sorted.length} método(s) · {blingSelectedIds.size} selecionado(s)</span>
+                      <div className="flex gap-2">
+                        <button onClick={() => { const s = blingMetodos.find((m:any) => blingSelectedIds.has(m.id)); if(s) { setBlingAddRow(null); setBlingEditRow({...s}); } }}
+                          disabled={blingSelectedIds.size !== 1}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border disabled:opacity-40 text-gray-700 dark:text-gray-300 border-gray-300 hover:bg-gray-100 bg-white dark:bg-gray-800">
+                          <Pencil className="w-3.5 h-3.5" /> Editar
+                        </button>
+                        <button onClick={async () => { if(!window.confirm(`Excluir ${blingSelectedIds.size} método(s)?`)) return; for(const id of blingSelectedIds) await blingAction('delete',id,null); }}
+                          disabled={blingSelectedIds.size === 0 || blingActing}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border disabled:opacity-40 text-red-600 border-red-300 hover:bg-red-50 bg-white dark:bg-gray-800">
+                          <Trash2 className="w-3.5 h-3.5" /> Excluir
+                        </button>
+                        <button onClick={() => { setBlingEditRow(null); setBlingAddRow({descricao:'',tipoPagamento:1,situacao:1,finalidade:1}); }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                          <Plus className="w-3.5 h-3.5" /> Adicionar
+                        </button>
+                      </div>
+                    </div>
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                          <th className="w-10 px-3 py-3" />
+                          {bCols.map(([key,h]) => (
+                            <th key={key}
+                              ref={el => { blingThRefs.current[key] = el as HTMLTableCellElement; }}
+                              onClick={e => {
+                                if(e.ctrlKey||e.metaKey) { e.preventDefault(); setBlingActiveFilter(p => p===key?null:key); }
+                                else { if(blingSortCol===key) setBlingSortDir(d=>d==='asc'?'desc':'asc'); else { setBlingSortCol(key); setBlingSortDir('asc'); } }
+                              }}
+                              className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer select-none whitespace-nowrap ${blingColFilters[key]?.length?'bg-blue-50 dark:bg-blue-900/30 text-blue-600':'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'}`}>
+                              <div className="flex items-center gap-1">
+                                {h}
+                                {blingSortCol===key?(blingSortDir==='asc'?<ArrowUp className="w-3 h-3"/>:<ArrowDown className="w-3 h-3"/>):null}
+                                {blingColFilters[key]?.length?<Filter className="w-3 h-3"/>:null}
+                              </div>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        {blingAddRow && (
+                          <tr className="bg-blue-50/50 dark:bg-blue-900/10">
+                            <td />
+                            <td className="px-3 py-2"><input autoFocus value={blingAddRow.descricao} onChange={e=>setBlingAddRow((r:any)=>{...r,descricao:e.target.value})} placeholder="Descrição" className="w-40 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /></td>
+                            <td className="px-3 py-2"><select value={blingAddRow.tipoPagamento} onChange={e=>setBlingAddRow((r:any)=>{...r,tipoPagamento:Number(e.target.value)})} className="w-36 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white">
+                              {Object.entries(TIPO_MAP).map(([v,l])=><option key={v} value={v}>{l}</option>)}
+                            </select></td>
+                            <td colSpan={5} />
+                            <td className="px-3 py-2"><div className="flex gap-1">
+                              <button onClick={()=>blingAction('post',null,blingAddRow)} disabled={blingActing} className="p-1 text-green-600 hover:bg-green-50 rounded"><Check className="w-4 h-4"/></button>
+                              <button onClick={()=>setBlingAddRow(null)} className="p-1 text-red-500 hover:bg-red-50 rounded"><XIcon className="w-4 h-4"/></button>
+                            </div></td>
+                          </tr>
+                        )}
+                        {sorted.map((m:any) => {
+                          const isEditing = blingEditRow?.id === m.id;
+                          return (
+                            <tr key={m.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${blingSelectedIds.has(m.id)?'bg-blue-50 dark:bg-blue-900/20':''}`}>
+                              <td className="px-3 py-2.5 text-center" onClick={()=>setBlingSelectedIds(prev=>{const n=new Set(prev);if(n.has(m.id))n.delete(m.id);else n.add(m.id);return n;})}><input type="checkbox" readOnly checked={blingSelectedIds.has(m.id)} className="rounded border-gray-300 text-blue-600 cursor-pointer"/></td>
+                              <td className="px-4 py-2.5">{isEditing?<input value={blingEditRow.descricao} onChange={e=>setBlingEditRow((r:any)=>{...r,descricao:e.target.value})} onClick={e=>e.stopPropagation()} className="w-40 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white"/>:<span className="text-sm text-gray-900 dark:text-gray-100">{m.descricao}</span>}</td>
+                              <td className="px-4 py-2.5 text-sm text-gray-600 dark:text-gray-400">{TIPO_MAP[m.tipoPagamento as number] ?? m.tipoPagamento}</td>
+                              <td className="px-4 py-2.5"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${m.situacao===1?'bg-green-100 text-green-700':'bg-gray-100 text-gray-500'}`}>{m.situacao===1?'Ativa':'Inativa'}</span></td>
+                              <td className="px-4 py-2.5 text-sm text-gray-500">{m.fixa?'Sim':'-'}</td>
+                              <td className="px-4 py-2.5 text-sm text-gray-500">{m.padrao===1?'Sim':'-'}</td>
+                              <td className="px-4 py-2.5 text-sm text-gray-500">{m.finalidade}</td>
+                              <td className="px-4 py-2.5 text-xs text-gray-400 font-mono">{m.id}</td>
+                              <td className="px-3 py-2" onClick={e=>e.stopPropagation()}>{isEditing&&<div className="flex gap-1"><button onClick={()=>blingAction('put',m.id,blingEditRow)} disabled={blingActing} className="p-1 text-green-600 hover:bg-green-50 rounded"><Check className="w-4 h-4"/></button><button onClick={()=>setBlingEditRow(null)} className="p-1 text-red-500 hover:bg-red-50 rounded"><XIcon className="w-4 h-4"/></button></div>}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    {blingActiveFilter && (() => {
+                      const anchorRef = { current: blingThRefs.current[blingActiveFilter] } as React.RefObject<HTMLElement>;
+                      const options = [...new Set(blingMetodos.map((c:any)=>String(c[blingActiveFilter]??'')).filter(Boolean))].sort();
+                      return <ColumnFilter column={blingActiveFilter} label={blingActiveFilter} options={options} selected={blingColFilters[blingActiveFilter]||[]} onChange={vals=>setBlingColFilters(f=>{...f,[blingActiveFilter!]:vals})} onClose={()=>setBlingActiveFilter(null)} anchorRef={anchorRef} />;
+                    })()}
+                  </>
+                );
+              })()}
+            </div>
+          )}
+          {viewMode === 'app' && loading ? (
             <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" /></div>
           ) : (
             <table className="w-full">
