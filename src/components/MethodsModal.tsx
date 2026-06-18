@@ -281,8 +281,8 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
                         {blingAddRow && (
                           <tr className="bg-blue-50/50 dark:bg-blue-900/10">
                             <td />
-                            <td className="px-3 py-2"><input autoFocus value={blingAddRow.descricao} onChange={e=>setBlingAddRow((r:any)=>{...r,descricao:e.target.value})} placeholder="Descrição" className="w-40 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /></td>
-                            <td className="px-3 py-2"><select value={blingAddRow.tipoPagamento} onChange={e=>setBlingAddRow((r:any)=>{...r,tipoPagamento:Number(e.target.value)})} className="w-36 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white">
+                            <td className="px-3 py-2"><input autoFocus value={blingAddRow.descricao} onChange={e=>setBlingAddRow((r:any)=>({...r,descricao:e.target.value}))} placeholder="Descrição" className="w-40 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /></td>
+                            <td className="px-3 py-2"><select value={blingAddRow.tipoPagamento} onChange={e=>setBlingAddRow((r:any)=>({...r,tipoPagamento:Number(e.target.value)}))} className="w-36 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white">
                               {Object.entries(TIPO_MAP).map(([v,l])=><option key={v} value={v}>{l}</option>)}
                             </select></td>
                             <td colSpan={5} />
@@ -297,7 +297,7 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
                           return (
                             <tr key={m.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700 ${blingSelectedIds.has(m.id)?'bg-blue-50 dark:bg-blue-900/20':''}`}>
                               <td className="px-3 py-2.5 text-center" onClick={()=>setBlingSelectedIds(prev=>{const n=new Set(prev);if(n.has(m.id))n.delete(m.id);else n.add(m.id);return n;})}><input type="checkbox" readOnly checked={blingSelectedIds.has(m.id)} className="rounded border-gray-300 text-blue-600 cursor-pointer"/></td>
-                              <td className="px-4 py-2.5">{isEditing?<input value={blingEditRow.descricao} onChange={e=>setBlingEditRow((r:any)=>{...r,descricao:e.target.value})} onClick={e=>e.stopPropagation()} className="w-40 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white"/>:<span className="text-sm text-gray-900 dark:text-gray-100">{m.descricao}</span>}</td>
+                              <td className="px-4 py-2.5">{isEditing?<input value={blingEditRow.descricao} onChange={e=>setBlingEditRow((r:any)=>({...r,descricao:e.target.value}))} onClick={e=>e.stopPropagation()} className="w-40 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white"/>:<span className="text-sm text-gray-900 dark:text-gray-100">{m.descricao}</span>}</td>
                               <td className="px-4 py-2.5 text-sm text-gray-600 dark:text-gray-400">{TIPO_MAP[m.tipoPagamento as number] ?? m.tipoPagamento}</td>
                               <td className="px-4 py-2.5"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${m.situacao===1?'bg-green-100 text-green-700':'bg-gray-100 text-gray-500'}`}>{m.situacao===1?'Ativa':'Inativa'}</span></td>
                               <td className="px-4 py-2.5 text-sm text-gray-500">{m.fixa?'Sim':'-'}</td>
