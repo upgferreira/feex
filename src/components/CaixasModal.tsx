@@ -29,6 +29,7 @@ const COLS: [string, string][] = [
 
 export const CaixasModal: React.FC<CaixasModalProps> = ({ isOpen, onClose }) => {
   const [contas, setContas]           = useState<any[]>([]);
+  const [categorias, setCategorias]   = useState<any[]>([]);
   const [contaSel, setContaSel]       = useState<any | null>(null);
   const [lancamentos, setLancamentos] = useState<any[]>([]);
   const [loading, setLoading]         = useState(false);
@@ -66,10 +67,15 @@ export const CaixasModal: React.FC<CaixasModalProps> = ({ isOpen, onClose }) => 
   const loadContas = async () => {
     try {
       const h = await getHeaders();
-      const res = await fetch(`${base}/bling_getContasFinanceiras`, { method: 'GET', headers: h });
-      const json = await res.json();
-      if (json.error) { setError(json.error); return; }
-      setContas(json.data || []);
+      const [resContas, resCats] = await Promise.all([
+        fetch(`${base}/bling_getContasFinanceiras`, { method: 'GET', headers: h }),
+        fetch(`${base}/bling_getCategoriasFinanceiras`, { method: 'GET', headers: h }),
+      ]);
+      const jsonContas = await resContas.json();
+      const jsonCats  = await resCats.json();
+      if (jsonContas.error) { setError(jsonContas.error); return; }
+      setContas(jsonContas.data || []);
+      if (!jsonCats.error) setCategorias(jsonCats.data || []);
     } catch (e: any) { setError(e.message); }
   };
 
@@ -83,7 +89,16 @@ export const CaixasModal: React.FC<CaixasModalProps> = ({ isOpen, onClose }) => 
       const res = await fetch(`${base}/bling_getCaixas?${params}`, { method: 'GET', headers: h });
       const json = await res.json();
       if (json.error) { setError(json.error); return; }
-      setLancamentos(json.data || []);
+      const items = json.data || [];
+      // Enrich with full data (competencia, categoria detail) via GET by ID
+      const enriched = await Promise.all(items.map(async (item: any) => {
+        try {
+          const r = await fetch(`${base}/bling_getCaixasID?id=${item.id}`, { method: 'GET', headers: h });
+          const d = await r.json();
+          return d?.data ?? item;
+        } catch { return item; }
+      }));
+      setLancamentos(enriched);
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
   };
@@ -115,7 +130,7 @@ export const CaixasModal: React.FC<CaixasModalProps> = ({ isOpen, onClose }) => 
     if (col === 'origem_tipo')        return row.origem?.tipo ?? '-';
     if (col === 'origem_id')          return String(row.origem?.id ?? '-');
     if (col === 'valor')              return formatBRL(row.valor ?? 0);
-    if (col === 'situacao')           return row.situacao === 'R' ? 'Registrado' : row.situacao === 'E' ? 'Excluído' : '-';
+    if (col === 'situacao')           return row.situacao === 'R' ? 'Registrado' : row.situacao === 'E' ? 'Excluído' : String(row.situacao ?? '-');
     return String(row[col] ?? '-');
   };
 
@@ -243,7 +258,13 @@ export const CaixasModal: React.FC<CaixasModalProps> = ({ isOpen, onClose }) => 
                   <td className="px-3 py-2"><input type="date" value={addRow.competencia} onChange={e => setAddRow((r: any) => ({...r, competencia: e.target.value}))} className="w-32 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /></td>
                   <td className="px-3 py-2"><select value={addRow.debCred} onChange={e => setAddRow((r: any) => ({...r, debCred: e.target.value}))} className="px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white"><option value="D">Débito</option><option value="C">Crédito</option></select></td>
                   <td className="px-3 py-2"><input type="number" value={addRow.valor} onChange={e => setAddRow((r: any) => ({...r, valor: Number(e.target.value)}))} className="w-24 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /></td>
-                  <td className="px-3 py-2"><input value={addRow.descricao ?? ''} onChange={e => setAddRow((r: any) => ({...r, descricao: e.target.value}))} placeholder="Descrição" className="w-40 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /></td>
+                  <td className="px-3 py-2">
+                    <select value={addRow.categoria?.id ?? ''} onChange={e => { const c = categorias.find((cat:any) => String(cat.id) === e.target.value); setAddRow((r: any) => ({...r, categoria: c ? {id: c.id} : undefined, descricao: c?.descricao})); }}
+                      className="w-48 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white">
+                      <option value="">— Categoria —</option>
+                      {categorias.map((c:any) => <option key={c.id} value={c.id}>{c.descricao}</option>)}
+                    </select>
+                  </td>
                   <td className="px-3 py-2"><input value={addRow.observacoes ?? ''} onChange={e => setAddRow((r: any) => ({...r, observacoes: e.target.value}))} placeholder="Observações" className="w-40 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /></td>
                   <td colSpan={2} />
                   <td className="px-3 py-2"><div className="flex gap-1">
@@ -268,7 +289,15 @@ export const CaixasModal: React.FC<CaixasModalProps> = ({ isOpen, onClose }) => 
                     {/* COMPETENCIA */}
                     <td className="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{isEditing ? <input type="date" value={editRow.competencia} onChange={e => setEditRow((r: any) => ({...r, competencia: e.target.value}))} className="w-32 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /> : row.competencia}</td>
                     {/* CATEGORIA (descricao) */}
-                    <td className="px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate">{isEditing ? <input value={editRow.descricao ?? ''} onChange={e => setEditRow((r: any) => ({...r, descricao: e.target.value}))} className="w-40 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /> : row.descricao ?? '-'}</td>
+                    <td className="px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate">
+                      {isEditing ? (
+                        <select value={editRow.categoria?.id ?? ''} onChange={e => { const c = categorias.find((cat:any) => String(cat.id) === e.target.value); setEditRow((r: any) => ({...r, categoria: c ? {id: c.id} : r.categoria, descricao: c?.descricao ?? r.descricao})); }}
+                          className="w-48 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white">
+                          <option value="">— Categoria —</option>
+                          {categorias.map((c:any) => <option key={c.id} value={c.id}>{c.descricao}</option>)}
+                        </select>
+                      ) : row.descricao ?? row.categoria?.descricao ?? '-'}
+                    </td>
                     {/* OBSERVAÇÕES */}
                     <td className="px-4 py-2.5 text-sm text-gray-500 max-w-xs truncate">{isEditing ? <input value={editRow.observacoes ?? ''} onChange={e => setEditRow((r: any) => ({...r, observacoes: e.target.value}))} className="w-40 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /> : row.observacoes ?? '-'}</td>
                     {/* CONTATO */}
@@ -285,7 +314,9 @@ export const CaixasModal: React.FC<CaixasModalProps> = ({ isOpen, onClose }) => 
                     <td className="px-4 py-2.5 text-sm text-gray-500 whitespace-nowrap">{row.origem?.tipo ?? '-'}</td>
                     {/* SITUAÇÃO */}
                     <td className="px-4 py-2.5">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${row.situacao === 'R' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{row.situacao === 'R' ? 'Registrado' : 'Excluído'}</span>
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${row.situacao !== 'E' ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'bg-gray-100 text-gray-500'}`}>
+                        {row.situacao === 'E' ? 'Excluído' : 'Registrado'}
+                      </span>
                     </td>
                     {/* ID LANÇAMENTO */}
                     <td className="px-4 py-2.5 text-xs text-gray-400 font-mono whitespace-nowrap">{row.id}</td>
