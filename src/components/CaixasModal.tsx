@@ -11,15 +11,20 @@ function formatBRL(v: number) {
 }
 
 const COLS: [string, string][] = [
-  ['id', 'ID'],
-  ['data', 'Data'],
-  ['competencia', 'Competência'],
-  ['debCred', 'D/C'],
-  ['valor', 'Valor'],
-  ['descricao', 'Descrição'],
-  ['observacoes', 'Observações'],
-  ['contato', 'Contato'],
-  ['contaFinanceira', 'Conta'],
+  ['data',              'Data'],
+  ['competencia',       'Competência'],
+  ['descricao',         'Categoria'],
+  ['observacoes',       'Observações'],
+  ['contato_nome',      'Contato'],
+  ['contato_cnpj',      'CPF/CNPJ'],
+  ['contaFinanceira',   'Conta Financeira'],
+  ['valor',             'Valor'],
+  ['origem_tipo',       'Tipo Origem'],
+  ['situacao',          'Situação'],
+  ['id',                'ID Lançamento'],
+  ['contaFinanceira_id','ID Conta Financeira'],
+  ['contato_id',        'ID Contato'],
+  ['origem_id',         'ID Origem'],
 ];
 
 export const CaixasModal: React.FC<CaixasModalProps> = ({ isOpen, onClose }) => {
@@ -102,17 +107,27 @@ export const CaixasModal: React.FC<CaixasModalProps> = ({ isOpen, onClose }) => 
   useEffect(() => { if (isOpen) loadContas(); }, [isOpen]);
 
   const getValue = (row: any, col: string): string => {
-    if (col === 'contato') return row.contato?.nome ?? '-';
-    if (col === 'contaFinanceira') return row.contaFinanceira?.descricao ?? '-';
-    if (col === 'valor') return formatBRL(row.valor ?? 0);
-    if (col === 'debCred') return row.debCred === 'D' ? 'Débito' : row.debCred === 'C' ? 'Crédito' : '-';
+    if (col === 'contato_nome')       return row.contato?.nome ?? '-';
+    if (col === 'contato_cnpj')       return row.contato?.cnpj ?? '-';
+    if (col === 'contato_id')         return String(row.contato?.id ?? '-');
+    if (col === 'contaFinanceira')    return row.contaFinanceira?.descricao ?? '-';
+    if (col === 'contaFinanceira_id') return String(row.contaFinanceira?.id ?? '-');
+    if (col === 'origem_tipo')        return row.origem?.tipo ?? '-';
+    if (col === 'origem_id')          return String(row.origem?.id ?? '-');
+    if (col === 'valor')              return formatBRL(row.valor ?? 0);
+    if (col === 'situacao')           return row.situacao === 'R' ? 'Registrado' : row.situacao === 'E' ? 'Excluído' : '-';
     return String(row[col] ?? '-');
   };
 
   const sortKey = (row: any) => {
-    if (sortCol === 'valor') return row.valor ?? 0;
-    if (sortCol === 'contato') return row.contato?.nome ?? '';
-    if (sortCol === 'contaFinanceira') return row.contaFinanceira?.descricao ?? '';
+    if (sortCol === 'valor')              return row.valor ?? 0;
+    if (sortCol === 'contato_nome')       return row.contato?.nome ?? '';
+    if (sortCol === 'contato_cnpj')       return row.contato?.cnpj ?? '';
+    if (sortCol === 'contato_id')         return row.contato?.id ?? 0;
+    if (sortCol === 'contaFinanceira')    return row.contaFinanceira?.descricao ?? '';
+    if (sortCol === 'contaFinanceira_id') return row.contaFinanceira?.id ?? 0;
+    if (sortCol === 'origem_tipo')        return row.origem?.tipo ?? '';
+    if (sortCol === 'origem_id')          return row.origem?.id ?? 0;
     return String(row[sortCol] ?? '');
   };
 
@@ -248,24 +263,38 @@ export const CaixasModal: React.FC<CaixasModalProps> = ({ isOpen, onClose }) => 
                     <td className="px-3 py-2.5 text-center" onClick={() => toggleSel(id)}>
                       <input type="checkbox" readOnly checked={selectedIds.has(id)} className="rounded border-gray-300 text-blue-600 cursor-pointer" />
                     </td>
-                    <td className="px-4 py-2.5 text-xs text-gray-400 font-mono">{row.id}</td>
-                    <td className="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300">{isEditing ? <input type="date" value={editRow.data} onChange={e => setEditRow((r: any) => ({...r, data: e.target.value}))} className="w-32 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /> : row.data}</td>
-                    <td className="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300">{isEditing ? <input type="date" value={editRow.competencia} onChange={e => setEditRow((r: any) => ({...r, competencia: e.target.value}))} className="w-32 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /> : row.competencia}</td>
-                    <td className="px-4 py-2.5">
-                      {isEditing ? <select value={editRow.debCred} onChange={e => setEditRow((r: any) => ({...r, debCred: e.target.value}))} className="px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white"><option value="D">Débito</option><option value="C">Crédito</option></select>
-                      : <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${isDebito ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'}`}>{isDebito ? 'Débito' : 'Crédito'}</span>}
-                    </td>
-                    <td className="px-4 py-2.5 text-sm font-medium" style={{ color: isDebito ? '#dc2626' : '#16a34a' }}>
+                    {/* DATA */}
+                    <td className="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{isEditing ? <input type="date" value={editRow.data} onChange={e => setEditRow((r: any) => ({...r, data: e.target.value}))} className="w-32 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /> : row.data}</td>
+                    {/* COMPETENCIA */}
+                    <td className="px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{isEditing ? <input type="date" value={editRow.competencia} onChange={e => setEditRow((r: any) => ({...r, competencia: e.target.value}))} className="w-32 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /> : row.competencia}</td>
+                    {/* CATEGORIA (descricao) */}
+                    <td className="px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate">{isEditing ? <input value={editRow.descricao ?? ''} onChange={e => setEditRow((r: any) => ({...r, descricao: e.target.value}))} className="w-40 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /> : row.descricao ?? '-'}</td>
+                    {/* OBSERVAÇÕES */}
+                    <td className="px-4 py-2.5 text-sm text-gray-500 max-w-xs truncate">{isEditing ? <input value={editRow.observacoes ?? ''} onChange={e => setEditRow((r: any) => ({...r, observacoes: e.target.value}))} className="w-40 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /> : row.observacoes ?? '-'}</td>
+                    {/* CONTATO */}
+                    <td className="px-4 py-2.5 text-sm text-gray-500 whitespace-nowrap">{row.contato?.nome ?? '-'}</td>
+                    {/* CPF/CNPJ */}
+                    <td className="px-4 py-2.5 text-sm text-gray-500 whitespace-nowrap font-mono">{row.contato?.cnpj ?? '-'}</td>
+                    {/* CONTA FINANCEIRA */}
+                    <td className="px-4 py-2.5 text-sm text-gray-500 whitespace-nowrap">{row.contaFinanceira?.descricao ?? '-'}</td>
+                    {/* VALOR */}
+                    <td className="px-4 py-2.5 text-sm font-medium whitespace-nowrap" style={{ color: isDebito ? '#dc2626' : '#16a34a' }}>
                       {isEditing ? <input type="number" value={editRow.valor} onChange={e => setEditRow((r: any) => ({...r, valor: Number(e.target.value)}))} className="w-24 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /> : formatBRL(row.valor)}
                     </td>
-                    <td className="px-4 py-2.5 text-sm text-gray-900 dark:text-gray-100 max-w-xs truncate">
-                      {isEditing ? <input value={editRow.descricao ?? ''} onChange={e => setEditRow((r: any) => ({...r, descricao: e.target.value}))} className="w-40 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /> : row.descricao ?? '-'}
+                    {/* TIPO ORIGEM */}
+                    <td className="px-4 py-2.5 text-sm text-gray-500 whitespace-nowrap">{row.origem?.tipo ?? '-'}</td>
+                    {/* SITUAÇÃO */}
+                    <td className="px-4 py-2.5">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${row.situacao === 'R' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{row.situacao === 'R' ? 'Registrado' : 'Excluído'}</span>
                     </td>
-                    <td className="px-4 py-2.5 text-sm text-gray-500 max-w-xs truncate">
-                      {isEditing ? <input value={editRow.observacoes ?? ''} onChange={e => setEditRow((r: any) => ({...r, observacoes: e.target.value}))} className="w-40 px-2 py-1 text-xs border border-blue-300 rounded bg-white dark:bg-gray-700 dark:text-white" /> : row.observacoes ?? '-'}
-                    </td>
-                    <td className="px-4 py-2.5 text-sm text-gray-500">{row.contato?.nome ?? '-'}</td>
-                    <td className="px-4 py-2.5 text-sm text-gray-500">{row.contaFinanceira?.descricao ?? '-'}</td>
+                    {/* ID LANÇAMENTO */}
+                    <td className="px-4 py-2.5 text-xs text-gray-400 font-mono whitespace-nowrap">{row.id}</td>
+                    {/* ID CONTA FINANCEIRA */}
+                    <td className="px-4 py-2.5 text-xs text-gray-400 font-mono whitespace-nowrap">{row.contaFinanceira?.id ?? '-'}</td>
+                    {/* ID CONTATO */}
+                    <td className="px-4 py-2.5 text-xs text-gray-400 font-mono whitespace-nowrap">{row.contato?.id ?? '-'}</td>
+                    {/* ID ORIGEM */}
+                    <td className="px-4 py-2.5 text-xs text-gray-400 font-mono whitespace-nowrap">{row.origem?.id ?? '-'}</td>
                     <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
                       {isEditing && <div className="flex gap-1">
                         <button onClick={() => crudAction('put', String(row.id), editRow)} disabled={acting} className="p-1 text-green-600 hover:bg-green-50 rounded"><Check className="w-4 h-4" /></button>
