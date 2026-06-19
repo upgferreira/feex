@@ -6,9 +6,10 @@ interface FooterProps {
   onMappingClick: () => void;
   onMethodsClick: () => void;
   onHelpClick: () => void;
+  onCaixasClick: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({ onBoxClick, onCategoryClick, onMappingClick, onMethodsClick, onHelpClick }) => {
+export const Footer: React.FC<FooterProps> = ({ onBoxClick, onCategoryClick, onMappingClick, onMethodsClick, onHelpClick, onCaixasClick }) => {
   const linkBtn = (label: string, onClick: () => void) => (
     <button
       onClick={onClick}
@@ -39,6 +40,8 @@ export const Footer: React.FC<FooterProps> = ({ onBoxClick, onCategoryClick, onM
           {linkBtn('CONTAS', onBoxClick)}
           <span className="text-gray-300 dark:text-gray-600 text-xs">|</span>
           {linkBtn('MÉTODOS', onMethodsClick)}
+          <span className="text-gray-300 dark:text-gray-600 text-xs">|</span>
+          {linkBtn('CAIXAS', onCaixasClick)}
         </div>
       </div>
     </footer>
