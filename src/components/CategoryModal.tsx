@@ -197,21 +197,39 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
               ))}
             </div>
           </div>
-          {viewMode === 'app' && <div className="flex items-center gap-2">
-            <button onClick={() => { if (!selectedId) return; setEditingRow({...selectedRow}); }}
-              disabled={!selectedId}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800">
-              <Pencil className="w-3.5 h-3.5" /> Editar
-            </button>
-            <button onClick={handleDelete} disabled={!selectedId}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 bg-white dark:bg-gray-800">
-              <Trash2 className="w-3.5 h-3.5" /> Excluir
-            </button>
-            <button onClick={() => { setNewRow({}); setAddingRow(true); setSelectedId(null); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <Plus className="w-4 h-4" /> Adicionar
-            </button>
-          </div>}
+          <div className="flex items-center gap-2">
+            {viewMode === 'app' && <>
+              <button onClick={() => { if (!selectedId) return; setEditingRow({...selectedRow}); }}
+                disabled={!selectedId}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800">
+                <Pencil className="w-3.5 h-3.5" /> Editar
+              </button>
+              <button onClick={handleDelete} disabled={!selectedId}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 bg-white dark:bg-gray-800">
+                <Trash2 className="w-3.5 h-3.5" /> Excluir
+              </button>
+              <button onClick={() => { setNewRow({}); setAddingRow(true); setSelectedId(null); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                <Plus className="w-4 h-4" /> Adicionar
+              </button>
+            </>}
+            {viewMode === 'erp' && <>
+              <button onClick={() => { const sel = blingCats.find((c: any) => blingSelectedIds.has(c.id)); if (sel) { setBlingAddRow(null); setBlingEditRow({...sel}); }}}
+                disabled={blingSelectedIds.size !== 1}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border disabled:opacity-40 text-gray-700 dark:text-gray-300 border-gray-300 hover:bg-gray-100 bg-white dark:bg-gray-800">
+                <Pencil className="w-3.5 h-3.5" /> Editar
+              </button>
+              <button onClick={async () => { if (!window.confirm('Excluir ' + blingSelectedIds.size + ' categoria(s)?')) return; for (const id of blingSelectedIds) await blingAction('delete', id, null); setBlingSelectedIds(new Set()); }}
+                disabled={blingSelectedIds.size === 0 || blingActing}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border disabled:opacity-40 text-red-600 border-red-300 hover:bg-red-50 bg-white dark:bg-gray-800">
+                <Trash2 className="w-3.5 h-3.5" /> Excluir
+              </button>
+              <button onClick={() => { setBlingEditRow(null); setBlingAddRow({ descricao: '', tipo: 1, idCategoriaPai: 0 }); }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                <Plus className="w-3.5 h-3.5" /> Adicionar
+              </button>
+            </>}
+          </div>
         </div>
 
         <div className="flex-1 overflow-auto relative">
