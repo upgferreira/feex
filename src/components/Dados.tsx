@@ -181,10 +181,8 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
         // Taxas negativas (despesas)
         'Taxa de Envio Reversa',
         'Taxa de transação',
-        'Taxa de comissão bruta',
         'Taxa de comissão líquida',
         'Taxa de comissão',            // retrocompat
-        'Taxa de serviço bruta',
         'Taxa de serviço líquida',
         'Taxa de serviço',             // retrocompat
         'Desconto de Frete Aproximado',// retrocompat
@@ -545,8 +543,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     if (filteredRaw[0] && 'Categoria' in filteredRaw[0] && !('Status do pedido' in filteredRaw[0])) return filteredRaw;
     // Auto-pivot for ERP
     const PIVOT_COLS = [
-      'Taxa de Envio Reversa','Taxa de transação','Taxa de comissão bruta','Taxa de comissão líquida',
-      'Taxa de comissão','Taxa de serviço bruta','Taxa de serviço líquida','Taxa de serviço',
       'Desconto de Frete Aproximado','Desconto do vendedor','Taxa de envio pagas pelo comprador',
     ];
     const POSITIVE = new Set(['Taxa de envio pagas pelo comprador']);
