@@ -537,9 +537,44 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   }, []);
 
   // ── ERP Preview (Bling format) ────────────────────────────────────────────
+  // Pivot for ERP preview - always pivot Shopee/Shein regardless of isPivoted state
+  const erpInputData = useMemo((): any[] => {
+    if (!['SHOPEE', 'SHEIN'].includes(canal)) return filteredRaw;
+    if (filteredRaw.length === 0) return [];
+    // If already pivoted (has 'Categoria' column from pivot), use as-is
+    if (filteredRaw[0] && 'Categoria' in filteredRaw[0] && !('Status do pedido' in filteredRaw[0])) return filteredRaw;
+    // Auto-pivot for ERP
+    const PIVOT_COLS = [
+      'Taxa de Envio Reversa','Taxa de transação','Taxa de comissão bruta','Taxa de comissão líquida',
+      'Taxa de comissão','Taxa de serviço bruta','Taxa de serviço líquida','Taxa de serviço',
+      'Desconto de Frete Aproximado','Desconto do vendedor','Taxa de envio pagas pelo comprador',
+    ];
+    const POSITIVE = new Set(['Taxa de envio pagas pelo comprador']);
+    const result: any[] = [];
+    filteredRaw.forEach((row: any) => {
+      const status = String(row['Status do pedido'] || '').toLowerCase();
+      if (status.includes('cancelado')) return;
+      PIVOT_COLS.forEach(col => {
+        const colKey = Object.keys(row).find(k => k.trim().toLowerCase() === col.toLowerCase());
+        if (!colKey) return;
+        let valor = parseFloat(String(row[colKey] || '0').replace(',', '.')) || 0;
+        if (valor === 0) return;
+        valor = POSITIVE.has(col) ? Math.abs(valor) : -Math.abs(valor);
+        result.push({
+          'Data de criação do pedido': row['Data de criação do pedido'],
+          'ID do pedido':              row['ID do pedido'],
+          'Nome de usuário (comprador)': row['Nome de usuário (comprador)'],
+          'Categoria':                 col.replace(/\s*\(\d+\)\s*/g, '').trim(),
+          'Valor':                     valor,
+        });
+      });
+    });
+    return result;
+  }, [filteredRaw, canal]);
+
   const erpPreviewData = useMemo(() => {
     if (dataView !== 'erp' || !['tabela', 'matriz', 'dashboard'].includes(viewMode)) return [];
-    if (!filteredRaw.length) return [];
+    if (!erpInputData.length) return [];
 
     // Derive period from data — handle Excel serial, Date objects, and strings
     const parseD = (v: any): Date | null => {
@@ -559,7 +594,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       return isNaN(d.getTime()) ? null : d;
     };
 
-    const dates = filteredRaw
+    const dates = erpInputData
       .map((r: any) => parseD(r['Data da tarifa'] || r['Data de pagamento'] || r['Data de criação do pedido']))
       .filter((d: Date | null): d is Date => d !== null && !isNaN(d.getTime()))
       .sort((a: Date, b: Date) => a.getTime() - b.getTime());
@@ -570,7 +605,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     const dateObj     = dates.length ? dates[0] : new Date();
     const competencia = `${String(dateObj.getMonth() + 1).padStart(2, '0')}/${dateObj.getFullYear()}`;
 
-    const rows = convertToBling(canal, filteredRaw, dataInicial, dataFinal, competencia, categories, accounts);
+    const rows = convertToBling(canal, erpInputData, dataInicial, dataFinal, competencia, categories, accounts);
 
     // Map to display columns
     return rows.map(r => ({
@@ -583,7 +618,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       'CNPJ':               r['CNPJ'],
       'Portador':           r['Portador'],
     }));
-  }, [dataView, viewMode, filteredRaw, canal, categories, accounts]);
+  }, [dataView, viewMode, erpInputData, canal, categories, accounts]);
 
   // ── ERP MATRIZ data ──────────────────────────────────────────────────────────
   const erpMatrizData = useMemo(() => {
