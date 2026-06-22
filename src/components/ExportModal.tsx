@@ -81,7 +81,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-end">
-      <div className="bg-white dark:bg-gray-800 h-full w-full max-w-lg flex flex-col shadow-2xl">
+      <div className="bg-white dark:bg-gray-800 h-full w-full max-w-2xl flex flex-col shadow-2xl">
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex items-center gap-3">
             <Download className="w-6 h-6 text-blue-600" />
@@ -96,38 +96,23 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         </div>
 
         <div className="flex flex-col flex-1 p-6 space-y-4 overflow-y-auto">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Canal *
-            </label>
-            <select
-              value={canal}
-              onChange={(e) => setCanal(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              required
-            >
-              <option value="">Selecione um canal</option>
-              {channels.map(channel => (
-                <option key={channel} value={channel}>{channel}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              ERP *
-            </label>
-            <select
-              value={erp}
-              onChange={(e) => setErp(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              required
-            >
-              <option value="">Selecione um ERP</option>
-              {erps.map(erpOption => (
-                <option key={erpOption} value={erpOption}>{erpOption}</option>
-              ))}
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Canal *</label>
+              <select value={canal} onChange={(e) => setCanal(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" required>
+                <option value="">Selecione um canal</option>
+                {channels.map(channel => <option key={channel} value={channel}>{channel}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">ERP *</label>
+              <select value={erp} onChange={(e) => setErp(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100" required>
+                <option value="">Selecione um ERP</option>
+                {erps.map(erpOption => <option key={erpOption} value={erpOption}>{erpOption}</option>)}
+              </select>
+            </div>
           </div>
 
           <div>
@@ -149,21 +134,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 </span>
               )}
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-wrap gap-4">
               {formatOptions.map(formato => (
-                <label key={formato} className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formatos.includes(formato)}
-                    onChange={() => handleFormatoChange(formato)}
+                <label key={formato} className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={formatos.includes(formato)} onChange={() => handleFormatoChange(formato)}
                     disabled={isERPSelected && formato !== 'CSV'}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
-                  />
-                  <span className={`ml-2 text-sm ${
-                    isERPSelected && formato !== 'CSV' 
-                      ? 'text-gray-400 dark:text-gray-500' 
-                      : 'text-gray-700 dark:text-gray-300'
-                  }`}>
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50" />
+                  <span className={`text-sm font-medium ${isERPSelected && formato !== 'CSV' ? 'text-gray-400 dark:text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}>
                     {formato}
                   </span>
                 </label>
