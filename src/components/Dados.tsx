@@ -253,7 +253,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       if (dateFilter.endDate && iso > dateFilter.endDate) return false;
       return true;
     });
-  }, [rawData, dateFilter, canal]);
+  }, [rawData, pivotedData, isPivoted, canPivot, dateFilter, canal, groupByPedido]);
 
   const ML_FRETES_GRUPOS = ['Fretes'];
   const ML_TAXAS_GRUPOS = ['Taxas'];
