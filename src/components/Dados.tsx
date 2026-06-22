@@ -176,6 +176,11 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     if (!data.length) return [];
 
     if (canal === 'SHOPEE') {
+      // Debug: log actual column names from first row
+      if (data.length > 0) {
+        console.log('Shopee columns:', Object.keys(data[0]));
+        console.log('Sample row:', data[0]);
+      }
       const PIVOT_COLS = [
         'Desconto de Frete Aproximado',
         'Taxa de Envio Reversa',
