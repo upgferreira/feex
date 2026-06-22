@@ -816,7 +816,13 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             </div>
             {canPivot && (
               <button
-                onClick={() => setIsPivoted(p => !p)}
+                onClick={() => {
+                  setIsPivoted(p => !p);
+                  if (!isPivoted && rawData.length > 0) {
+                    console.log('=== SHOPEE COLUMNS ===', Object.keys(rawData[0]));
+                    console.log('=== SHOPEE ROW 1 ===', rawData[0]);
+                  }
+                }}
                 title={isPivoted ? 'Ver dados originais' : 'Ver dados pivotados (linha por taxa)'}
                 className={`p-1.5 rounded border transition-colors text-sm font-bold ${
                   isPivoted
