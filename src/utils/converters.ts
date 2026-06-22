@@ -245,6 +245,117 @@ export function convertNuvemPagoToBling(
 }
 
 // ── Generic converter ─────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHOPEE → Bling  (receives already-pivoted data)
+// Pivoted row format: { 'Data de criação do pedido', 'ID do pedido',
+//                       'Nome de usuário (comprador)', 'Categoria', 'Valor',
+//                       '_source': originalRow }
+// ─────────────────────────────────────────────────────────────────────────────
+function convertShopeeToBling(
+  data: any[],
+  dataInicial: string,
+  dataFinal: string,
+  competencia: string,
+  categories: any[],
+  accounts: any[]
+): BlingRow[] {
+  // Find account for SHOPEE
+  const account = accounts.find(a => {
+    const canal = String(a.canal || a.channel || '').toUpperCase().trim();
+    return canal === 'SHOPEE';
+  });
+  const portador   = account?.caixa || account?.portador || '';
+  const fornecedor = account?.fornecedor_nome_fantasia || account?.fornecedor || 'SHOPEE';
+  const cnpj       = account?.fornecedor_cnpj || account?.cnpj || '';
+
+  // Category finder for SHOPEE
+  const findCat = (detalhe: string) => {
+    const norm = normalizeText(detalhe);
+    let matches = categories.filter(c => {
+      const ch = String(c.channel || c.canal || '').toUpperCase().trim();
+      if (ch !== 'SHOPEE') return false;
+      const key = normalizeText(c.channel_category || c.categoria_canal || '');
+      return key === norm;
+    });
+    if (!matches.length) {
+      matches = categories.filter(c => {
+        const ch = String(c.channel || c.canal || '').toUpperCase().trim();
+        if (ch !== 'SHOPEE') return false;
+        const key = normalizeText(c.channel_category || c.categoria_canal || '');
+        return key && norm && (key.includes(norm) || norm.includes(key));
+      });
+    }
+    const withCat = matches.find(c => !!(c.erp_category || c.categoria_erp));
+    const match = withCat || matches[0];
+    return {
+      cat: match?.erp_category || match?.categoria_erp || '',
+      pai: match?.erp_parent_category || match?.categoria_pai_erp || '',
+    };
+  };
+
+  const resultado: BlingRow[] = [];
+
+  data.forEach((row: any) => {
+    // Accept both pivoted rows (with 'Categoria') and raw rows (with tax columns)
+    const dataStr = row['Data de criação do pedido'] || '';
+    const pedido  = row['ID do pedido'] || '';
+    const cliente = row['Nome de usuário (comprador)'] || '';
+    const detalhe = row['Categoria'] || '';
+    const valor   = Number(String(row['Valor'] || '0').replace(',', '.')) || 0;
+
+    if (!dataStr || !detalhe || valor === 0) return;
+
+    // Parse date
+    let dataLinha: Date;
+    if (dataStr instanceof Date) {
+      dataLinha = dataStr;
+    } else if (typeof dataStr === 'number') {
+      dataLinha = new Date(new Date(1900, 0, 1).getTime() + (dataStr - 1) * 86400000);
+    } else {
+      // Try dd/mm/yyyy or yyyy-mm-dd
+      const parts = String(dataStr).split('/');
+      if (parts.length === 3) {
+        dataLinha = new Date(+parts[2], +parts[1] - 1, +parts[0]);
+      } else {
+        dataLinha = new Date(dataStr);
+      }
+    }
+    if (isNaN(dataLinha.getTime())) return;
+
+    // Date filter
+    const iso = dataLinha.toISOString().split('T')[0];
+    if (dataInicial && iso < dataInicial) return;
+    if (dataFinal   && iso > dataFinal)   return;
+
+    const dataFormatada  = dataLinha.toLocaleDateString('pt-BR');
+    const lineCompetencia = `${String(dataLinha.getMonth() + 1).padStart(2, '0')}/${dataLinha.getFullYear()}`;
+    const { cat, pai } = findCat(detalhe);
+
+    // Obs format: SHOPEE: CLIENTE | PEDIDO > DETALHE | PAI > CAT | DATA | COMP
+    const obs = [
+      `SHOPEE: ${cliente.toUpperCase()}`,
+      pedido ? `PEDIDO DE VENDA: ${pedido} > ${detalhe.toUpperCase()}` : detalhe.toUpperCase(),
+      pai && cat ? `${pai.toUpperCase()} > ${cat.toUpperCase()}` : (cat || pai || '').toUpperCase(),
+      dataFormatada,
+      lineCompetencia,
+    ].filter(Boolean).join(' | ');
+
+    resultado.push({
+      Data:                dataFormatada,
+      Competencia:         lineCompetencia,
+      Categoria:           cat,
+      Observacoes:         obs,
+      Valor:               String(valor.toFixed(2)).replace('.', ','),
+      'Cliente/Fornecedor': fornecedor,
+      CNPJ:                cnpj,
+      Portador:            portador,
+    });
+  });
+
+  return resultado;
+}
+
 export function convertToBling(
   canal: string,
   data: any[],
@@ -256,5 +367,6 @@ export function convertToBling(
 ): BlingRow[] {
   if (canal === 'MERCADO LIVRE') return convertMLToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
   if (canal === 'NUVEM PAGO')   return convertNuvemPagoToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
+  if (canal === 'SHOPEE')         return convertShopeeToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
   return [];
 }
