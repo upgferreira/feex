@@ -280,12 +280,13 @@ export const Exportacao: React.FC = () => {
 
   const exportToCSV = (data: any[], fileName?: string) => {
     if (!data.length) return;
+    const SEP = ';'; // semicolon for Excel PT-BR and Bling compatibility
     const headers = Object.keys(data[0]);
     const escape = (v: any) => {
       const s = v == null ? '' : v.toString();
-      return s.includes(',') || s.includes('\n') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+      return s.includes(SEP) || s.includes('\n') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const csv = [headers.join(','), ...data.map(row => headers.map(h => escape(row[h])).join(','))].join('\n');
+    const csv = [headers.join(SEP), ...data.map(row => headers.map(h => escape(row[h])).join(SEP))].join('\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
     a.download = fileName || `exportacao_${Date.now()}.csv`;
