@@ -176,19 +176,23 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     if (!data.length) return [];
 
     if (canal === 'SHOPEE') {
-      // Debug: log actual column names from first row
-      if (data.length > 0) {
-        console.log('Shopee columns:', Object.keys(data[0]));
-        console.log('Sample row:', data[0]);
-      }
+      // Current Shopee column names (also keep old names for retrocompatibility)
       const PIVOT_COLS = [
-        'Desconto de Frete Aproximado',
+        // Taxas negativas (despesas)
         'Taxa de Envio Reversa',
         'Taxa de transação',
-        'Taxa de comissão',
-        'Taxa de serviço',
+        'Taxa de comissão bruta',
+        'Taxa de comissão líquida',
+        'Taxa de comissão',            // retrocompat
+        'Taxa de serviço bruta',
+        'Taxa de serviço líquida',
+        'Taxa de serviço',             // retrocompat
+        'Desconto de Frete Aproximado',// retrocompat
+        'Desconto do vendedor',
+        // Taxa positiva (receita de frete pago pelo comprador)
         'Taxa de envio pagas pelo comprador',
       ];
+      const POSITIVE_COLS = new Set(['Taxa de envio pagas pelo comprador']);
       const result: any[] = [];
       data.forEach((row: any) => {
         const status = String(row['Status do pedido'] || '').toLowerCase();
@@ -198,7 +202,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
           if (!colKey) return;
           let valor = parseFloat(String(row[colKey] || '0').replace(',', '.')) || 0;
           if (valor === 0) return;
-          const isPositive = col.toLowerCase().includes('taxa de envio pagas pelo comprador');
+          const isPositive = POSITIVE_COLS.has(col);
           valor = isPositive ? Math.abs(valor) : -Math.abs(valor);
           result.push({
             'Data de criação do pedido': row['Data de criação do pedido'],
@@ -816,13 +820,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             </div>
             {canPivot && (
               <button
-                onClick={() => {
-                  setIsPivoted(p => !p);
-                  if (!isPivoted && rawData.length > 0) {
-                    console.log('=== SHOPEE COLUMNS ===', Object.keys(rawData[0]));
-                    console.log('=== SHOPEE ROW 1 ===', rawData[0]);
-                  }
-                }}
+                onClick={() => setIsPivoted(p => !p)}
                 title={isPivoted ? 'Ver dados originais' : 'Ver dados pivotados (linha por taxa)'}
                 className={`p-1.5 rounded border transition-colors text-sm font-bold ${
                   isPivoted
