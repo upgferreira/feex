@@ -818,7 +818,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                 </button>
               ))}
             </div>
-            {canPivot && (
+            {canPivot && dataView === 'canal' && (
               <button
                 onClick={() => setIsPivoted(p => !p)}
                 title={isPivoted ? 'Ver dados originais' : 'Ver dados pivotados (linha por taxa)'}
