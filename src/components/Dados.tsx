@@ -143,9 +143,10 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   const [matrizSortCol, setMatrizSortCol] = useState<'pai' | 'total' | 'pct'>('total');
   const [matrizSortDir, setMatrizSortDir] = useState<'asc' | 'desc'>('desc');
   const [groupByPedido, setGroupByPedido] = useState(false);
+  const [isPivoted, setIsPivoted]         = useState(false);
 
   React.useEffect(() => {
-    if (externalCanal) { setCanal(externalCanal); setPage(1); setColFilters({}); }
+    if (externalCanal) { setCanal(externalCanal); setPage(1); setColFilters({}); setIsPivoted(false); }
   }, [externalCanal]);
 
   React.useEffect(() => {
@@ -164,8 +165,53 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     return getAllChannelData(canal);
   }, [canal, files, getAllChannelData]);
 
+  // Channels that support pivot (column-based → row-based)
+  const PIVOT_CHANNELS = ['SHOPEE', 'SHEIN'];
+  const canPivot = PIVOT_CHANNELS.includes(canal);
+
+  // Pivot function: transform column-per-fee rows into one-row-per-fee
+  const pivotedData = useMemo((): any[] => {
+    if (!isPivoted || !canPivot) return [];
+    const data = rawData;
+    if (!data.length) return [];
+
+    if (canal === 'SHOPEE') {
+      const PIVOT_COLS = [
+        'Desconto de Frete Aproximado',
+        'Taxa de Envio Reversa',
+        'Taxa de transação',
+        'Taxa de comissão',
+        'Taxa de serviço',
+        'Taxa de envio pagas pelo comprador',
+      ];
+      const result: any[] = [];
+      data.forEach((row: any) => {
+        const status = String(row['Status do pedido'] || '').toLowerCase();
+        if (status.includes('cancelado')) return;
+        PIVOT_COLS.forEach(col => {
+          const colKey = Object.keys(row).find(k => k.trim().toLowerCase() === col.toLowerCase());
+          if (!colKey) return;
+          let valor = parseFloat(String(row[colKey] || '0').replace(',', '.')) || 0;
+          if (valor === 0) return;
+          const isPositive = col.toLowerCase().includes('taxa de envio pagas pelo comprador');
+          valor = isPositive ? Math.abs(valor) : -Math.abs(valor);
+          result.push({
+            'Data de criação do pedido': row['Data de criação do pedido'],
+            'ID do pedido':              row['ID do pedido'],
+            'Nome de usuário (comprador)': row['Nome de usuário (comprador)'],
+            'Categoria':                 col.replace(/\s*\(\d+\)\s*/g, '').trim(),
+            'Valor':                     valor,
+            '_source':                   row,
+          });
+        });
+      });
+      return result;
+    }
+    return rawData;
+  }, [rawData, isPivoted, canPivot, canal]);
+
   const filteredRaw = useMemo((): any[] => {
-    let base = rawData;
+    let base = (isPivoted && canPivot) ? pivotedData : rawData;
     // Group by pedido if enabled (ML: Número da venda, NP: Número do Pedido)
     if (groupByPedido && canal !== 'TODOS') {
       const grouped: Record<string, any> = {};
@@ -763,6 +809,17 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                 </button>
               ))}
             </div>
+            {canPivot && (
+              <button
+                onClick={() => setIsPivoted(p => !p)}
+                title={isPivoted ? 'Ver dados originais' : 'Ver dados pivotados (linha por taxa)'}
+                className={`p-1.5 rounded border transition-colors text-sm font-bold ${
+                  isPivoted
+                    ? 'bg-orange-500 text-white border-orange-500'
+                    : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
+                }`}
+              >⇄</button>
+            )}
             <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
               {(['tabela', 'matriz', 'dashboard'] as ViewMode[]).map(mode => (
                 <button
