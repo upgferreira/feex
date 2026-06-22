@@ -342,14 +342,16 @@ function convertShopeeToBling(
     ].filter(Boolean).join(' | ');
 
     resultado.push({
-      Data:                dataFormatada,
-      Competencia:         lineCompetencia,
-      Categoria:           cat,
-      Observacoes:         obs,
-      Valor:               String(valor.toFixed(2)).replace('.', ','),
+      'ID':                 '',
+      'Data':               dataFormatada,
+      'Competencia':        lineCompetencia,
       'Cliente/Fornecedor': fornecedor,
-      CNPJ:                cnpj,
-      Portador:            portador,
+      'Observacoes':        obs,
+      'Valor':              String(Math.abs(valor).toFixed(2)).replace('.', ','),
+      'Categoria':          cat,
+      'Portador':           portador,
+      'Saldo':              'N',
+      'CNPJ':               cnpj,
     });
   });
 
