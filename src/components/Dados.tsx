@@ -560,7 +560,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     };
 
     const dates = filteredRaw
-      .map((r: any) => parseD(r['Data da tarifa'] || r['Data de pagamento']))
+      .map((r: any) => parseD(r['Data da tarifa'] || r['Data de pagamento'] || r['Data de criação do pedido']))
       .filter((d: Date | null): d is Date => d !== null && !isNaN(d.getTime()))
       .sort((a: Date, b: Date) => a.getTime() - b.getTime());
 
