@@ -311,8 +311,40 @@ export const Exportacao: React.FC = () => {
     setTimeout(() => URL.revokeObjectURL(a.href), 100);
   };
 
+  const SHOPEE_PIVOT_COLS = [
+    'Taxa de Envio Reversa','Taxa de transação','Taxa de comissão bruta','Taxa de comissão líquida',
+    'Taxa de comissão','Taxa de serviço bruta','Taxa de serviço líquida','Taxa de serviço',
+    'Desconto de Frete Aproximado','Desconto do vendedor','Taxa de envio pagas pelo comprador',
+  ];
+  const SHOPEE_POSITIVE = new Set(['Taxa de envio pagas pelo comprador']);
+
+  const pivotShopeeData = (data: any[]): any[] => {
+    const result: any[] = [];
+    data.forEach((row: any) => {
+      const status = String(row['Status do pedido'] || '').toLowerCase();
+      if (status.includes('cancelado')) return;
+      SHOPEE_PIVOT_COLS.forEach(col => {
+        const colKey = Object.keys(row).find(k => k.trim().toLowerCase() === col.toLowerCase());
+        if (!colKey) return;
+        let valor = parseFloat(String(row[colKey] || '0').replace(',', '.')) || 0;
+        if (valor === 0) return;
+        valor = SHOPEE_POSITIVE.has(col) ? Math.abs(valor) : -Math.abs(valor);
+        result.push({
+          'Data de criação do pedido': row['Data de criação do pedido'],
+          'ID do pedido':              row['ID do pedido'],
+          'Nome de usuário (comprador)': row['Nome de usuário (comprador)'],
+          'Categoria':                 col.replace(/\s*\(\d+\)\s*/g, '').trim(),
+          'Valor':                     valor,
+        });
+      });
+    });
+    return result;
+  };
+
   const getConvertedData = (canal: string, erp: string, dataInicial: string, dataFinal: string, competencia: string) => {
-    const channelData = getAllChannelData(canal);
+    const rawData = getAllChannelData(canal);
+    // Pivot Shopee before converting
+    const channelData = canal === 'SHOPEE' ? pivotShopeeData(rawData) : rawData;
     if (erp === 'BLING') {
       try {
         const result = convertToBling(canal, channelData, dataInicial, dataFinal, competencia, categories, accounts);
