@@ -35,58 +35,52 @@ const CANAIS = ['AMAZON', 'MAGAZINE LUIZA', 'MERCADO LIVRE', 'SHEIN', 'SHOPEE'];
 const ROWS_PER_PAGE = 100;
 const COLORS = ['#3B82F6','#EF4444','#10B981','#F59E0B','#8B5CF6','#EC4899','#06B6D4','#84CC16'];
 
-// ML group classification — maps Detalhe → group
 const ML_GRUPO_MAP: Record<string, string> = {
-  // ── TAXAS ──────────────────────────────────────────────────────────────────
-  "Custo de gestão da venda":                                                      "Taxas",
-  "Tarifa de venda":                                                               "Taxas",
-  "Taxa de parcelamento (equivalente ao acréscimo no preço pago pelo comprador)":  "Taxas",
-  "Taxas de parcelamento":                                                         "Taxas",
-  "Taxa de parcelamento":                                                          "Taxas",
-  "Custo por vender no Mercado Livre":                                             "Taxas",
-  "Custo por cobrar no Mercado Pago":                                              "Taxas",
-  "Taxas de recebimento":                                                          "Taxas",
-  "Taxa de recebimento":                                                           "Taxas",
-  "Tarifa de venda com afiliados":                                                 "Taxas",
-  "Custo por inconformidade no Envios Full":                                       "Taxas",
-  "Tarifas dos serviços do Mercado Pago":                                          "Taxas",
-
-  // ── FRETES ─────────────────────────────────────────────────────────────────
-  "Cancelamento da tarifa de devolução por envio externo ou intermunicipal":       "Fretes",
-  "Cancelamento da tarifa por envio interno ao município":                         "Fretes",
-  "Cancelamento da tarifa de envio extra ou intermunicipal":                       "Fretes",
-  "Estorno do custo de envio externo ou inter municipal":                          "Fretes",
-  "Estorno do custo de Mercado Envios":                                            "Fretes",
-  "Tarifa de devolução por envio externo ou intermunicipal":                       "Fretes",
-  "Tarifa de devolução por envio interno no município":                            "Fretes",
-  "Tarifa de envio interno à cidade":                                              "Fretes",
-  "Tarifa por envio interno ao município":                                         "Fretes",
-  "Tarifa de envio extra ou intermunicipal":                                       "Fretes",
-  "Tarifa do Mercado Envios":                                                      "Fretes",
-  "Tarifa de devolução":                                                           "Fretes",
-
-  // ── OUTROS ─────────────────────────────────────────────────────────────────
-  "Cancelamento da tarifa de manutenção da Minha página":                         "Outros",
-  "Cancelamento da tarifa de venda":                                               "Outros",
-  "Cancelamento da tarifa por campanhas de publicidade - Product Ads":             "Outros",
-  "Cancelamento da tarifa por devolução":                                          "Outros",
-  "Cancelamento da tarifa por serviço de armazenamento Full":                      "Outros",
-  "Cancelamento da tarifa por serviço de coleta Full":                             "Outros",
-  "Estorno da tarifa de manutenção do eShop":                                      "Outros",
-  "Estorno da tarifa de venda":                                                    "Outros",
-  "Estorno do custo de gestão da venda":                                           "Outros",
-  "Cancelamento do custo por inconformidade no Envios Full":                       "Outros",
-  "Custo de armazenamento prolongado no Full":                                     "Outros",
-  "Custo do serviço de coleta Full":                                               "Outros",
-  "Custo por retirada de estoque Full":                                            "Outros",
-  "Custo por retirada ou descarte de estoque Full":                                "Outros",
-  "Tarifa pelo serviço de armazenamento":                                          "Outros",
-  "Tarifa pelo serviço de armazenamento Full":                                     "Outros",
-  "Tarifa por estoque antigo no Full":                                             "Outros",
-  "Tarifa de manutenção da Minha página":                                          "Outros",
-  "Tarifa de manutenção do eShop":                                                 "Outros",
-  "Campanhas de publicidade - Product Ads":                                        "Outros",
-  "Tarifa por campanha de publicidade no Google Ads pelo Mercado Shops":           "Outros",
+  "Custo de gestão da venda": "Taxas",
+  "Tarifa de venda": "Taxas",
+  "Taxa de parcelamento (equivalente ao acréscimo no preço pago pelo comprador)": "Taxas",
+  "Taxas de parcelamento": "Taxas",
+  "Taxa de parcelamento": "Taxas",
+  "Custo por vender no Mercado Livre": "Taxas",
+  "Custo por cobrar no Mercado Pago": "Taxas",
+  "Taxas de recebimento": "Taxas",
+  "Taxa de recebimento": "Taxas",
+  "Tarifa de venda com afiliados": "Taxas",
+  "Custo por inconformidade no Envios Full": "Taxas",
+  "Tarifas dos serviços do Mercado Pago": "Taxas",
+  "Cancelamento da tarifa de devolução por envio externo ou intermunicipal": "Fretes",
+  "Cancelamento da tarifa por envio interno ao município": "Fretes",
+  "Cancelamento da tarifa de envio extra ou intermunicipal": "Fretes",
+  "Estorno do custo de envio externo ou inter municipal": "Fretes",
+  "Estorno do custo de Mercado Envios": "Fretes",
+  "Tarifa de devolução por envio externo ou intermunicipal": "Fretes",
+  "Tarifa de devolução por envio interno no município": "Fretes",
+  "Tarifa de envio interno à cidade": "Fretes",
+  "Tarifa por envio interno ao município": "Fretes",
+  "Tarifa de envio extra ou intermunicipal": "Fretes",
+  "Tarifa do Mercado Envios": "Fretes",
+  "Tarifa de devolução": "Fretes",
+  "Cancelamento da tarifa de manutenção da Minha página": "Outros",
+  "Cancelamento da tarifa de venda": "Outros",
+  "Cancelamento da tarifa por campanhas de publicidade - Product Ads": "Outros",
+  "Cancelamento da tarifa por devolução": "Outros",
+  "Cancelamento da tarifa por serviço de armazenamento Full": "Outros",
+  "Cancelamento da tarifa por serviço de coleta Full": "Outros",
+  "Estorno da tarifa de manutenção do eShop": "Outros",
+  "Estorno da tarifa de venda": "Outros",
+  "Estorno do custo de gestão da venda": "Outros",
+  "Cancelamento do custo por inconformidade no Envios Full": "Outros",
+  "Custo de armazenamento prolongado no Full": "Outros",
+  "Custo do serviço de coleta Full": "Outros",
+  "Custo por retirada de estoque Full": "Outros",
+  "Custo por retirada ou descarte de estoque Full": "Outros",
+  "Tarifa pelo serviço de armazenamento": "Outros",
+  "Tarifa pelo serviço de armazenamento Full": "Outros",
+  "Tarifa por estoque antigo no Full": "Outros",
+  "Tarifa de manutenção da Minha página": "Outros",
+  "Tarifa de manutenção do eShop": "Outros",
+  "Campanhas de publicidade - Product Ads": "Outros",
+  "Tarifa por campanha de publicidade no Google Ads pelo Mercado Shops": "Outros",
   "Cancelamento da Taxa de parcelamento (equivalente ao acréscimo no preço pago pelo comprador)": "Outros",
 };
 
@@ -102,7 +96,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
   const [dataView, setDataView] = useState<'canal' | 'erp'>('canal');
 
-  // Reload categories/accounts when switching to ERP view
   const handleSetDataView = (dv: 'canal' | 'erp') => {
     if (dv === 'erp') {
       getCategories().then(setCategories).catch(console.error);
@@ -122,7 +115,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   const calendarRef = React.useRef<HTMLDivElement>(null);
   const dashboardRef = useRef<HTMLDivElement>(null);
 
-  // Table state
   const [page, setPage] = useState(1);
   const [sortCol, setSortCol] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -131,19 +123,17 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   const [activeFilterCol, setActiveFilterCol] = useState<string | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
 
-  // Column selector state
   const [colSelectorOpen, setColSelectorOpen] = useState(false);
   const [hiddenColumns, setHiddenColumns] = useState<string[]>([]);
   const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   const [dragColIdx, setDragColIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
 
-  // Matriz state
   const [expandedPais, setExpandedPais] = useState<Set<string>>(new Set());
   const [matrizSortCol, setMatrizSortCol] = useState<'pai' | 'total' | 'pct'>('total');
   const [matrizSortDir, setMatrizSortDir] = useState<'asc' | 'desc'>('desc');
   const [groupByPedido, setGroupByPedido] = useState(false);
-  const [isPivoted, setIsPivoted]         = useState(false);
+  const [isPivoted, setIsPivoted] = useState(false);
 
   React.useEffect(() => {
     if (externalCanal) { setCanal(externalCanal); setPage(1); setColFilters({}); setIsPivoted(false); }
@@ -165,29 +155,23 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     return getAllChannelData(canal);
   }, [canal, files, getAllChannelData]);
 
-  // Channels that support pivot (column-based → row-based)
   const PIVOT_CHANNELS = ['SHOPEE', 'SHEIN'];
   const canPivot = PIVOT_CHANNELS.includes(canal);
 
-  // Pivot function: transform column-per-fee rows into one-row-per-fee
   const pivotedData = useMemo((): any[] => {
     if (!isPivoted || !canPivot) return [];
     const data = rawData;
     if (!data.length) return [];
-
     if (canal === 'SHOPEE') {
-      // Current Shopee column names (also keep old names for retrocompatibility)
       const PIVOT_COLS = [
-        // Taxas negativas (despesas)
         'Taxa de Envio Reversa',
         'Taxa de transação',
         'Taxa de comissão líquida',
-        'Taxa de comissão',            // retrocompat
+        'Taxa de comissão',
         'Taxa de serviço líquida',
-        'Taxa de serviço',             // retrocompat
-        'Desconto de Frete Aproximado',// retrocompat
+        'Taxa de serviço',
+        'Desconto de Frete Aproximado',
         'Desconto do vendedor',
-        // Taxa positiva (receita de frete pago pelo comprador)
         'Taxa de envio pagas pelo comprador',
       ];
       const POSITIVE_COLS = new Set(['Taxa de envio pagas pelo comprador']);
@@ -199,20 +183,16 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
           const colKey = Object.keys(row).find(k => k.trim().toLowerCase() === col.toLowerCase());
           if (!colKey) return;
           const rawCell = String(row[colKey] || '0');
-        // Handle both BR format (-18,34) and EN format (-18.34)
-        const vStr = rawCell.includes(',') 
-          ? rawCell.replace(/\./g, '').replace(',', '.') // BR: remove thousand dots, convert comma decimal
-          : rawCell; // EN: already correct
-        let valor = parseFloat(vStr) || 0;
+          const vStr = rawCell.includes(',') ? rawCell.replace(/\./g, '').replace(',', '.') : rawCell;
+          let valor = parseFloat(vStr) || 0;
           if (valor === 0) return;
-          const isPositive = POSITIVE_COLS.has(col);
-          valor = isPositive ? Math.abs(valor) : -Math.abs(valor);
+          valor = POSITIVE_COLS.has(col) ? Math.abs(valor) : -Math.abs(valor);
           result.push({
             'Data de criação do pedido': row['Data de criação do pedido'],
-            'ID do pedido':              row['ID do pedido'],
+            'ID do pedido': row['ID do pedido'],
             'Nome de usuário (comprador)': row['Nome de usuário (comprador)'],
-            'Categoria':                 col.replace(/\s*\(\d+\)\s*/g, '').trim(),
-            'Valor':                     valor,
+            'Categoria': col.replace(/\s*\(\d+\)\s*/g, '').trim(),
+            'Valor': valor,
           });
         });
       });
@@ -223,14 +203,12 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
 
   const filteredRaw = useMemo((): any[] => {
     let base = (isPivoted && canPivot) ? pivotedData : rawData;
-    // Group by pedido if enabled (ML: Número da venda, NP: Número do Pedido)
     if (groupByPedido && canal !== 'TODOS') {
       const grouped: Record<string, any> = {};
       base.forEach((r: any) => {
         const pedido = r['Número da venda'] || r['Número do Pedido'] || r['numero_pedido'] || JSON.stringify(r).slice(0,20);
         if (!grouped[pedido]) grouped[pedido] = { ...r };
         else {
-          // Sum numeric fields
           Object.keys(r).forEach(k => {
             if (typeof r[k] === 'number' && typeof grouped[pedido][k] === 'number') {
               grouped[pedido][k] += r[k];
@@ -263,7 +241,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   const stats = useMemo(() => {
     const empty = { vendas: 0, receita: 0, taxas: 0, fretes: 0, outros: 0, margemBruta: 0, margemLiquida: 0, ticketMedio: 0 };
     if (filteredRaw.length === 0) return empty;
-
     if (canal === 'MERCADO LIVRE') {
       const vendas = new Set(filteredRaw.map((r: any) => r['Número da venda'])).size;
       const receita = filteredRaw.reduce((a: number, r: any) => a + (Number(r['Valor da transação']) || 0), 0);
@@ -279,7 +256,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       const margemLiquida = margemBruta - outros;
       return { vendas, receita, taxas, fretes, outros, margemBruta, margemLiquida, ticketMedio: vendas > 0 ? receita / vendas : 0 };
     }
-
     if (canal === 'TODOS') {
       let vendas = 0, receita = 0, taxas = 0, fretes = 0, outros = 0;
       CANAIS.forEach(c => {
@@ -306,7 +282,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       const margemLiquida = margemBruta - outros;
       return { vendas, receita, taxas, fretes, outros, margemBruta, margemLiquida, ticketMedio: vendas > 0 ? receita / vendas : 0 };
     }
-
     const vendas = filteredRaw.length;
     const receita = filteredRaw.reduce((a: number, r: any) => {
       const keys = Object.keys(r).filter(k => typeof r[k] === 'number' && r[k] > 0);
@@ -519,7 +494,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     </div>
   );
 
-  // ── Categories + Accounts for ERP preview ──────────────────────────────────
   const { getCategories, getAccounts } = useAdmin();
   const [categories, setCategories] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
@@ -538,16 +512,20 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     };
   }, []);
 
-  // ── ERP Preview (Bling format) ────────────────────────────────────────────
-  // Pivot for ERP preview - always pivot Shopee/Shein regardless of isPivoted state
   const erpInputData = useMemo((): any[] => {
     if (!['SHOPEE', 'SHEIN'].includes(canal)) return filteredRaw;
     if (filteredRaw.length === 0) return [];
-    // If already pivoted (has 'Categoria' column from pivot), use as-is
     if (filteredRaw[0] && 'Categoria' in filteredRaw[0] && !('Status do pedido' in filteredRaw[0])) return filteredRaw;
-    // Auto-pivot for ERP
     const PIVOT_COLS = [
-      'Desconto de Frete Aproximado','Desconto do vendedor','Taxa de envio pagas pelo comprador',
+      'Taxa de Envio Reversa',
+      'Taxa de transação',
+      'Taxa de comissão líquida',
+      'Taxa de comissão',
+      'Taxa de serviço líquida',
+      'Taxa de serviço',
+      'Desconto de Frete Aproximado',
+      'Desconto do vendedor',
+      'Taxa de envio pagas pelo comprador',
     ];
     const POSITIVE = new Set(['Taxa de envio pagas pelo comprador']);
     const result: any[] = [];
@@ -557,15 +535,17 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       PIVOT_COLS.forEach(col => {
         const colKey = Object.keys(row).find(k => k.trim().toLowerCase() === col.toLowerCase());
         if (!colKey) return;
-        let valor = parseFloat(String(row[colKey] || '0').replace(',', '.')) || 0;
+        const rawCell = String(row[colKey] || '0');
+        const vStr = rawCell.includes(',') ? rawCell.replace(/\./g, '').replace(',', '.') : rawCell;
+        let valor = parseFloat(vStr) || 0;
         if (valor === 0) return;
         valor = POSITIVE.has(col) ? Math.abs(valor) : -Math.abs(valor);
         result.push({
           'Data de criação do pedido': row['Data de criação do pedido'],
-          'ID do pedido':              row['ID do pedido'],
+          'ID do pedido': row['ID do pedido'],
           'Nome de usuário (comprador)': row['Nome de usuário (comprador)'],
-          'Categoria':                 col.replace(/\s*\(\d+\)\s*/g, '').trim(),
-          'Valor':                     valor,
+          'Categoria': col.replace(/\s*\(\d+\)\s*/g, '').trim(),
+          'Valor': valor,
         });
       });
     });
@@ -576,12 +556,10 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     if (dataView !== 'erp' || !['tabela', 'matriz', 'dashboard'].includes(viewMode)) return [];
     if (!erpInputData.length) return [];
 
-    // Derive period from data — handle Excel serial, Date objects, and strings
     const parseD = (v: any): Date | null => {
       if (!v) return null;
       if (v instanceof Date) return v;
       if (typeof v === 'number') {
-        // Excel serial date
         const d = new Date(new Date(1900,0,1).getTime() + (v-1)*86400000);
         if (v > 59) d.setTime(d.getTime()-86400000);
         return d;
@@ -599,7 +577,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       .filter((d: Date | null): d is Date => d !== null && !isNaN(d.getTime()))
       .sort((a: Date, b: Date) => a.getTime() - b.getTime());
 
-
     const dataInicial = dates.length ? dates[0].toISOString().split('T')[0] : '';
     const dataFinal   = dates.length ? dates[dates.length - 1].toISOString().split('T')[0] : '';
     const dateObj     = dates.length ? dates[0] : new Date();
@@ -607,7 +584,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
 
     const rows = convertToBling(canal, erpInputData, dataInicial, dataFinal, competencia, categories, accounts);
 
-    // Map to display columns
     return rows.map(r => ({
       'Data':               r['Data'],
       'Competência':        r['Competencia'],
@@ -620,25 +596,18 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     }));
   }, [dataView, viewMode, erpInputData, canal, categories, accounts]);
 
-  // ── ERP MATRIZ data ──────────────────────────────────────────────────────────
   const erpMatrizData = useMemo(() => {
     if (dataView !== 'erp' || viewMode !== 'matriz') return [];
     if (!erpPreviewData.length) return [];
 
-    // Group by Categoria (which is erp_category)
-    // Get pai from Observações or we need to store it separately
-    // Better: re-compute from erpPreviewData grouping by categoria
-    const groups: Record<string, { cat: string; valor: number; count: number }> = {};
+    const groups: Record<string, any> = {};
     let total = 0;
 
     erpPreviewData.forEach((row: any) => {
       const obs = row['Observações'] || '';
       const cat = row['Categoria'] || 'Sem categoria';
-      // Extract pai from obs: "... | PAI > CAT | ..." or just use cat
-      // The obs format: "CANAL: CLIENT | PEDIDO > NF > DETALHE | PAI > CAT | DATA | COMP"
-      // Category display in obs is the 3rd pipe segment
       const parts = obs.split(' | ');
-      const catPart = parts[2] || cat; // "PAI > CAT" or just "CAT"
+      const catPart = parts[2] || cat;
       const [pai, catName] = catPart.includes(' > ')
         ? catPart.split(' > ').map((s: string) => s.trim())
         : ['Sem categoria pai', catPart.trim()];
@@ -653,7 +622,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       if (groups[key].obs.length < 3) groups[key].obs.push(row['Observações'] || '');
     });
 
-    // Group by pai
     const paiGroups: Record<string, { pai: string; total: number; categorias: any[] }> = {};
     Object.entries(groups).forEach(([key, g]) => {
       const [pai] = key.split('|||');
@@ -676,10 +644,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       .sort((a, b) => Math.abs(b.total) - Math.abs(a.total));
   }, [dataView, viewMode, erpPreviewData]);
 
-
-
-
-  // ── ERP Dashboard data ───────────────────────────────────────────────────────
   const erpDashboardData = useMemo(() => {
     if (dataView !== 'erp' || viewMode !== 'dashboard') return { byPai: [], byCat: [], total: 0 };
     if (!erpPreviewData.length) return { byPai: [], byCat: [], total: 0 };
@@ -708,7 +672,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     return { byPai: sort(paiMap), byCat: sort(catMap), total };
   }, [dataView, viewMode, erpPreviewData]);
 
-  // ── ERP Stat Cards (same 8 as canal) ────────────────────────────────────────
   const erpStatCards = useMemo(() => {
     if (!erpPreviewData.length) return [];
     const vals = erpPreviewData.map((r: any) => Math.abs(Number(String(r['Valor']||'0').replace(',','.')) || 0));
@@ -722,18 +685,17 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     const clientes = new Set(erpPreviewData.map((r: any) => r['Cliente/Fornecedor']).filter(Boolean)).size;
     const iconCls = 'w-8 h-8 p-1.5 rounded-lg';
     return [
-      { label: 'Total Débitos',    value: formatBRL(total),         icon: <TrendingDown className={`${iconCls} bg-red-50 text-red-500`} /> },
-      { label: 'Registros',        value: count.toLocaleString(),   icon: <Receipt className={`${iconCls} bg-purple-50 text-purple-500`} /> },
-      { label: 'Categorias',       value: cats.toString(),          icon: <ShoppingCart className={`${iconCls} bg-orange-50 text-orange-500`} /> },
-      { label: 'Portadores',       value: ports.toString(),         icon: <CreditCard className={`${iconCls} bg-teal-50 text-teal-500`} /> },
-      { label: 'Clientes/Forn.',   value: clientes.toString(),      icon: <DollarSign className={`${iconCls} bg-blue-50 text-blue-500`} /> },
-      { label: 'Média/Lançamento', value: formatBRL(media),         icon: <TrendingUp className={`${iconCls} bg-green-50 text-green-500`} /> },
-      { label: 'Maior Débito',     value: formatBRL(maior),         icon: <TrendingDown className={`${iconCls} bg-red-50 text-red-400`} /> },
-      { label: 'Menor Débito',     value: formatBRL(menor),         icon: <TrendingUp className={`${iconCls} bg-green-50 text-green-400`} /> },
+      { label: 'Total Débitos',    value: formatBRL(total),         icon: <TrendingDown className={iconCls + ' bg-red-50 text-red-500'} /> },
+      { label: 'Registros',        value: count.toLocaleString(),   icon: <Receipt className={iconCls + ' bg-purple-50 text-purple-500'} /> },
+      { label: 'Categorias',       value: cats.toString(),          icon: <ShoppingCart className={iconCls + ' bg-orange-50 text-orange-500'} /> },
+      { label: 'Portadores',       value: ports.toString(),         icon: <CreditCard className={iconCls + ' bg-teal-50 text-teal-500'} /> },
+      { label: 'Clientes/Forn.',   value: clientes.toString(),      icon: <DollarSign className={iconCls + ' bg-blue-50 text-blue-500'} /> },
+      { label: 'Média/Lançamento', value: formatBRL(media),         icon: <TrendingUp className={iconCls + ' bg-green-50 text-green-500'} /> },
+      { label: 'Maior Débito',     value: formatBRL(maior),         icon: <TrendingDown className={iconCls + ' bg-red-50 text-red-400'} /> },
+      { label: 'Menor Débito',     value: formatBRL(menor),         icon: <TrendingUp className={iconCls + ' bg-green-50 text-green-400'} /> },
     ];
   }, [erpPreviewData]);
 
-  // ── ERP Receita por Dia ───────────────────────────────────────────────────────
   const erpReceitaDia = useMemo(() => {
     if (!erpPreviewData.length) return [];
     const map: Record<string, number> = {};
@@ -766,75 +728,65 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     return data;
   }, [erpPreviewData, erpColFilters, erpSortCol, erpSortDir]);
 
-  const handleErpColClick = (e: React.MouseEvent, col: string) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      setErpActiveFilter(prev => prev === col ? null : col);
-    } else {
-      if (erpSortCol === col) setErpSortDir(d => d === 'asc' ? 'desc' : 'asc');
-      else { setErpSortCol(col); setErpSortDir('asc'); }
-    }
-  };
+  // btn classes
+  const btnBase = 'w-8 h-8 flex items-center justify-center rounded border transition-colors flex-shrink-0';
+  const btnActive = btnBase + ' bg-blue-600 text-white border-blue-600';
+  const btnInactive = btnBase + ' text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800';
+  const btnDisabled = btnBase + ' bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-600 border-gray-200 dark:border-gray-600 cursor-not-allowed';
 
   return (
     <div className="h-full flex flex-col relative">
       {/* Subheader */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex-shrink-0">
         <div className="flex items-center gap-2">
-          {/* ── ESQUERDA: CANAL | APP | ERP ── */}
+          {/* CANAL | APP | ERP */}
           <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex-shrink-0">
             <button onClick={() => handleSetDataView('canal')}
-              className={`w-16 py-1.5 text-xs font-semibold transition-colors text-center border-r border-gray-200 dark:border-gray-700 ${dataView === 'canal' ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}>
+              className={'w-16 py-1.5 text-xs font-semibold transition-colors text-center border-r border-gray-200 dark:border-gray-700 ' + (dataView === 'canal' ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800')}>
               CANAL
             </button>
-            <button disabled
-              className="w-16 py-1.5 text-xs font-semibold text-center border-r border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-600 cursor-not-allowed">
+            <button disabled className="w-16 py-1.5 text-xs font-semibold text-center border-r border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-600 cursor-not-allowed">
               APP
             </button>
             <button onClick={() => handleSetDataView('erp')}
-              className={`w-16 py-1.5 text-xs font-semibold transition-colors text-center ${dataView === 'erp' ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}>
+              className={'w-16 py-1.5 text-xs font-semibold transition-colors text-center ' + (dataView === 'erp' ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800')}>
               ERP
             </button>
           </div>
 
-          {/* Contador de registros */}
+          {/* Contador */}
           {viewMode === 'tabela' && tableData.length > 0 && (
             <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">{tableData.length.toLocaleString('pt-BR')} registros</span>
           )}
 
-          {/* Filter badges — esquerda do # */}
-          {dataView === 'canal' && Object.entries(colFilters).filter(([,v])=>v?.length).map(([col, vals]) => (
+          {/* Filter badges — à esquerda do # */}
+          {dataView === 'canal' && Object.entries(colFilters).filter(([,v]) => v?.length).map(([col, vals]) => (
             <span key={col} className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium flex-shrink-0">
               {col}: {vals.join(', ')}
-              <button onClick={() => setColFilters(f => { const n={...f}; delete n[col]; return n; })} className="hover:text-red-500 ml-0.5">×</button>
+              <button onClick={() => setColFilters(f => { const n = {...f}; delete n[col]; return n; })} className="hover:text-red-500 ml-0.5">×</button>
             </span>
           ))}
-          {dataView === 'erp' && Object.entries(erpColFilters).filter(([,v])=>v?.length).map(([col, vals]) => (
+          {dataView === 'erp' && Object.entries(erpColFilters).filter(([,v]) => v?.length).map(([col, vals]) => (
             <span key={col} className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium flex-shrink-0">
               {col}: {vals.join(', ')}
-              <button onClick={() => setErpColFilters(f => { const n={...f}; delete n[col]; return n; })} className="hover:text-red-500 ml-0.5">×</button>
+              <button onClick={() => setErpColFilters(f => { const n = {...f}; delete n[col]; return n; })} className="hover:text-red-500 ml-0.5">×</button>
             </span>
           ))}
 
-          {/* Spacer */}
           <div className="flex-1" />
 
-          {/* ── DIREITA: botões de ação ── */}
+          {/* Botões direita — todos w-8 h-8 */}
           <div className="flex items-center gap-1.5">
             {/* # Agrupar */}
-            <button
-              onClick={() => setGroupByPedido(g => !g)}
-              title="Agrupar por número de pedido"
-              className={groupByPedido ? 'w-8 h-8 flex items-center justify-center rounded border transition-colors text-xs font-bold flex-shrink-0 bg-purple-600 text-white border-purple-600' : 'w-8 h-8 flex items-center justify-center rounded border transition-colors text-xs font-bold flex-shrink-0 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}
-            >#</button>
+            <button onClick={() => setGroupByPedido(g => !g)} title="Agrupar por número de pedido"
+              className={btnBase + ' text-xs font-bold ' + (groupByPedido ? 'bg-purple-600 text-white border-purple-600' : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800')}>
+              #
+            </button>
 
             {/* Data */}
             <div className="relative flex-shrink-0" ref={calendarRef}>
-              <button
-                onClick={() => setCalendarOpen(o => !o)}
-                className={(dateFilter.startDate || dateFilter.endDate) ? 'w-8 h-8 flex items-center justify-center rounded border transition-colors flex-shrink-0 bg-blue-600 text-white border-blue-600' : 'w-8 h-8 flex items-center justify-center rounded border transition-colors flex-shrink-0 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}
-                title="Filtrar por data"
-              >
+              <button onClick={() => setCalendarOpen(o => !o)} title="Filtrar por data"
+                className={(dateFilter.startDate || dateFilter.endDate) ? btnActive : btnInactive}>
                 <Calendar className="w-4 h-4" />
               </button>
               {calendarOpen && (
@@ -850,41 +802,34 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             </div>
 
             {/* Colunas */}
-            <button
-              onClick={() => viewMode === 'tabela' && setColSelectorOpen(o => !o)}
-              disabled={viewMode !== 'tabela'}
-              className={viewMode !== 'tabela' ? 'w-8 h-8 flex items-center justify-center rounded border flex-shrink-0 bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-600 border-gray-200 dark:border-gray-600 cursor-not-allowed' : colSelectorOpen ? 'w-8 h-8 flex items-center justify-center rounded border flex-shrink-0 bg-blue-600 text-white border-blue-600' : 'w-8 h-8 flex items-center justify-center rounded border flex-shrink-0 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}
+            <button onClick={() => viewMode === 'tabela' && setColSelectorOpen(o => !o)} disabled={viewMode !== 'tabela'}
               title={viewMode === 'tabela' ? 'Selecionar colunas' : 'Disponível apenas no modo Tabela'}
-            >
+              className={viewMode !== 'tabela' ? btnDisabled : colSelectorOpen ? btnActive : btnInactive}>
               <Filter className="w-4 h-4" />
             </button>
 
             {/* Pivotar — só Shopee/Shein no modo CANAL */}
             {canPivot && dataView === 'canal' && (
-              <button
-                onClick={() => setIsPivoted(p => !p)}
-                title={isPivoted ? 'Ver dados originais' : 'Ver dados pivotados (linha por taxa)'}
-                className={isPivoted ? 'w-8 h-8 flex items-center justify-center rounded border text-sm font-bold flex-shrink-0 bg-orange-500 text-white border-orange-500' : 'w-8 h-8 flex items-center justify-center rounded border text-sm font-bold flex-shrink-0 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}
-              >⇄</button>
+              <button onClick={() => setIsPivoted(p => !p)} title={isPivoted ? 'Ver dados originais' : 'Ver dados pivotados'}
+                className={btnBase + ' text-sm font-bold ' + (isPivoted ? 'bg-orange-500 text-white border-orange-500' : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800')}>
+                ⇄
+              </button>
             )}
 
             {/* TABELA | MATRIZ | DASHBOARD */}
             <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex-shrink-0">
               {(['tabela', 'matriz', 'dashboard'] as ViewMode[]).map(mode => (
                 <button key={mode} onClick={() => setViewMode(mode)}
-                  className={viewMode === mode ? 'w-24 py-1.5 text-xs font-semibold text-center bg-blue-600 text-white' : 'w-24 py-1.5 text-xs font-semibold text-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}>
+                  className={'w-24 py-1.5 text-xs font-semibold text-center ' + (viewMode === mode ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800')}>
                   {mode.toUpperCase()}
                 </button>
               ))}
             </div>
 
-            {/* Export dashboard */}
-            <button
-              onClick={() => viewMode === 'dashboard' && setExportPanelOpen(true)}
-              className={viewMode === 'dashboard' ? 'w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0 bg-blue-600 text-white hover:bg-blue-700 cursor-pointer' : 'w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0 bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'}
+            {/* Export */}
+            <button onClick={() => viewMode === 'dashboard' && setExportPanelOpen(true)} disabled={viewMode !== 'dashboard'}
               title={viewMode === 'dashboard' ? 'Exportar dashboard' : 'Disponível apenas no modo Dashboard'}
-              disabled={viewMode !== 'dashboard'}
-            >
+              className={'w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0 ' + (viewMode === 'dashboard' ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer' : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed')}>
               <ArrowUp className="w-3 h-3" />
               <ArrowDown className="w-3 h-3" />
             </button>
@@ -895,7 +840,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       {/* Content */}
       <div className="flex-1 overflow-hidden relative">
 
-                        {/* ERP DASHBOARD */}
+        {/* ERP DASHBOARD */}
         {viewMode === 'dashboard' && dataView === 'erp' && (
           <div ref={dashboardRef} className="h-full overflow-auto p-6 pb-20">
             <div className="grid grid-cols-2 md:grid-cols-8 gap-3 mb-6">
@@ -1006,7 +951,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
         {/* TABELA */}
         {viewMode === 'tabela' && (
           <div className="h-full flex flex-col">
-            {/* Table area */}
             <div className="flex-1 overflow-auto" style={{ overflowX: 'auto' }}>
               {dataView === 'erp' ? (
                 erpPreviewData.length === 0 ? (
@@ -1021,19 +965,15 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                       <tr>
                         {ERP_COLS.map(col => {
                           const hasFilter = !!erpColFilters[col];
+                          const px = ['Data','Competência'].includes(col) ? 'px-3' : 'px-6';
                           return (
                             <th key={col}
-                              ref={el => erpThRefs.current[col] = el as HTMLTableCellElement}
+                              ref={el => { erpThRefs.current[col] = el as HTMLTableCellElement; }}
                               onClick={e => {
-                                if (e.ctrlKey || e.metaKey) {
-                                  e.preventDefault();
-                                  setErpActiveFilter(prev => prev === col ? null : col);
-                                } else {
-                                  if (erpSortCol === col) setErpSortDir(d => d === 'asc' ? 'desc' : 'asc');
-                                  else { setErpSortCol(col); setErpSortDir('asc'); }
-                                }
+                                if (e.ctrlKey || e.metaKey) { e.preventDefault(); setErpActiveFilter(prev => prev === col ? null : col); }
+                                else { if (erpSortCol === col) setErpSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setErpSortCol(col); setErpSortDir('asc'); } }
                               }}
-                              className={(hasFilter ? (['Data','Competência'].includes(col) ? 'px-3' : 'px-6') + ' py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : (['Data','Competência'].includes(col) ? 'px-3' : 'px-6') + ' py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors bg-green-600 text-white hover:bg-green-700')}>
+                              className={px + ' py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors ' + (hasFilter ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-green-600 text-white hover:bg-green-700')}>
                               <div className="flex items-center gap-1">
                                 {col}
                                 {erpSortCol === col && (erpSortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
@@ -1048,7 +988,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                       {erpDisplayData.map((row: any, i: number) => (
                         <tr key={i} className="hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-colors">
                           {ERP_COLS.map(col => (
-                            <td key={col} className={`${['Data','Competência'].includes(col) ? 'px-3' : 'px-6'} py-3 text-sm text-gray-900 dark:text-gray-100 ${col === 'Observações' ? 'break-words max-w-xs whitespace-normal' : 'whitespace-nowrap'}`}>
+                            <td key={col} className={(['Data','Competência'].includes(col) ? 'px-3' : 'px-6') + ' py-3 text-sm text-gray-900 dark:text-gray-100 ' + (col === 'Observações' ? 'break-words max-w-xs whitespace-normal' : 'whitespace-nowrap')}>
                               {row[col] ?? '-'}
                             </td>
                           ))}
@@ -1070,12 +1010,9 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                       {displayColumns.map(col => {
                         const hasFilter = !!colFilters[col];
                         return (
-                          <th
-                    ref={el => thRefs.current[col] = el as HTMLTableCellElement}
-                            key={col}
-                            className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none transition-colors whitespace-nowrap ${hasFilter ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'}`}
-                            onClick={e => handleColHeaderClick(e, col)}
-                          >
+                          <th ref={el => { thRefs.current[col] = el as HTMLTableCellElement; }} key={col}
+                            className={'px-6 py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none transition-colors whitespace-nowrap ' + (hasFilter ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600')}
+                            onClick={e => handleColHeaderClick(e, col)}>
                             <div className="flex items-center gap-1">
                               {col}
                               {sortCol === col && (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
@@ -1101,24 +1038,17 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
               )}
             </div>
 
-            {/* ERP filter popup */}
             {erpActiveFilter && (() => {
-              const thRef = erpThRefs.current[erpActiveFilter];
-              const anchorRef = { current: thRef } as React.RefObject<HTMLElement>;
+              const anchorRef = { current: erpThRefs.current[erpActiveFilter] } as React.RefObject<HTMLElement>;
               return (
-                <ColumnFilter
-                  column={erpActiveFilter}
-                  label={erpActiveFilter}
+                <ColumnFilter column={erpActiveFilter} label={erpActiveFilter}
                   options={[...new Set(erpPreviewData.map((r: any) => String(r[erpActiveFilter] ?? '')).filter(Boolean))].sort()}
                   selected={erpColFilters[erpActiveFilter] || []}
                   onChange={vals => setErpColFilters(f => ({ ...f, [erpActiveFilter!]: vals }))}
-                  onClose={() => setErpActiveFilter(null)}
-                  anchorRef={anchorRef}
-                />
+                  onClose={() => setErpActiveFilter(null)} anchorRef={anchorRef} />
               );
             })()}
 
-            {/* Pagination footer */}
             {totalPages > 1 && (
               <div className="px-6 py-2 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 flex items-center justify-between flex-shrink-0">
                 <span className="text-xs text-gray-600 dark:text-gray-400">
@@ -1134,23 +1064,17 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
               </div>
             )}
 
-            {/* Filter popup */}
             {activeFilterCol && (() => {
               const anchorRef = { current: thRefs.current[activeFilterCol] } as React.RefObject<HTMLElement>;
               return (
-                <ColumnFilter
-                  column={activeFilterCol}
-                  label={activeFilterCol}
+                <ColumnFilter column={activeFilterCol} label={activeFilterCol}
                   options={getColOptions(activeFilterCol).map(String)}
                   selected={colFilters[activeFilterCol] || []}
                   onChange={vals => setColFilters(f => ({ ...f, [activeFilterCol!]: vals }))}
-                  onClose={() => setActiveFilterCol(null)}
-                  anchorRef={anchorRef}
-                />
+                  onClose={() => setActiveFilterCol(null)} anchorRef={anchorRef} />
               );
             })()}
 
-            {/* Column selector panel */}
             {colSelectorOpen && (
               <div className="absolute right-0 top-0 bottom-0 w-64 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 z-40 flex flex-col shadow-xl">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
@@ -1159,9 +1083,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2">
                   {visibleColumns.map((col, idx) => (
-                    <div
-                      key={col}
-                      draggable
+                    <div key={col} draggable
                       onDragStart={() => setDragColIdx(idx)}
                       onDragOver={e => { e.preventDefault(); setDragOverIdx(idx); }}
                       onDrop={() => {
@@ -1170,22 +1092,14 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                         const [moved] = next.splice(dragColIdx, 1);
                         next.splice(idx, 0, moved);
                         setVisibleColumns(next);
-                        setDragColIdx(null);
-                        setDragOverIdx(null);
+                        setDragColIdx(null); setDragOverIdx(null);
                       }}
-                      className={`flex items-center gap-2 px-2 py-2 rounded cursor-grab select-none text-sm transition-colors ${dragOverIdx === idx ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-                    >
+                      className={'flex items-center gap-2 px-2 py-2 rounded cursor-grab select-none text-sm transition-colors ' + (dragOverIdx === idx ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700')}>
                       <span className="text-gray-400 cursor-grab">⠿</span>
                       <label className="flex items-center gap-2 cursor-pointer flex-1">
-                        <input
-                          type="checkbox"
-                          checked={hiddenColumns.indexOf(col) === -1}
-                          onChange={e => {
-                            if (e.target.checked) setHiddenColumns(h => h.filter(c => c !== col));
-                            else setHiddenColumns(h => [...h, col]);
-                          }}
-                          className="rounded"
-                        />
+                        <input type="checkbox" checked={hiddenColumns.indexOf(col) === -1}
+                          onChange={e => { if (e.target.checked) setHiddenColumns(h => h.filter(c => c !== col)); else setHiddenColumns(h => [...h, col]); }}
+                          className="rounded" />
                         <span className="text-gray-700 dark:text-gray-300 truncate">{col}</span>
                       </label>
                     </div>
@@ -1201,7 +1115,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
           </div>
         )}
 
-        {/* MATRIZ */}
+        {/* MATRIZ ERP */}
         {viewMode === 'matriz' && dataView === 'erp' && (
           <div className="h-full overflow-auto">
             {erpMatrizData.length === 0 ? (
@@ -1244,29 +1158,29 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                         </tr>
                         {isExpanded && pai.categorias.map((cat: any) => (
                           <React.Fragment key={cat.cat}>
-                          <tr className="hover:bg-green-50/30 dark:hover:bg-green-900/10 cursor-pointer"
-                            onClick={() => setExpandedPais(prev => { const n = new Set(prev); const k = pai.pai+'|||'+cat.cat; if (n.has(k)) n.delete(k); else n.add(k); return n; })}>
-                            <td className="px-6 py-2.5 pl-10">
-                              <div className="flex items-center gap-2">
-                                {expandedPais.has(pai.pai+'|||'+cat.cat) ? <ChevronDown className="w-3 h-3 text-green-400 flex-shrink-0" /> : <ChevronRight className="w-3 h-3 text-gray-300 flex-shrink-0" />}
-                                <span className="text-sm text-gray-700 dark:text-gray-300">{cat.cat}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-2.5 text-right text-sm text-gray-700 dark:text-gray-300">{formatBRL(cat.valor)}</td>
-                            <td className="px-6 py-2.5 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <div className="w-16 h-1 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
-                                  <div className="h-full bg-green-300 rounded-full" style={{ width: `${Math.min(100, parseFloat(cat.pct))}%` }} />
+                            <tr className="hover:bg-green-50/30 dark:hover:bg-green-900/10 cursor-pointer"
+                              onClick={() => setExpandedPais(prev => { const n = new Set(prev); const k = pai.pai+'|||'+cat.cat; if (n.has(k)) n.delete(k); else n.add(k); return n; })}>
+                              <td className="px-6 py-2.5 pl-10">
+                                <div className="flex items-center gap-2">
+                                  {expandedPais.has(pai.pai+'|||'+cat.cat) ? <ChevronDown className="w-3 h-3 text-green-400 flex-shrink-0" /> : <ChevronRight className="w-3 h-3 text-gray-300 flex-shrink-0" />}
+                                  <span className="text-sm text-gray-700 dark:text-gray-300">{cat.cat}</span>
                                 </div>
-                                <span className="text-sm text-gray-500 dark:text-gray-400 w-10 text-right">{cat.pct}%</span>
-                              </div>
-                            </td>
-                          </tr>
-                          {expandedPais.has(pai.pai+'|||'+cat.cat) && (cat.obs || []).map((ob: string, oi: number) => (
-                            <tr key={oi} className="bg-gray-50/50 dark:bg-gray-700/30">
-                              <td colSpan={3} className="px-6 py-1.5 pl-20 text-xs text-gray-500 dark:text-gray-400">{ob}</td>
+                              </td>
+                              <td className="px-6 py-2.5 text-right text-sm text-gray-700 dark:text-gray-300">{formatBRL(cat.valor)}</td>
+                              <td className="px-6 py-2.5 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <div className="w-16 h-1 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
+                                    <div className="h-full bg-green-300 rounded-full" style={{ width: `${Math.min(100, parseFloat(cat.pct))}%` }} />
+                                  </div>
+                                  <span className="text-sm text-gray-500 dark:text-gray-400 w-10 text-right">{cat.pct}%</span>
+                                </div>
+                              </td>
                             </tr>
-                          ))}
+                            {expandedPais.has(pai.pai+'|||'+cat.cat) && (cat.obs || []).map((ob: string, oi: number) => (
+                              <tr key={oi} className="bg-gray-50/50 dark:bg-gray-700/30">
+                                <td colSpan={3} className="px-6 py-1.5 pl-20 text-xs text-gray-500 dark:text-gray-400">{ob}</td>
+                              </tr>
+                            ))}
                           </React.Fragment>
                         ))}
                       </React.Fragment>
@@ -1277,6 +1191,8 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             )}
           </div>
         )}
+
+        {/* MATRIZ CANAL */}
         {viewMode === 'matriz' && dataView === 'canal' && (
           <div className="h-full overflow-auto">
             {matrizData.length === 0 ? (
@@ -1295,23 +1211,16 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {[...matrizData].sort((a, b) => {
-                  const mul = matrizSortDir === 'asc' ? 1 : -1;
-                  if (matrizSortCol === 'pai') return mul * a.pai.localeCompare(b.pai);
-                  if (matrizSortCol === 'total') return mul * (a.total - b.total);
-                  return mul * (parseFloat(a.pct) - parseFloat(b.pct));
-                }).map(pai => {
+                    const mul = matrizSortDir === 'asc' ? 1 : -1;
+                    if (matrizSortCol === 'pai') return mul * a.pai.localeCompare(b.pai);
+                    if (matrizSortCol === 'total') return mul * (a.total - b.total);
+                    return mul * (parseFloat(a.pct) - parseFloat(b.pct));
+                  }).map(pai => {
                     const isExpanded = expandedPais.has(pai.pai);
                     return (
                       <React.Fragment key={pai.pai}>
-                        <tr
-                          className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
-                          onClick={() => setExpandedPais(prev => {
-                            const next = new Set(prev);
-                            if (next.has(pai.pai)) next.delete(pai.pai);
-                            else next.add(pai.pai);
-                            return next;
-                          })}
-                        >
+                        <tr className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                          onClick={() => setExpandedPais(prev => { const next = new Set(prev); if (next.has(pai.pai)) next.delete(pai.pai); else next.add(pai.pai); return next; })}>
                           <td className="px-6 py-3">
                             <div className="flex items-center gap-2">
                               {isExpanded ? <ChevronDown className="w-4 h-4 text-blue-500 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />}
@@ -1388,7 +1297,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
           </div>
         </>
       )}
-      </div>
     </div>
   );
 };
