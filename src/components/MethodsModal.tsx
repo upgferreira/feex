@@ -152,7 +152,7 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
 
   const thCls = (key: string) => {
     const hasFilter = !!colFilters[key];
-    return `px-4 py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors ${ hasFilter ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600' }`;
+    return 'px-4 py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors ' + (hasFilter ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600');
   };
 
   const renderCell = (col: typeof COLS[0], row: any, isEditing: boolean, setRow: (fn: (r: any) => any) => void) => {
@@ -197,35 +197,42 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
             ))}
             <div className="flex-1" />
           </div>
+
           <div className="flex items-center gap-2">
-            <button onClick={() => { const s = blingMetodos.find((m:any) => blingSelectedIds.has(m.id)); if(s) { setBlingAddRow(null); setBlingEditRow({...s}); } }}
-              disabled={blingSelectedIds.size !== 1}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border disabled:opacity-40 text-gray-700 dark:text-gray-300 border-gray-300 hover:bg-gray-100 bg-white dark:bg-gray-800">
-              <Pencil className="w-3.5 h-3.5" /> Editar
-            </button>
-            <button onClick={async () => { if(!window.confirm('Excluir ' + blingSelectedIds.size + ' método(s)?')) return; for(const id of blingSelectedIds) await blingAction('delete',id,null); }}
-              disabled={blingSelectedIds.size === 0 || blingActing}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border disabled:opacity-40 text-red-600 border-red-300 hover:bg-red-50 bg-white dark:bg-gray-800">
-              <Trash2 className="w-3.5 h-3.5" /> Excluir
-            </button>
-            <button onClick={() => { setBlingEditRow(null); setBlingAddRow({descricao:'',tipoPagamento:1,situacao:1,finalidade:1}); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <Plus className="w-3.5 h-3.5" /> Adicionar
-            </button>
-          </div>
-          {viewMode === 'app' && <div className="flex items-center gap-2">
-            <button onClick={() => selectedId && setEditingRow({...selectedRow})} disabled={!selectedId}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800">
-              <Pencil className="w-3.5 h-3.5" /> Editar
-            </button>
-            <button onClick={handleDelete} disabled={!selectedId}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 bg-white dark:bg-gray-800">
-              <Trash2 className="w-3.5 h-3.5" /> Excluir
-            </button>
-            <button onClick={() => { setNewRow({ instalments: '1' }); setAddingRow(true); setSelectedId(null); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <Plus className="w-4 h-4" /> Adicionar
-            </button>
+            {viewMode === 'app' && (
+              <>
+                <button onClick={() => selectedId && setEditingRow({...selectedRow})} disabled={!selectedId}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800">
+                  <Pencil className="w-3.5 h-3.5" /> Editar
+                </button>
+                <button onClick={handleDelete} disabled={!selectedId}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 bg-white dark:bg-gray-800">
+                  <Trash2 className="w-3.5 h-3.5" /> Excluir
+                </button>
+                <button onClick={() => { setNewRow({ instalments: '1' }); setAddingRow(true); setSelectedId(null); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  <Plus className="w-4 h-4" /> Adicionar
+                </button>
+              </>
+            )}
+            {viewMode === 'erp' && (
+              <>
+                <button onClick={() => { const s = blingMetodos.find((m:any) => blingSelectedIds.has(m.id)); if(s) { setBlingAddRow(null); setBlingEditRow({...s}); }}}
+                  disabled={blingSelectedIds.size !== 1}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border disabled:opacity-40 text-gray-700 dark:text-gray-300 border-gray-300 hover:bg-gray-100 bg-white dark:bg-gray-800">
+                  <Pencil className="w-3.5 h-3.5" /> Editar
+                </button>
+                <button onClick={async () => { if(!window.confirm('Excluir ' + blingSelectedIds.size + ' método(s)?')) return; for(const id of blingSelectedIds) await blingAction('delete',id,null); }}
+                  disabled={blingSelectedIds.size === 0 || blingActing}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border disabled:opacity-40 text-red-600 border-red-300 hover:bg-red-50 bg-white dark:bg-gray-800">
+                  <Trash2 className="w-3.5 h-3.5" /> Excluir
+                </button>
+                <button onClick={() => { setBlingEditRow(null); setBlingAddRow({descricao:'',tipoPagamento:1,situacao:1,finalidade:1}); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  <Plus className="w-3.5 h-3.5" /> Adicionar
+                </button>
+              </>
+            )}
           </div>
         </div>
 
