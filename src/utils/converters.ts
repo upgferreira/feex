@@ -266,7 +266,7 @@ function convertShopeeToBling(
     return canal === 'SHOPEE';
   });
   const portador   = account?.caixa || account?.portador || '';
-  const fornecedor = account?.fornecedor_nome_fantasia || account?.fornecedor || 'SHOPEE';
+  const fornecedor = account?.fornecedor_razao_social || account?.fornecedor_nome_fantasia || account?.fornecedor || 'SHOPEE';
   const cnpj       = account?.fornecedor_cnpj || account?.cnpj || '';
 
   // Category finder for SHOPEE
