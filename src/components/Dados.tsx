@@ -198,7 +198,11 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
         PIVOT_COLS.forEach(col => {
           const colKey = Object.keys(row).find(k => k.trim().toLowerCase() === col.toLowerCase());
           if (!colKey) return;
-          const vStr = String(row[colKey] || '0').replace(/\./g, '').replace(',', '.');
+          const rawCell = String(row[colKey] || '0');
+        // Handle both BR format (-18,34) and EN format (-18.34)
+        const vStr = rawCell.includes(',') 
+          ? rawCell.replace(/\./g, '').replace(',', '.') // BR: remove thousand dots, convert comma decimal
+          : rawCell; // EN: already correct
         let valor = parseFloat(vStr) || 0;
           if (valor === 0) return;
           const isPositive = POSITIVE_COLS.has(col);
