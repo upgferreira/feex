@@ -858,16 +858,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
               <Filter className="w-4 h-4" />
             </button>
             
-                        {/* CANAL | APP | ERP — left side, equal width */}
-            <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-              {(['canal', 'erp'] as const).map(dv => (
-                <button key={dv}
-                  onClick={() => !( dv === 'canal') && handleSetDataView(dv) || (dv === 'canal' && handleSetDataView(dv))}
-                  className={`w-14 py-1.5 text-xs font-semibold transition-colors text-center ${dataView === dv ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}>
-                  {dv === 'canal' ? 'APP' : 'ERP'}
-                </button>
-              ))}
-            </div>
+
             {canPivot && dataView === 'canal' && (
               <button
                 onClick={() => setIsPivoted(p => !p)}
