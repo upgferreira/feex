@@ -198,7 +198,8 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
         PIVOT_COLS.forEach(col => {
           const colKey = Object.keys(row).find(k => k.trim().toLowerCase() === col.toLowerCase());
           if (!colKey) return;
-          let valor = parseFloat(String(row[colKey] || '0').replace(',', '.')) || 0;
+          const vStr = String(row[colKey] || '0').replace(/\./g, '').replace(',', '.');
+        let valor = parseFloat(vStr) || 0;
           if (valor === 0) return;
           const isPositive = POSITIVE_COLS.has(col);
           valor = isPositive ? Math.abs(valor) : -Math.abs(valor);
@@ -208,7 +209,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             'Nome de usuário (comprador)': row['Nome de usuário (comprador)'],
             'Categoria':                 col.replace(/\s*\(\d+\)\s*/g, '').trim(),
             'Valor':                     valor,
-            '_source':                   row,
           });
         });
       });
