@@ -1033,11 +1033,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                                   else { setErpSortCol(col); setErpSortDir('asc'); }
                                 }
                               }}
-                              className={`${['Data','Competência'].includes(col) ? 'px-3' : 'px-6'} py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors ${
-                                hasFilter
-                                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                                  : 'bg-green-600 text-white hover:bg-green-700'
-                              }`}>
+                              className={(hasFilter ? (['Data','Competência'].includes(col) ? 'px-3' : 'px-6') + ' py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : (['Data','Competência'].includes(col) ? 'px-3' : 'px-6') + ' py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors bg-green-600 text-white hover:bg-green-700')}>
                               <div className="flex items-center gap-1">
                                 {col}
                                 {erpSortCol === col && (erpSortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
