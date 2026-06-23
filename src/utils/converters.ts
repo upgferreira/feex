@@ -307,7 +307,10 @@ function convertShopeeToBling(
     const pedido  = row['ID do pedido'] || '';
     const cliente = row['Nome de usuário (comprador)'] || '';
     const detalhe = row['Categoria'] || '';
-    const rawValor = Number(String(row['Valor'] || '0').replace(',', '.')) || 0;
+    const rawStr2 = String(row['Valor'] || '0');
+    const rawValor = Number(
+      rawStr2.includes(',') ? rawStr2.replace(/\./g, '').replace(',', '.') : rawStr2
+    ) || 0;
 
     if (!dataStr || !detalhe || rawValor === 0) return;
 
