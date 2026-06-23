@@ -1416,7 +1416,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
           </div>
         </>
       )}
+      </div>
     </div>
-  </div>
   );
 };
