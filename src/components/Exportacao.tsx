@@ -313,7 +313,15 @@ export const Exportacao: React.FC = () => {
   };
 
   const SHOPEE_PIVOT_COLS = [
-    'Desconto de Frete Aproximado','Desconto do vendedor','Taxa de envio pagas pelo comprador',
+    'Taxa de Envio Reversa',
+    'Taxa de transação',
+    'Taxa de comissão líquida',
+    'Taxa de comissão',
+    'Taxa de serviço líquida',
+    'Taxa de serviço',
+    'Desconto de Frete Aproximado',
+    'Desconto do vendedor',
+    'Taxa de envio pagas pelo comprador',
   ];
   const SHOPEE_POSITIVE = new Set(['Taxa de envio pagas pelo comprador']);
 
