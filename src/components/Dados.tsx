@@ -925,7 +925,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
 
           </div>
         </div>
-      </div>
 
       {/* Content */}
       <div className="flex-1 overflow-hidden relative">
