@@ -825,22 +825,14 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             <button
               onClick={() => setGroupByPedido(g => !g)}
               title="Agrupar por número de pedido"
-              className={`w-8 h-8 flex items-center justify-center rounded border transition-colors text-xs font-bold flex-shrink-0 ${
-                groupByPedido
-                  ? 'bg-purple-600 text-white border-purple-600'
-                  : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
-              }`}
+              className={groupByPedido ? 'w-8 h-8 flex items-center justify-center rounded border transition-colors text-xs font-bold flex-shrink-0 bg-purple-600 text-white border-purple-600' : 'w-8 h-8 flex items-center justify-center rounded border transition-colors text-xs font-bold flex-shrink-0 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}
             >#</button>
 
             {/* Data */}
             <div className="relative flex-shrink-0" ref={calendarRef}>
               <button
                 onClick={() => setCalendarOpen(o => !o)}
-                className={`w-8 h-8 flex items-center justify-center rounded border transition-colors flex-shrink-0 ${
-                  (dateFilter.startDate || dateFilter.endDate)
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
-                }`}
+                className={(dateFilter.startDate || dateFilter.endDate) ? 'w-8 h-8 flex items-center justify-center rounded border transition-colors flex-shrink-0 bg-blue-600 text-white border-blue-600' : 'w-8 h-8 flex items-center justify-center rounded border transition-colors flex-shrink-0 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}
                 title="Filtrar por data"
               >
                 <Calendar className="w-4 h-4" />
@@ -861,13 +853,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             <button
               onClick={() => viewMode === 'tabela' && setColSelectorOpen(o => !o)}
               disabled={viewMode !== 'tabela'}
-              className={`w-8 h-8 flex items-center justify-center rounded border transition-colors flex-shrink-0 ${
-                viewMode === 'tabela'
-                  ? colSelectorOpen
-                    ? 'bg-blue-600 text-white border-blue-600'
-                    : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-600 border-gray-200 dark:border-gray-600 cursor-not-allowed'
-              }`}
+              className={viewMode !== 'tabela' ? 'w-8 h-8 flex items-center justify-center rounded border flex-shrink-0 bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-600 border-gray-200 dark:border-gray-600 cursor-not-allowed' : colSelectorOpen ? 'w-8 h-8 flex items-center justify-center rounded border flex-shrink-0 bg-blue-600 text-white border-blue-600' : 'w-8 h-8 flex items-center justify-center rounded border flex-shrink-0 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}
               title={viewMode === 'tabela' ? 'Selecionar colunas' : 'Disponível apenas no modo Tabela'}
             >
               <Filter className="w-4 h-4" />
@@ -878,11 +864,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
               <button
                 onClick={() => setIsPivoted(p => !p)}
                 title={isPivoted ? 'Ver dados originais' : 'Ver dados pivotados (linha por taxa)'}
-                className={`w-8 h-8 flex items-center justify-center rounded border transition-colors text-sm font-bold flex-shrink-0 ${
-                  isPivoted
-                    ? 'bg-orange-500 text-white border-orange-500'
-                    : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
-                }`}
+                className={isPivoted ? 'w-8 h-8 flex items-center justify-center rounded border text-sm font-bold flex-shrink-0 bg-orange-500 text-white border-orange-500' : 'w-8 h-8 flex items-center justify-center rounded border text-sm font-bold flex-shrink-0 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}
               >⇄</button>
             )}
 
@@ -890,9 +872,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex-shrink-0">
               {(['tabela', 'matriz', 'dashboard'] as ViewMode[]).map(mode => (
                 <button key={mode} onClick={() => setViewMode(mode)}
-                  className={`w-24 py-1.5 text-xs font-semibold transition-colors text-center ${
-                    viewMode === mode ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
-                  }`}>
+                  className={viewMode === mode ? 'w-24 py-1.5 text-xs font-semibold text-center bg-blue-600 text-white' : 'w-24 py-1.5 text-xs font-semibold text-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}>
                   {mode.toUpperCase()}
                 </button>
               ))}
@@ -901,11 +881,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             {/* Export dashboard */}
             <button
               onClick={() => viewMode === 'dashboard' && setExportPanelOpen(true)}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors flex-shrink-0 ${
-                viewMode === 'dashboard'
-                  ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-              }`}
+              className={viewMode === 'dashboard' ? 'w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0 bg-blue-600 text-white hover:bg-blue-700 cursor-pointer' : 'w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0 bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'}
               title={viewMode === 'dashboard' ? 'Exportar dashboard' : 'Disponível apenas no modo Dashboard'}
               disabled={viewMode !== 'dashboard'}
             >
