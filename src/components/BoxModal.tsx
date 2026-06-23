@@ -75,7 +75,7 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
 
   const displayed = accounts
     .filter(a => Object.entries(colFilters).every(([k, vals]) => !vals?.length || vals.includes(String(a[k] ?? ''))))
-    .sort((a, b) => !sortCol ? 0 : sortDir === 'asc' ? (a[sortCol]||''}).localeCompare(b[sortCol]||'') : (b[sortCol]||''}).localeCompare(a[sortCol]||''));
+    .sort((a, b) => !sortCol ? 0 : sortDir === 'asc' ? (a[sortCol]||'').localeCompare(b[sortCol]||'') : (b[sortCol]||'').localeCompare(a[sortCol]||''));
 
   const buildData = (row: Record<string, string>) => ({
     canal: row.canal || '', caixa: row.caixa || '',
