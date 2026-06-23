@@ -152,9 +152,7 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
 
   const thCls = (key: string) => {
     const hasFilter = !!colFilters[key];
-    return `px-4 py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors ${
-      hasFilter ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'
-    }`;
+    return `px-4 py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors ${ hasFilter ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600' }`;
   };
 
   const renderCell = (col: typeof COLS[0], row: any, isEditing: boolean, setRow: (fn: (r: any) => any) => void) => {
@@ -214,7 +212,7 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <Plus className="w-3.5 h-3.5" /> Adicionar
             </button>
-          </div>}
+          </div>
           {viewMode === 'app' && <div className="flex items-center gap-2">
             <button onClick={() => selectedId && setEditingRow({...selectedRow})} disabled={!selectedId}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800">
@@ -228,7 +226,7 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <Plus className="w-4 h-4" /> Adicionar
             </button>
-          </div>}
+          </div>
         </div>
 
         {/* Table */}
