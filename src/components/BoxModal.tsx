@@ -155,7 +155,8 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
               <Plus className="w-4 h-4" /> Adicionar
             </button>
-          </div>}
+          </div>
+          }
         </div>
 
         <div className="flex-1 overflow-auto relative">
