@@ -780,20 +780,17 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     <div className="h-full flex flex-col relative">
       {/* Subheader */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          {/* ── EXTREMA ESQUERDA: CANAL | APP | ERP ── */}
+        <div className="flex items-center gap-2">
+          {/* ── ESQUERDA: CANAL | APP | ERP ── */}
           <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex-shrink-0">
-            {/* CANAL — funciona sempre */}
             <button onClick={() => handleSetDataView('canal')}
               className={`w-16 py-1.5 text-xs font-semibold transition-colors text-center border-r border-gray-200 dark:border-gray-700 ${dataView === 'canal' ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}>
               CANAL
             </button>
-            {/* APP — desativado no Visualizar */}
             <button disabled
               className="w-16 py-1.5 text-xs font-semibold text-center border-r border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-600 cursor-not-allowed">
               APP
             </button>
-            {/* ERP — funciona sempre */}
             <button onClick={() => handleSetDataView('erp')}
               className={`w-16 py-1.5 text-xs font-semibold transition-colors text-center ${dataView === 'erp' ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}>
               ERP
@@ -805,25 +802,41 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">{tableData.length.toLocaleString('pt-BR')} registros</span>
           )}
 
+          {/* Filter badges — esquerda do # */}
+          {dataView === 'canal' && Object.entries(colFilters).filter(([,v])=>v?.length).map(([col, vals]) => (
+            <span key={col} className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium flex-shrink-0">
+              {col}: {vals.join(', ')}
+              <button onClick={() => setColFilters(f => { const n={...f}; delete n[col]; return n; })} className="hover:text-red-500 ml-0.5">×</button>
+            </span>
+          ))}
+          {dataView === 'erp' && Object.entries(erpColFilters).filter(([,v])=>v?.length).map(([col, vals]) => (
+            <span key={col} className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium flex-shrink-0">
+              {col}: {vals.join(', ')}
+              <button onClick={() => setErpColFilters(f => { const n={...f}; delete n[col]; return n; })} className="hover:text-red-500 ml-0.5">×</button>
+            </span>
+          ))}
+
           {/* Spacer */}
           <div className="flex-1" />
 
-          {/* ── DIREITA: restante dos controles ── */}
-          <div className="flex items-center gap-3">
-            {/* Calendar date filter button */}
-            <div className="relative" ref={calendarRef}>
-              <button
-                onClick={() => setGroupByPedido(g => !g)}
-                title="Agrupar por número de pedido"
-                className={`p-1.5 rounded border transition-colors text-xs font-bold ${
-                  groupByPedido
-                    ? 'bg-purple-600 text-white border-purple-600'
-                    : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
-                }`}
-              >#</button>
+          {/* ── DIREITA: botões de ação ── */}
+          <div className="flex items-center gap-1.5">
+            {/* # Agrupar */}
+            <button
+              onClick={() => setGroupByPedido(g => !g)}
+              title="Agrupar por número de pedido"
+              className={`w-8 h-8 flex items-center justify-center rounded border transition-colors text-xs font-bold flex-shrink-0 ${
+                groupByPedido
+                  ? 'bg-purple-600 text-white border-purple-600'
+                  : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
+              }`}
+            >#</button>
+
+            {/* Data */}
+            <div className="relative flex-shrink-0" ref={calendarRef}>
               <button
                 onClick={() => setCalendarOpen(o => !o)}
-                className={`p-1.5 rounded border transition-colors ${
+                className={`w-8 h-8 flex items-center justify-center rounded border transition-colors flex-shrink-0 ${
                   (dateFilter.startDate || dateFilter.endDate)
                     ? 'bg-blue-600 text-white border-blue-600'
                     : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
@@ -833,7 +846,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                 <Calendar className="w-4 h-4" />
               </button>
               {calendarOpen && (
-                <div className="absolute right-0 top-full mt-2 z-50" style={{right: 0}}>
+                <div className="absolute right-0 top-full mt-2 z-50">
                   <DateRangePicker
                     startDate={dateFilter.startDate}
                     endDate={dateFilter.endDate}
@@ -843,10 +856,12 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                 </div>
               )}
             </div>
+
+            {/* Colunas */}
             <button
               onClick={() => viewMode === 'tabela' && setColSelectorOpen(o => !o)}
               disabled={viewMode !== 'tabela'}
-              className={`p-1.5 rounded border transition-colors ${
+              className={`w-8 h-8 flex items-center justify-center rounded border transition-colors flex-shrink-0 ${
                 viewMode === 'tabela'
                   ? colSelectorOpen
                     ? 'bg-blue-600 text-white border-blue-600'
@@ -857,52 +872,36 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             >
               <Filter className="w-4 h-4" />
             </button>
-            
 
+            {/* Pivotar — só Shopee/Shein no modo CANAL */}
             {canPivot && dataView === 'canal' && (
               <button
                 onClick={() => setIsPivoted(p => !p)}
                 title={isPivoted ? 'Ver dados originais' : 'Ver dados pivotados (linha por taxa)'}
-                className={`p-1.5 rounded border transition-colors text-sm font-bold ${
+                className={`w-8 h-8 flex items-center justify-center rounded border transition-colors text-sm font-bold flex-shrink-0 ${
                   isPivoted
                     ? 'bg-orange-500 text-white border-orange-500'
                     : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
                 }`}
               >⇄</button>
             )}
-            {/* Filter badges — canal mode */}
-            {dataView === 'canal' && Object.entries(colFilters).filter(([,v])=>v?.length).map(([col, vals]) => (
-              <span key={col} className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
-                {col}: {vals.join(', ')}
-                <button onClick={() => setColFilters(f => { const n={...f}; delete n[col]; return n; })} className="hover:text-red-500 ml-0.5">×</button>
-              </span>
-            ))}
-            {/* Filter badges — erp mode */}
-            {dataView === 'erp' && Object.entries(erpColFilters).filter(([,v])=>v?.length).map(([col, vals]) => (
-              <span key={col} className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
-                {col}: {vals.join(', ')}
-                <button onClick={() => setErpColFilters(f => { const n={...f}; delete n[col]; return n; })} className="hover:text-red-500 ml-0.5">×</button>
-              </span>
-            ))}
-            <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+
+            {/* TABELA | MATRIZ | DASHBOARD */}
+            <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex-shrink-0">
               {(['tabela', 'matriz', 'dashboard'] as ViewMode[]).map(mode => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
+                <button key={mode} onClick={() => setViewMode(mode)}
                   className={`w-24 py-1.5 text-xs font-semibold transition-colors text-center ${
-                    viewMode === mode
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
-                  }`}
-                >
+                    viewMode === mode ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
+                  }`}>
                   {mode.toUpperCase()}
                 </button>
               ))}
             </div>
-          </div>{/* end right controls */}
-          <button
+
+            {/* Export dashboard */}
+            <button
               onClick={() => viewMode === 'dashboard' && setExportPanelOpen(true)}
-              className={`flex items-center gap-0.5 px-2 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+              className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors flex-shrink-0 ${
                 viewMode === 'dashboard'
                   ? 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
                   : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
@@ -913,7 +912,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
               <ArrowUp className="w-3 h-3" />
               <ArrowDown className="w-3 h-3" />
             </button>
-
           </div>
         </div>
 

@@ -128,10 +128,12 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
         <div className="px-6 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-gray-50 dark:bg-gray-900">
           <div className="flex items-center gap-3">
             <span className="text-xs text-gray-400">{viewMode === 'app' ? `${displayed.length} registro(s)` : `${blingContas.length} contas`}</span>
-            <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex-shrink-0">
               {(['app', 'erp'] as const).map(m => (
                 <button key={m} onClick={() => { setViewMode(m); if (m === 'erp' && blingContas.length === 0) fetchBlingContas(); }}
-                  className={`px-3 py-1 text-xs font-semibold transition-colors ${viewMode === m ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}>
+                  className={`w-16 py-1.5 text-xs font-semibold transition-colors text-center ${
+                    viewMode === m ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
+                  }`}>
                   {m.toUpperCase()}
                 </button>
               ))}
