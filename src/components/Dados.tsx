@@ -845,11 +845,13 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
               <Filter className="w-4 h-4" />
             </button>
             
-                        <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        {/* CANAL | APP | ERP — left side, equal width */}
+            <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
               {(['canal', 'erp'] as const).map(dv => (
-                <button key={dv} onClick={() => handleSetDataView(dv)}
-                  className={`px-3 py-1.5 text-xs font-semibold transition-colors ${dataView === dv ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}>
-                  {dv.toUpperCase()}
+                <button key={dv}
+                  onClick={() => !( dv === 'canal') && handleSetDataView(dv) || (dv === 'canal' && handleSetDataView(dv))}
+                  className={`w-14 py-1.5 text-xs font-semibold transition-colors text-center ${dataView === dv ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}>
+                  {dv === 'canal' ? 'APP' : 'ERP'}
                 </button>
               ))}
             </div>
@@ -864,12 +866,26 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                 }`}
               >⇄</button>
             )}
+            {/* Filter badges — canal mode */}
+            {dataView === 'canal' && Object.entries(colFilters).filter(([,v])=>v?.length).map(([col, vals]) => (
+              <span key={col} className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
+                {col}: {vals.join(', ')}
+                <button onClick={() => setColFilters(f => { const n={...f}; delete n[col]; return n; })} className="hover:text-red-500 ml-0.5">×</button>
+              </span>
+            ))}
+            {/* Filter badges — erp mode */}
+            {dataView === 'erp' && Object.entries(erpColFilters).filter(([,v])=>v?.length).map(([col, vals]) => (
+              <span key={col} className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
+                {col}: {vals.join(', ')}
+                <button onClick={() => setErpColFilters(f => { const n={...f}; delete n[col]; return n; })} className="hover:text-red-500 ml-0.5">×</button>
+              </span>
+            ))}
             <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
               {(['tabela', 'matriz', 'dashboard'] as ViewMode[]).map(mode => (
                 <button
                   key={mode}
                   onClick={() => setViewMode(mode)}
-                  className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  className={`w-24 py-1.5 text-xs font-semibold transition-colors text-center ${
                     viewMode === mode
                       ? 'bg-blue-600 text-white'
                       : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
