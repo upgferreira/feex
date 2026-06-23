@@ -186,18 +186,30 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose })
     <FullscreenModal isOpen={isOpen} onClose={onClose} title="Mapeamento de Categorias">
       <div className="flex flex-col h-full">
         <div className="px-6 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-gray-50 dark:bg-gray-900">
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400">{viewMode === 'app' ? `${displayed.length} registro(s)` : `${blingCats.length} categorias`}</span>
+          <div className="flex items-center gap-2 flex-1">
+            {/* CANAL | APP | ERP */}
             <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex-shrink-0">
-              {(['app', 'erp'] as const).map(m => (
-                <button key={m} onClick={() => { setViewMode(m); if (m === 'erp' && blingCats.length === 0) fetchBlingCats(); }}
-                  className={`w-16 py-1.5 text-xs font-semibold transition-colors text-center ${
-                    viewMode === m ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
-                  }`}>
-                  {m.toUpperCase()}
-                </button>
-              ))}
+              <button disabled className="w-16 py-1.5 text-xs font-semibold text-center border-r border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-600 cursor-not-allowed">CANAL</button>
+              <button onClick={() => { setViewMode('app'); }} className={'w-16 py-1.5 text-xs font-semibold transition-colors text-center border-r border-gray-200 dark:border-gray-700 ' + (viewMode === 'app' ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800')}>APP</button>
+              <button onClick={() => { setViewMode('erp'); if (blingCats.length === 0) fetchBlingCats(); }} className={'w-16 py-1.5 text-xs font-semibold transition-colors text-center ' + (viewMode === 'erp' ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800')}>ERP</button>
             </div>
+            {/* Contador */}
+            <span className="text-xs text-gray-400 flex-shrink-0">{viewMode === 'app' ? `${displayed.length} registro(s)` : `${blingCats.length} categorias · ${blingSelectedIds.size} selecionada(s)`}</span>
+            {/* Filter badges */}
+            {viewMode === 'app' && Object.entries(colFilters).filter(([,v]) => (v as string[])?.length).map(([col, vals]) => (
+              <span key={col} className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium flex-shrink-0">
+                {col}: {(vals as string[]).join(', ')}
+                <button onClick={() => setColFilters((f: any) => { const n={...f}; delete n[col]; return n; })} className="hover:text-red-500 ml-0.5">×</button>
+              </span>
+            ))}
+            <div className="flex-1" />
+            {/* Colunas filter button — only APP tabela */}
+            {viewMode === 'app' && (
+              <button onClick={() => setActiveFilterCol(activeFilterCol ? null : '__open__')} title="Filtrar colunas"
+                className={'w-8 h-8 flex items-center justify-center rounded border flex-shrink-0 ' + (activeFilterCol ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800')}>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18M7 8h10M10 12h4" /></svg>
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {viewMode === 'app' && <>

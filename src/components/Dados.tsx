@@ -759,24 +759,23 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">{tableData.length.toLocaleString('pt-BR')} registros</span>
           )}
 
-          {/* Filter badges — à esquerda do # */}
-          {dataView === 'canal' && Object.entries(colFilters).filter(([,v]) => v?.length).map(([col, vals]) => (
-            <span key={col} className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium flex-shrink-0">
-              {col}: {vals.join(', ')}
-              <button onClick={() => setColFilters(f => { const n = {...f}; delete n[col]; return n; })} className="hover:text-red-500 ml-0.5">×</button>
-            </span>
-          ))}
-          {dataView === 'erp' && Object.entries(erpColFilters).filter(([,v]) => v?.length).map(([col, vals]) => (
-            <span key={col} className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium flex-shrink-0">
-              {col}: {vals.join(', ')}
-              <button onClick={() => setErpColFilters(f => { const n = {...f}; delete n[col]; return n; })} className="hover:text-red-500 ml-0.5">×</button>
-            </span>
-          ))}
-
           <div className="flex-1" />
 
           {/* Botões direita — todos w-8 h-8 */}
           <div className="flex items-center gap-1.5">
+            {/* Filter badges — à esquerda do # */}
+            {dataView === 'canal' && Object.entries(colFilters).filter(([,v]) => v?.length).map(([col, vals]) => (
+              <span key={col} className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium flex-shrink-0">
+                {col}: {vals.join(', ')}
+                <button onClick={() => setColFilters(f => { const n = {...f}; delete n[col]; return n; })} className="hover:text-red-500 ml-0.5">×</button>
+              </span>
+            ))}
+            {dataView === 'erp' && Object.entries(erpColFilters).filter(([,v]) => v?.length).map(([col, vals]) => (
+              <span key={col} className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium flex-shrink-0">
+                {col}: {vals.join(', ')}
+                <button onClick={() => setErpColFilters(f => { const n = {...f}; delete n[col]; return n; })} className="hover:text-red-500 ml-0.5">×</button>
+              </span>
+            ))}
             {/* # Agrupar */}
             <button onClick={() => setGroupByPedido(g => !g)} title="Agrupar por número de pedido"
               className={btnBase + ' text-xs font-bold ' + (groupByPedido ? 'bg-purple-600 text-white border-purple-600' : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800')}>
@@ -808,13 +807,14 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
               <Filter className="w-4 h-4" />
             </button>
 
-            {/* Pivotar — só Shopee/Shein no modo CANAL */}
-            {canPivot && dataView === 'canal' && (
-              <button onClick={() => setIsPivoted(p => !p)} title={isPivoted ? 'Ver dados originais' : 'Ver dados pivotados'}
-                className={btnBase + ' text-sm font-bold ' + (isPivoted ? 'bg-orange-500 text-white border-orange-500' : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800')}>
-                ⇄
-              </button>
-            )}
+            {/* Pivotar — sempre visível, inativo fora de Shopee/Shein canal */}
+            <button
+              onClick={() => canPivot && dataView === 'canal' && setIsPivoted(p => !p)}
+              disabled={!canPivot || dataView !== 'canal'}
+              title={!canPivot ? 'Disponível apenas para Shopee/Shein' : dataView !== 'canal' ? 'Disponível apenas no modo Canal' : isPivoted ? 'Ver dados originais' : 'Ver dados pivotados'}
+              className={btnBase + ' text-sm font-bold ' + (!canPivot || dataView !== 'canal' ? 'bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-600 border-gray-200 dark:border-gray-600 cursor-not-allowed' : isPivoted ? 'bg-orange-500 text-white border-orange-500' : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800')}>
+              ⇄
+            </button>
 
             {/* TABELA | MATRIZ | DASHBOARD */}
             <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex-shrink-0">

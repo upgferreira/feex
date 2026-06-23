@@ -183,20 +183,23 @@ export const MethodsModal: React.FC<MethodsModalProps> = ({ isOpen, onClose }) =
       <div className="flex flex-col h-full">
         {/* Toolbar */}
         <div className="px-6 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-gray-50 dark:bg-gray-900">
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400">{viewMode === 'app' ? `${displayed.length} registro(s)` : `${blingMetodos.length} métodos · ${blingSelectedIds.size} selecionado(s)`}</span>
+          <div className="flex items-center gap-2 flex-1">
+            {/* CANAL | APP | ERP */}
             <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex-shrink-0">
-              {(['app', 'erp'] as const).map(m => (
-                <button key={m} onClick={() => { setViewMode(m); if (m === 'erp' && blingMetodos.length === 0) fetchBlingMetodos(); }}
-                  className={`w-16 py-1.5 text-xs font-semibold transition-colors text-center ${
-                    viewMode === m ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'
-                  }`}>
-                  {m.toUpperCase()}
-                </button>
-              ))}
+              <button disabled className="w-16 py-1.5 text-xs font-semibold text-center border-r border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-600 cursor-not-allowed">CANAL</button>
+              <button onClick={() => setViewMode('app')} className={('w-16 py-1.5 text-xs font-semibold transition-colors text-center border-r border-gray-200 dark:border-gray-700 ' + (viewMode === 'app' ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'))}>APP</button>
+              <button onClick={() => { setViewMode('erp'); if (blingMetodos.length === 0) fetchBlingMetodos(); }} className={('w-16 py-1.5 text-xs font-semibold transition-colors text-center ' + (viewMode === 'erp' ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'))}>ERP</button>
             </div>
+            <span className="text-xs text-gray-400 flex-shrink-0">{viewMode === 'app' ? `${displayed.length} registro(s)` : `${blingMetodos.length} métodos`}</span>
+            {viewMode === 'app' && Object.entries(colFilters).filter(([,v]) => (v as string[])?.length).map(([col, vals]) => (
+              <span key={col} className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded text-xs font-medium flex-shrink-0">
+                {col}: {(vals as string[]).join(', ')}
+                <button onClick={() => setColFilters((f: any) => { const n={...f}; delete n[col]; return n; })} className="hover:text-red-500 ml-0.5">×</button>
+              </span>
+            ))}
+            <div className="flex-1" />
           </div>
-          {viewMode === 'erp' && <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <button onClick={() => { const s = blingMetodos.find((m:any) => blingSelectedIds.has(m.id)); if(s) { setBlingAddRow(null); setBlingEditRow({...s}); } }}
               disabled={blingSelectedIds.size !== 1}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border disabled:opacity-40 text-gray-700 dark:text-gray-300 border-gray-300 hover:bg-gray-100 bg-white dark:bg-gray-800">
