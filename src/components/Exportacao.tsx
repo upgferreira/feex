@@ -325,7 +325,10 @@ export const Exportacao: React.FC = () => {
       SHOPEE_PIVOT_COLS.forEach(col => {
         const colKey = Object.keys(row).find(k => k.trim().toLowerCase() === col.toLowerCase());
         if (!colKey) return;
-        let valor = parseFloat(String(row[colKey] || '0').replace(',', '.')) || 0;
+        const _rawCell = String(row[colKey] || '0');
+        let valor = parseFloat(
+          _rawCell.includes(',') ? _rawCell.replace(/\./g, '').replace(',', '.') : _rawCell
+        ) || 0;
         if (valor === 0) return;
         valor = SHOPEE_POSITIVE.has(col) ? Math.abs(valor) : -Math.abs(valor);
         result.push({
