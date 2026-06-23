@@ -780,23 +780,36 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     <div className="h-full flex flex-col relative">
       {/* Subheader */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3">
-            
+        <div className="flex items-center gap-3">
+          {/* ── EXTREMA ESQUERDA: CANAL | APP | ERP ── */}
+          <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex-shrink-0">
+            {/* CANAL — funciona sempre */}
+            <button onClick={() => handleSetDataView('canal')}
+              className={`w-16 py-1.5 text-xs font-semibold transition-colors text-center border-r border-gray-200 dark:border-gray-700 ${dataView === 'canal' ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}>
+              CANAL
+            </button>
+            {/* APP — desativado no Visualizar */}
+            <button disabled
+              className="w-16 py-1.5 text-xs font-semibold text-center border-r border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-600 cursor-not-allowed">
+              APP
+            </button>
+            {/* ERP — funciona sempre */}
+            <button onClick={() => handleSetDataView('erp')}
+              className={`w-16 py-1.5 text-xs font-semibold transition-colors text-center ${dataView === 'erp' ? 'bg-indigo-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'}`}>
+              ERP
+            </button>
           </div>
-            {viewMode === 'tabela' && tableData.length > 0 && (
-              <span className="text-xs text-gray-400 dark:text-gray-500">{tableData.length.toLocaleString('pt-BR')} registros</span>
-            )}
-          </div>
-            {viewMode === 'tabela' && tableData.length > 0 && (
-              <span className="text-xs text-gray-400 dark:text-gray-500">{tableData.length.toLocaleString('pt-BR')} registros</span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            {/* CANAL | ERP toggle — only in tabela mode */}
 
+          {/* Contador de registros */}
+          {viewMode === 'tabela' && tableData.length > 0 && (
+            <span className="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0">{tableData.length.toLocaleString('pt-BR')} registros</span>
+          )}
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* ── DIREITA: restante dos controles ── */}
+          <div className="flex items-center gap-3">
             {/* Calendar date filter button */}
             <div className="relative" ref={calendarRef}>
               <button
@@ -895,7 +908,8 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                 </button>
               ))}
             </div>
-            <button
+          </div>{/* end right controls */}
+          <button
               onClick={() => viewMode === 'dashboard' && setExportPanelOpen(true)}
               className={`flex items-center gap-0.5 px-2 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                 viewMode === 'dashboard'
