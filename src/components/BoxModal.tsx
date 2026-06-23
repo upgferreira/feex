@@ -28,10 +28,10 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
   const [newRow, setNewRow] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = React.useState<string | null>(null);
-  const [viewMode, setViewMode]         = useState<'app' | 'erp'>('app');
-  const [blingContas, setBlingContas]   = useState<any[]>([]);
+  const [viewMode, setViewMode] = useState<'app' | 'erp'>('app');
+  const [blingContas, setBlingContas] = useState<any[]>([]);
   const [blingLoading, setBlingLoading] = useState(false);
-  const [blingError, setBlingError]     = useState<string | null>(null);
+  const [blingError, setBlingError] = useState<string | null>(null);
   const [blingSortCol, setBlingSortCol] = useState<string>('descricao');
   const [blingSortDir, setBlingSortDir] = useState<'asc' | 'desc'>('asc');
   const [blingColFilters, setBlingColFilters] = useState<Record<string, string[]>>({});
@@ -75,7 +75,7 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
 
   const displayed = accounts
     .filter(a => Object.entries(colFilters).every(([k, vals]) => !vals?.length || vals.includes(String(a[k] ?? ''))))
-    .sort((a, b) => !sortCol ? 0 : sortDir === 'asc' ? (a[sortCol]||'').localeCompare(b[sortCol]||'') : (b[sortCol]||'').localeCompare(a[sortCol]||''));
+    .sort((a, b) => !sortCol ? 0 : sortDir === 'asc' ? (a[sortCol]||''}).localeCompare(b[sortCol]||'') : (b[sortCol]||''}).localeCompare(a[sortCol]||''));
 
   const buildData = (row: Record<string, string>) => ({
     canal: row.canal || '', caixa: row.caixa || '',
@@ -115,7 +115,7 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
 
   const thCls = (key: string) => {
     const hasFilter = !!colFilters[key];
-    return `px-4 py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors ${ hasFilter ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600' }`;
+    return 'px-4 py-3 text-left text-xs font-medium uppercase tracking-wider sticky top-0 z-10 cursor-pointer select-none whitespace-nowrap transition-colors ' + (hasFilter ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600');
   };
 
   const selectedRow = accounts.find(a => a.id === selectedId);
@@ -125,11 +125,10 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
       <div className="flex flex-col h-full">
         <div className="px-6 py-2 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0 bg-gray-50 dark:bg-gray-900">
           <div className="flex items-center gap-2 flex-1">
-            {/* CANAL | APP | ERP */}
             <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex-shrink-0">
               <button disabled className="w-16 py-1.5 text-xs font-semibold text-center border-r border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-600 cursor-not-allowed">CANAL</button>
-              <button onClick={() => setViewMode('app')} className={('w-16 py-1.5 text-xs font-semibold transition-colors text-center border-r border-gray-200 dark:border-gray-700 ' + (viewMode === 'app' ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'))}>APP</button>
-              <button onClick={() => { setViewMode('erp'); if (blingContas.length === 0) fetchBlingContas(); }} className={('w-16 py-1.5 text-xs font-semibold transition-colors text-center ' + (viewMode === 'erp' ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800'))}>ERP</button>
+              <button onClick={() => setViewMode('app')} className={'w-16 py-1.5 text-xs font-semibold transition-colors text-center border-r border-gray-200 dark:border-gray-700 ' + (viewMode === 'app' ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800')}>APP</button>
+              <button onClick={() => { setViewMode('erp'); if (blingContas.length === 0) fetchBlingContas(); }} className={'w-16 py-1.5 text-xs font-semibold transition-colors text-center ' + (viewMode === 'erp' ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800')}>ERP</button>
             </div>
             <span className="text-xs text-gray-400 flex-shrink-0">{viewMode === 'app' ? `${displayed.length} registro(s)` : `${blingContas.length} contas`}</span>
             {viewMode === 'app' && Object.entries(colFilters).filter(([,v]) => (v as string[])?.length).map(([col, vals]) => (
@@ -141,24 +140,26 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
             <div className="flex-1" />
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => selectedId && setEditingRow({...selectedRow})} disabled={!selectedId}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800">
-              <Pencil className="w-3.5 h-3.5" /> Editar
-            </button>
-            <button onClick={handleDelete} disabled={!selectedId}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 bg-white dark:bg-gray-800">
-              <Trash2 className="w-3.5 h-3.5" /> Excluir
-            </button>
-            <button onClick={() => { setNewRow({}); setAddingRow(true); setSelectedId(null); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-              <Plus className="w-4 h-4" /> Adicionar
-            </button>
+            {viewMode === 'app' && (
+              <>
+                <button onClick={() => selectedId && setEditingRow({...selectedRow})} disabled={!selectedId}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800">
+                  <Pencil className="w-3.5 h-3.5" /> Editar
+                </button>
+                <button onClick={handleDelete} disabled={!selectedId}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border transition-colors disabled:opacity-40 text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 bg-white dark:bg-gray-800">
+                  <Trash2 className="w-3.5 h-3.5" /> Excluir
+                </button>
+                <button onClick={() => { setNewRow({}); setAddingRow(true); setSelectedId(null); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  <Plus className="w-4 h-4" /> Adicionar
+                </button>
+              </>
+            )}
           </div>
         </div>
 
         <div className="flex-1 overflow-auto relative">
-
-          {/* ERP (Bling) contas view */}
           {viewMode === 'erp' && (
             <div className="h-full overflow-auto">
               {blingLoading ? (
@@ -196,7 +197,7 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
                               if (e.ctrlKey || e.metaKey) { e.preventDefault(); setBlingActiveFilter(prev => prev === key ? null : key); }
                               else { if (blingSortCol === key) setBlingSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setBlingSortCol(key); setBlingSortDir('asc'); } }
                             }}
-                            className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer select-none whitespace-nowrap ${blingColFilters[key]?.length ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600'}`}>
+                            className={'px-4 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer select-none whitespace-nowrap ' + (blingColFilters[key]?.length ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600')}>
                             <div className="flex items-center gap-1">
                               {h}
                               {blingSortCol === key ? (blingSortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />) : null}
@@ -223,15 +224,10 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
                 const anchorRef = { current: blingThRefs.current[blingActiveFilter] } as React.RefObject<HTMLElement>;
                 const options = [...new Set(blingContas.map((c: any) => String(c[blingActiveFilter] ?? '')).filter(Boolean))].sort();
                 return (
-                  <ColumnFilter
-                    column={blingActiveFilter}
-                    label={blingActiveFilter}
-                    options={options}
+                  <ColumnFilter column={blingActiveFilter} label={blingActiveFilter} options={options}
                     selected={blingColFilters[blingActiveFilter] || []}
                     onChange={vals => setBlingColFilters(f => ({ ...f, [blingActiveFilter!]: vals }))}
-                    onClose={() => setBlingActiveFilter(null)}
-                    anchorRef={anchorRef}
-                  />
+                    onClose={() => setBlingActiveFilter(null)} anchorRef={anchorRef} />
                 );
               })()}
             </div>
@@ -244,7 +240,7 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
                 <tr>
                   <th className="w-10 px-4 py-3 sticky top-0 bg-gray-50 dark:bg-gray-700 z-10" />
                   {COLS.map(c => (
-                    <th key={c.key} ref={el => thRefs.current[c.key] = el as HTMLTableCellElement} className={thCls(c.key)} onClick={e => handleColClick(e, c.key)}>
+                    <th key={c.key} ref={el => { thRefs.current[c.key] = el as HTMLTableCellElement; }} className={thCls(c.key)} onClick={e => handleColClick(e, c.key)}>
                       <div className="flex items-center gap-1">
                         {c.label}
                         {sortCol === c.key && (sortDir === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />)}
@@ -260,7 +256,7 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
                   const isSelected = a.id === selectedId;
                   const isEditing = editingRow?.id === a.id;
                   return (
-                    <tr key={i} className={`cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                    <tr key={i} className={'cursor-pointer transition-colors ' + (isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700')}>
                       <td className="px-4 py-3 text-center" onClick={() => setSelectedId(isSelected ? null : a.id)}>
                         <input type="checkbox" checked={isSelected} readOnly className="rounded border-gray-300 text-blue-600 cursor-pointer" />
                       </td>
@@ -309,23 +305,16 @@ export const BoxModal: React.FC<BoxModalProps> = ({ isOpen, onClose }) => {
               </tbody>
             </table>
           ) : null}
-
           {activeFilterCol && (() => {
             const anchorRef = { current: thRefs.current[activeFilterCol] } as React.RefObject<HTMLElement>;
             return (
-              <ColumnFilter
-                column={activeFilterCol}
-                label={COLS.find(c => c.key === activeFilterCol)?.label || activeFilterCol}
-                options={getOptions(activeFilterCol).map(String)}
-                selected={colFilters[activeFilterCol] || []}
+              <ColumnFilter column={activeFilterCol} label={COLS.find(c => c.key === activeFilterCol)?.label || activeFilterCol}
+                options={getOptions(activeFilterCol).map(String)} selected={colFilters[activeFilterCol] || []}
                 onChange={vals => setColFilters(f => ({...f, [activeFilterCol!]: vals}))}
-                onClose={() => setActiveFilterCol(null)}
-                anchorRef={anchorRef}
-              />
+                onClose={() => setActiveFilterCol(null)} anchorRef={anchorRef} />
             );
           })()}
         </div>
-
         {saveError && <div className="px-6 py-2 bg-red-50 dark:bg-red-900/20 border-t border-red-200 flex-shrink-0 text-xs text-red-600">Erro: {saveError}</div>}
         <div className="px-6 py-2 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 text-xs text-gray-400">
           Clique para selecionar · Ctrl+clique para filtrar · ESC para fechar
