@@ -289,22 +289,27 @@ function convertShopeeToBling(
     const withCat = matches.find(c => !!(c.erp_category || c.categoria_erp));
     const match = withCat || matches[0];
     return {
-      cat: match?.erp_category || match?.categoria_erp || '',
+      cat: match?.erp_category  || match?.categoria_erp       || '',
       pai: match?.erp_parent_category || match?.categoria_pai_erp || '',
     };
   };
 
+  // Positive columns (receita) — all others are negative (despesa)
+  const POSITIVE_COLS = new Set([
+    'taxa de envio pagas pelo comprador',
+  ]);
+
   const resultado: BlingRow[] = [];
 
   data.forEach((row: any) => {
-    // Accept both pivoted rows (with 'Categoria') and raw rows (with tax columns)
+    // Pivoted row: has 'Categoria' and 'Valor' columns
     const dataStr = row['Data de criação do pedido'] || '';
     const pedido  = row['ID do pedido'] || '';
     const cliente = row['Nome de usuário (comprador)'] || '';
     const detalhe = row['Categoria'] || '';
-    const valor   = Number(String(row['Valor'] || '0').replace(',', '.')) || 0;
+    const rawValor = Number(String(row['Valor'] || '0').replace(',', '.')) || 0;
 
-    if (!dataStr || !detalhe || valor === 0) return;
+    if (!dataStr || !detalhe || rawValor === 0) return;
 
     // Parse date
     let dataLinha: Date;
@@ -312,8 +317,8 @@ function convertShopeeToBling(
       dataLinha = dataStr;
     } else if (typeof dataStr === 'number') {
       dataLinha = new Date(new Date(1900, 0, 1).getTime() + (dataStr - 1) * 86400000);
+      if (dataStr > 59) dataLinha = new Date(dataLinha.getTime() - 86400000);
     } else {
-      // Try dd/mm/yyyy or yyyy-mm-dd
       const parts = String(dataStr).split('/');
       if (parts.length === 3) {
         dataLinha = new Date(+parts[2], +parts[1] - 1, +parts[0]);
@@ -328,14 +333,20 @@ function convertShopeeToBling(
     if (dataInicial && iso < dataInicial) return;
     if (dataFinal   && iso > dataFinal)   return;
 
-    const dataFormatada  = dataLinha.toLocaleDateString('pt-BR');
-    const lineCompetencia = `${String(dataLinha.getMonth() + 1).padStart(2, '0')}/${dataLinha.getFullYear()}`;
+    const dataFormatada = dataLinha.toLocaleDateString('pt-BR');
+    // Competência: igual à data
+    const lineCompetencia = dataFormatada;
+
     const { cat, pai } = findCat(detalhe);
 
-    // Obs format: SHOPEE: CLIENTE | PEDIDO > DETALHE | PAI > CAT | DATA | COMP
+    // Apply sign: positive for receita, negative for despesa
+    const isPositive = POSITIVE_COLS.has(detalhe.toLowerCase().trim());
+    const valor = isPositive ? Math.abs(rawValor) : -Math.abs(rawValor);
+
+    // Obs pattern: SHOPEE: CLIENTE | PEDIDO DE VENDA: XXXXXX/[PEDIDO] > NF: XX/XXXXXX > DETALHE | PAI > CAT | DATA | COMP
     const obs = [
       `SHOPEE: ${cliente.toUpperCase()}`,
-      pedido ? `PEDIDO DE VENDA: ${pedido} > ${detalhe.toUpperCase()}` : detalhe.toUpperCase(),
+      `PEDIDO DE VENDA: XXXXXX/${pedido} > NF: XX/XXXXXX > ${detalhe.toUpperCase()}`,
       pai && cat ? `${pai.toUpperCase()} > ${cat.toUpperCase()}` : (cat || pai || '').toUpperCase(),
       dataFormatada,
       lineCompetencia,
@@ -347,7 +358,7 @@ function convertShopeeToBling(
       'Competencia':        lineCompetencia,
       'Cliente/Fornecedor': fornecedor,
       'Observacoes':        obs,
-      'Valor':              String(Math.abs(valor).toFixed(2)).replace('.', ','),
+      'Valor':              String(valor.toFixed(2)).replace('.', ','),
       'Categoria':          cat,
       'Portador':           portador,
       'Saldo':              'N',
@@ -357,6 +368,7 @@ function convertShopeeToBling(
 
   return resultado;
 }
+
 
 export function convertToBling(
   canal: string,
