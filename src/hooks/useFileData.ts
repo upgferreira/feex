@@ -87,46 +87,33 @@ export const useFileData = () => {
     if (file.name.toLowerCase().endsWith('.csv') || file.name.toLowerCase().endsWith('.txt')) {
       const text = await file.text();
       if (fileInfo.canal === 'AMAZON') {
-        const allLines = parseCSV(text);
-        let headerRowIndex = -1;
-        for (let i = 0; i < allLines.length; i++) {
-          const firstCell = String(allLines[i][0]).toLowerCase().trim();
-          // Must be exactly 'data/hora' or 'date/time' as the first field (not a description line)
-          if (firstCell === 'data/hora' || firstCell === 'date/time' || firstCell === 'data/hora\u201d') {
-            headerRowIndex = i;
-            break;
-          }
-          // Also match if first field starts with data/hora followed by comma (unparsed line)
-          if (firstCell.startsWith('data/hora,') || firstCell.startsWith('date/time,')) {
-            headerRowIndex = i;
+        // Find header line: must be exactly 'data/hora' or 'date/time' as first field
+        // The first 9 lines are description text — one of them contains 'data/hora' in prose
+        // so we match by exact field value, not substring
+        const rawLines = text.split(/\r?\n/).filter(l => l.trim());
+        let headerLineIndex = -1;
+        for (let i = 0; i < rawLines.length; i++) {
+          const firstField = rawLines[i].split(',')[0].replace(/"/g, '').trim().toLowerCase();
+          if (firstField === 'data/hora' || firstField === 'date/time') {
+            headerLineIndex = i;
             break;
           }
         }
-        if (headerRowIndex === -1) throw new Error("Não foi possível encontrar o cabeçalho do CSV da Amazon");
-        const importedData = allLines.slice(headerRowIndex);
-        // If header line came back as single field, the whole block is unparsed — re-parse from raw text
-        if (importedData.length > 0 && importedData[0].length === 1) {
-          const csvFromHeader = importedData.map((row: string[]) => row[0]).join('\n');
-          const reparsed = parseCSV(csvFromHeader);
-          if (reparsed.length > 0 && reparsed[0].length > 1) {
-            importedData = reparsed;
-          }
-        }
-        if (importedData.length > 0) {
-          columns = importedData[0];
-          const rawData = importedData.slice(1).map(values => {
+        if (headerLineIndex === -1) throw new Error("Não foi possível encontrar o cabeçalho do CSV da Amazon");
+        const dataLines = rawLines.slice(headerLineIndex);
+        const parsedLines = parseCSV(dataLines.join('\n'));
+        if (parsedLines.length > 0) {
+          columns = parsedLines[0];
+          const rawData = parsedLines.slice(1).map(values => {
             const row: DataRow = {};
             columns.forEach((col, index) => {
-              const value = values[index] || '';
+              const value = values[index] ?? '';
               const numValue = Number(value);
               row[col] = !isNaN(numValue) && value !== '' ? numValue : value;
             });
             return row;
           });
-          data = rawData.filter(row => {
-            const firstValue = Object.values(row)[0];
-            return firstValue !== columns[0] && !columns.includes(firstValue?.toString() || '');
-          });
+          data = rawData.filter(row => Object.values(row).some(v => v !== '' && v !== 0 && v != null));
         }
       } else {
         let lines = text.split('\n').filter(line => line.trim());
