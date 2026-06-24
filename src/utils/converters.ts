@@ -443,6 +443,7 @@ function convertAmazonToBling(
     const rawValor = row['Valor da tarifa'];
 
     if (!dataVal || !detalhe) return;
+    if (detalhe.toLowerCase() === 'vendas do produto') return;
     const valor = parseNum(rawValor);
     if (valor === 0) return;
 
@@ -453,8 +454,11 @@ function convertAmazonToBling(
     if (dataInicial && iso < dataInicial) return;
     if (dataFinal   && iso > dataFinal)   return;
 
-    const dataFormatada = dataLinha.toLocaleDateString('pt-BR');
-    const { cat, pai }  = findCat(detalhe);
+    const dataFormatada   = dataLinha.toLocaleDateString('pt-BR');
+    const mm              = String(dataLinha.getMonth() + 1).padStart(2, '0');
+    const yyyy            = String(dataLinha.getFullYear());
+    const lineCompetencia = mm + '/' + yyyy;
+    const { cat, pai }    = findCat(detalhe);
 
     const obs = [
       pedido
@@ -462,13 +466,13 @@ function convertAmazonToBling(
         : 'AMAZON: [CLIENTE] | ' + detalhe.toUpperCase(),
       pai && cat ? pai.toUpperCase() + ' > ' + cat.toUpperCase() : (cat || pai || '').toUpperCase(),
       dataFormatada,
-      dataFormatada,
+      lineCompetencia,
     ].filter(Boolean).join(' | ');
 
     resultado.push({
       'ID':                 '',
       'Data':               dataFormatada,
-      'Competencia':        dataFormatada,
+      'Competencia':        lineCompetencia,
       'Cliente/Fornecedor': fornecedor,
       'Observacoes':        obs,
       'Valor':              String(valor.toFixed(2)).replace('.', ','),
