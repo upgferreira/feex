@@ -373,6 +373,115 @@ function convertShopeeToBling(
 }
 
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AMAZON → Bling  (receives already-pivoted data)
+// ─────────────────────────────────────────────────────────────────────────────
+function convertAmazonToBling(
+  data: any[],
+  dataInicial: string,
+  dataFinal: string,
+  competencia: string,
+  categories: any[],
+  accounts: any[]
+): BlingRow[] {
+  const account = accounts.find(a => String(a.canal || a.channel || '').toUpperCase().trim() === 'AMAZON');
+  const portador   = account?.caixa || account?.portador || '';
+  const fornecedor = account?.fornecedor_razao_social || account?.fornecedor_nome_fantasia || account?.fornecedor || 'AMAZON';
+  const cnpj       = account?.fornecedor_cnpj || account?.cnpj || '';
+
+  const findCat = (detalhe: string) => {
+    const norm = normalizeText(detalhe);
+    let matches = categories.filter(c => {
+      const ch = String(c.channel || c.canal || '').toUpperCase().trim();
+      if (ch !== 'AMAZON') return false;
+      return normalizeText(c.channel_category || c.categoria_canal || '') === norm;
+    });
+    if (!matches.length) {
+      matches = categories.filter(c => {
+        const ch = String(c.channel || c.canal || '').toUpperCase().trim();
+        if (ch !== 'AMAZON') return false;
+        const key = normalizeText(c.channel_category || c.categoria_canal || '');
+        return key && norm && (key.includes(norm) || norm.includes(key));
+      });
+    }
+    const m = matches.find(c => c.erp_category || c.categoria_erp) || matches[0];
+    return { cat: m?.erp_category || m?.categoria_erp || '', pai: m?.erp_parent_category || m?.categoria_pai_erp || '' };
+  };
+
+  const parseAmazonDate = (v: any): Date | null => {
+    if (!v) return null;
+    if (v instanceof Date) return v;
+    const s = String(v);
+    const mesesPT: Record<string, string> = {
+      'jan': '01', 'fev': '02', 'mar': '03', 'abr': '04',
+      'mai': '05', 'jun': '06', 'jul': '07', 'ago': '08',
+      'set': '09', 'out': '10', 'nov': '11', 'dez': '12',
+    };
+    const m = s.match(/(\d{1,2})\s+de\s+(\w+)\.?\s+de\s+(\d{4})/i);
+    if (m) {
+      const day = m[1].padStart(2, '0');
+      const mon = mesesPT[m[2].toLowerCase().replace('.', '')] || '01';
+      return new Date(`${m[3]}-${mon}-${day}T12:00:00`);
+    }
+    const d = new Date(s.replace(/GMT[+-]?\d*/g, '').trim());
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const parseNum = (v: any): number => {
+    if (typeof v === 'number') return v;
+    const s = String(v || '0').replace(/\./g, '').replace(',', '.');
+    return parseFloat(s) || 0;
+  };
+
+  const resultado: BlingRow[] = [];
+
+  data.forEach((row: any) => {
+    const dataVal  = row['data/hora'] || '';
+    const pedido   = row['id do pedido'] || '';
+    const detalhe  = row['Categoria'] || '';
+    const rawValor = row['Valor da tarifa'];
+
+    if (!dataVal || !detalhe) return;
+    const valor = parseNum(rawValor);
+    if (valor === 0) return;
+
+    const dataLinha = parseAmazonDate(dataVal);
+    if (!dataLinha) return;
+
+    const iso = dataLinha.toISOString().split('T')[0];
+    if (dataInicial && iso < dataInicial) return;
+    if (dataFinal   && iso > dataFinal)   return;
+
+    const dataFormatada = dataLinha.toLocaleDateString('pt-BR');
+    const { cat, pai }  = findCat(detalhe);
+
+    const obs = [
+      pedido
+        ? 'AMAZON: ' + pedido + ' | PEDIDO DE VENDA: XXXXXX/' + pedido + ' > NF: XX/XXXXXX > ' + detalhe.toUpperCase()
+        : 'AMAZON | ' + detalhe.toUpperCase(),
+      pai && cat ? pai.toUpperCase() + ' > ' + cat.toUpperCase() : (cat || pai || '').toUpperCase(),
+      dataFormatada,
+      dataFormatada,
+    ].filter(Boolean).join(' | ');
+
+    resultado.push({
+      'ID':                 '',
+      'Data':               dataFormatada,
+      'Competencia':        dataFormatada,
+      'Cliente/Fornecedor': fornecedor,
+      'Observacoes':        obs,
+      'Valor':              String(valor.toFixed(2)).replace('.', ','),
+      'Categoria':          cat,
+      'Portador':           portador,
+      'Saldo':              'N',
+      'CNPJ':               cnpj,
+    });
+  });
+
+  return resultado;
+}
+
 export function convertToBling(
   canal: string,
   data: any[],
@@ -385,5 +494,6 @@ export function convertToBling(
   if (canal === 'MERCADO LIVRE') return convertMLToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
   if (canal === 'NUVEM PAGO')   return convertNuvemPagoToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
   if (canal === 'SHOPEE')         return convertShopeeToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
+  if (canal === 'AMAZON')         return convertAmazonToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
   return [];
 }
