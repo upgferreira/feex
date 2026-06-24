@@ -493,7 +493,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     }
   };
 
-  const getColOptions = (col: string) => [...new Set(filteredRaw.map((r: any) => r[col]).filter(Boolean))].sort();
+  const getColOptions = (col: string) => [...new Set(filteredRaw.map((r: any) => String(r[col] ?? '')))].sort((a,b) => a === '' ? -1 : b === '' ? 1 : a.localeCompare(b));
 
   const formatCell = (val: any, col: string) => {
     if (val == null) return '-';
@@ -1111,7 +1111,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
               const anchorRef = { current: erpThRefs.current[erpActiveFilter] } as React.RefObject<HTMLElement>;
               return (
                 <ColumnFilter column={erpActiveFilter} label={erpActiveFilter}
-                  options={[...new Set(erpPreviewData.map((r: any) => String(r[erpActiveFilter] ?? '')).filter(Boolean))].sort()}
+                  options={[...new Set(erpPreviewData.map((r: any) => String(r[erpActiveFilter] ?? '')))].sort((a,b) => a === '' ? -1 : b === '' ? 1 : a.localeCompare(b))}
                   selected={erpColFilters[erpActiveFilter] || []}
                   onChange={vals => setErpColFilters(f => ({ ...f, [erpActiveFilter!]: vals }))}
                   onClose={() => setErpActiveFilter(null)} anchorRef={anchorRef} />
