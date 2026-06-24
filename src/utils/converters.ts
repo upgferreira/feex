@@ -458,8 +458,8 @@ function convertAmazonToBling(
 
     const obs = [
       pedido
-        ? 'AMAZON: ' + pedido + ' | PEDIDO DE VENDA: XXXXXX/' + pedido + ' > NF: XX/XXXXXX > ' + detalhe.toUpperCase()
-        : 'AMAZON | ' + detalhe.toUpperCase(),
+        ? 'AMAZON: [CLIENTE] | PEDIDO DE VENDA: XXXXXX/' + pedido + ' > NF: XX/XXXXXX > ' + detalhe.toUpperCase()
+        : 'AMAZON: [CLIENTE] | ' + detalhe.toUpperCase(),
       pai && cat ? pai.toUpperCase() + ' > ' + cat.toUpperCase() : (cat || pai || '').toUpperCase(),
       dataFormatada,
       dataFormatada,
