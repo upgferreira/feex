@@ -155,7 +155,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     return getAllChannelData(canal);
   }, [canal, files, getAllChannelData]);
 
-  const PIVOT_CHANNELS = ['SHOPEE', 'SHEIN'];
+  const PIVOT_CHANNELS = ['SHOPEE', 'SHEIN', 'AMAZON'];
   const canPivot = PIVOT_CHANNELS.includes(canal);
 
   const pivotedData = useMemo((): any[] => {
@@ -195,6 +195,62 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             'Valor': valor,
           });
         });
+      });
+      return result;
+    }
+    if (canal === 'AMAZON') {
+      const PIVOT_COLS = [
+        'créditos de remessa',
+        'créditos de embalagem de presente',
+        'descontos promocionais',
+        'imposto de vendas coletados',
+        'tarifas de venda',
+        'taxas fba',
+        'taxas de outras transações',
+        'outro',
+        'vendas do produto',
+      ];
+      const parseNum = (v: any) => {
+        if (typeof v === 'number') return v;
+        const s = String(v || '0').replace(/\./g, '').replace(',', '.');
+        return parseFloat(s) || 0;
+      };
+      const result: any[] = [];
+      data.forEach((row: any) => {
+        const tipo = String(row['tipo'] || '').toLowerCase();
+        if (tipo === 'transferir') return;
+        if (tipo === 'pedido') {
+          PIVOT_COLS.forEach(col => {
+            const colKey = Object.keys(row).find(k => k.trim().toLowerCase() === col.toLowerCase());
+            if (!colKey) return;
+            const valor = parseNum(row[colKey]);
+            if (valor === 0) return;
+            result.push({
+              'data/hora':        row['data/hora'],
+              'id de liquidação': row['id de liquidação'],
+              'tipo':             row['tipo'],
+              'id do pedido':     row['id do pedido'],
+              'tipo de conta':    row['tipo de conta'],
+              'Categoria':        col,
+              'Valor da tarifa':  valor,
+              'Relatório':        row['Relatório'],
+            });
+          });
+        } else {
+          const valor = parseNum(row['total']);
+          if (valor === 0) return;
+          const categoria = tipo === 'reembolso' ? 'Reembolso' : (row['descrição'] || row['tipo'] || '');
+          result.push({
+            'data/hora':        row['data/hora'],
+            'id de liquidação': row['id de liquidação'],
+            'tipo':             row['tipo'],
+            'id do pedido':     row['id do pedido'],
+            'tipo de conta':    row['tipo de conta'],
+            'Categoria':        categoria,
+            'Valor da tarifa':  valor,
+            'Relatório':        row['Relatório'],
+          });
+        }
       });
       return result;
     }
@@ -513,7 +569,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   }, []);
 
   const erpInputData = useMemo((): any[] => {
-    if (!['SHOPEE', 'SHEIN'].includes(canal)) return filteredRaw;
+    if (!['SHOPEE', 'SHEIN', 'AMAZON'].includes(canal)) return filteredRaw;
     if (filteredRaw.length === 0) return [];
     if (filteredRaw[0] && 'Categoria' in filteredRaw[0] && !('Status do pedido' in filteredRaw[0])) return filteredRaw;
     const PIVOT_COLS = [
@@ -540,13 +596,26 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
         let valor = parseFloat(vStr) || 0;
         if (valor === 0) return;
         valor = POSITIVE.has(col) ? Math.abs(valor) : -Math.abs(valor);
-        result.push({
-          'Data de criação do pedido': row['Data de criação do pedido'],
-          'ID do pedido': row['ID do pedido'],
-          'Nome de usuário (comprador)': row['Nome de usuário (comprador)'],
-          'Categoria': col.replace(/\s*\(\d+\)\s*/g, '').trim(),
-          'Valor': valor,
-        });
+        if (canal === 'AMAZON') {
+          result.push({
+            'data/hora':        row['data/hora'],
+            'id de liquidação': row['id de liquidação'],
+            'tipo':             row['tipo'],
+            'id do pedido':     row['id do pedido'],
+            'tipo de conta':    row['tipo de conta'],
+            'Categoria':        col,
+            'Valor da tarifa':  valor,
+            'Relatório':        row['Relatório'],
+          });
+        } else {
+          result.push({
+            'Data de criação do pedido': row['Data de criação do pedido'],
+            'ID do pedido': row['ID do pedido'],
+            'Nome de usuário (comprador)': row['Nome de usuário (comprador)'],
+            'Categoria': col.replace(/\s*\(\d+\)\s*/g, '').trim(),
+            'Valor': valor,
+          });
+        }
       });
     });
     return result;
@@ -573,7 +642,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     };
 
     const dates = erpInputData
-      .map((r: any) => parseD(r['Data da tarifa'] || r['Data de pagamento'] || r['Data de criação do pedido']))
+      .map((r: any) => parseD(r['Data da tarifa'] || r['Data de pagamento'] || r['Data de criação do pedido'] || r['data/hora']))
       .filter((d: Date | null): d is Date => d !== null && !isNaN(d.getTime()))
       .sort((a: Date, b: Date) => a.getTime() - b.getTime());
 
