@@ -353,8 +353,55 @@ export const Exportacao: React.FC = () => {
 
   const getConvertedData = (canal: string, erp: string, dataInicial: string, dataFinal: string, competencia: string) => {
     const rawData = getAllChannelData(canal);
-    // Pivot Shopee before converting
-    const channelData = canal === 'SHOPEE' ? pivotShopeeData(rawData) : rawData;
+
+    const parseNumAmazon = (v: any) => {
+      if (typeof v === 'number') return v;
+      const s = String(v || '0').replace(/\./g, '').replace(',', '.');
+      return parseFloat(s) || 0;
+    };
+
+    const pivotAmazonData = (rows: any[]): any[] => {
+      const PIVOT_COLS = [
+        'créditos de remessa','créditos de embalagem de presente','descontos promocionais',
+        'imposto de vendas coletados','tarifas de venda','taxas fba','taxas de outras transações',
+        'outro','vendas do produto',
+      ];
+      const result: any[] = [];
+      rows.forEach((row: any) => {
+        const tipo = String(row['tipo'] || '').toLowerCase();
+        if (tipo === 'transferir') return;
+        if (tipo === 'pedido') {
+          PIVOT_COLS.forEach(col => {
+            const colKey = Object.keys(row).find(k => k.trim().toLowerCase() === col.toLowerCase());
+            if (!colKey) return;
+            const valor = parseNumAmazon(row[colKey]);
+            if (valor === 0) return;
+            result.push({
+              'data/hora': row['data/hora'], 'id de liquidação': row['id de liquidação'],
+              'tipo': row['tipo'], 'id do pedido': row['id do pedido'],
+              'tipo de conta': row['tipo de conta'], 'Categoria': col,
+              'Valor da tarifa': valor, 'Relatório': row['Relatório'],
+            });
+          });
+        } else {
+          const valor = parseNumAmazon(row['total']);
+          if (valor === 0) return;
+          const categoria = tipo === 'reembolso' ? 'Reembolso' : (row['descrição'] || row['tipo'] || '');
+          result.push({
+            'data/hora': row['data/hora'], 'id de liquidação': row['id de liquidação'],
+            'tipo': row['tipo'], 'id do pedido': row['id do pedido'],
+            'tipo de conta': row['tipo de conta'], 'Categoria': categoria,
+            'Valor da tarifa': valor, 'Relatório': row['Relatório'],
+          });
+        }
+      });
+      return result;
+    };
+
+    // Pivot before converting
+    const channelData = canal === 'SHOPEE' ? pivotShopeeData(rawData)
+                      : canal === 'AMAZON' ? pivotAmazonData(rawData)
+                      : rawData;
     if (erp === 'BLING') {
       try {
         const result = convertToBling(canal, channelData, dataInicial, dataFinal, competencia, categories, accounts);
@@ -482,20 +529,10 @@ export const Exportacao: React.FC = () => {
         <DataTable
           columns={[
             { key: 'canal', label: 'Canal', render: (v: string) => (
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                v === 'AMAZON' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400' :
-                v === 'MERCADO LIVRE' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
-                v === 'MAGAZINE LUIZA' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
-                v === 'SHEIN' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400' :
-                v === 'SHOPEE' ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' :
-                'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-              }`}>{v}</span>
+              <span className={'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + (v === 'AMAZON' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400' : v === 'MERCADO LIVRE' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' : v === 'MAGAZINE LUIZA' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' : v === 'SHEIN' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400' : v === 'SHOPEE' ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300')}>{v}</span>
             )},
             { key: 'erp', label: 'Tipo', render: (v: string) => (
-              <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
-                v === 'BLING' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
-                'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-              }`}>{v}</span>
+              <span className={'inline-flex px-2 py-0.5 rounded text-xs font-medium ' + (v === 'BLING' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300')}>{v}</span>
             )},
             { key: 'ano', label: 'Ano', width: 'compact' as const },
             { key: 'competencia', label: 'Competência', width: 'compact' as const },
