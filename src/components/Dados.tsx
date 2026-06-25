@@ -557,22 +557,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     return Object.entries(map).map(([name,value])=>({name,value,percentage:total>0?((value/total)*100).toFixed(1):'0'})).sort((a,b)=>b.value-a.value).slice(0,10);
   }, [filteredRaw, canal]);
 
-  // ERP pie data
-  const erpPieGroup = useMemo(() => {
-    if (dataView !== 'erp' || viewMode !== 'dashboard') return [];
-    const map: Record<string,number> = {};
-    erpDashboardData.byPai.forEach((r:any) => { map[r.name]=(map[r.name]||0)+r.value; });
-    const total=Object.values(map).reduce((a,b)=>a+b,0);
-    return Object.entries(map).map(([name,value])=>({name,value,percentage:total>0?((value/total)*100).toFixed(1):'0'})).sort((a,b)=>b.value-a.value).slice(0,10);
-  }, [erpDashboardData, dataView, viewMode]);
 
-  const erpPieCategory = useMemo(() => {
-    if (dataView !== 'erp' || viewMode !== 'dashboard') return [];
-    const map: Record<string,number> = {};
-    erpDashboardData.byCat.forEach((r:any) => { map[r.name]=(map[r.name]||0)+r.value; });
-    const total=Object.values(map).reduce((a,b)=>a+b,0);
-    return Object.entries(map).map(([name,value])=>({name,value,percentage:total>0?((value/total)*100).toFixed(1):'0'})).sort((a,b)=>b.value-a.value).slice(0,10);
-  }, [erpDashboardData, dataView, viewMode]);
 
   const receitaDia = useMemo(() => {
     if (filteredRaw.length === 0) return [];
@@ -1182,10 +1167,10 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                     </div>
                   </div>
                   <div className="col-span-1">
-                    {erpPieGroup.length > 0 && <PieSection data={erpPieGroup} title="Categoria Pai" tooltipLabel="Valor" />}
+                    {erpDashboardData.byPai.length > 0 && <PieSection data={erpDashboardData.byPai.map((r:any) => ({...r, percentage: erpDashboardData.total > 0 ? ((r.value/erpDashboardData.total)*100).toFixed(1) : '0'}))} title="Categoria Pai" tooltipLabel="Valor" />}
                   </div>
                   <div className="col-span-1">
-                    {erpPieCategory.length > 0 && <PieSection data={erpPieCategory} title="Categoria" tooltipLabel="Valor" />}
+                    {erpDashboardData.byCat.length > 0 && <PieSection data={erpDashboardData.byCat.map((r:any) => ({...r, percentage: erpDashboardData.total > 0 ? ((r.value/erpDashboardData.total)*100).toFixed(1) : '0'}))} title="Categoria" tooltipLabel="Valor" />}
                   </div>
                 </div>
                 {/* Row 2: Gráfico barras por dia */}
