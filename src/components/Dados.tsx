@@ -326,12 +326,38 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             else if (ML_TAXAS_GRUPOS.includes(grupo)) taxas += val;
             else outros += val;
           });
-        } else {
+        } else if (c === 'AMAZON') {
           vendas += data.length;
-          receita += data.reduce((a: number, r: any) => {
-            const keys = Object.keys(r).filter(k => typeof r[k] === 'number' && r[k] > 0);
-            return keys.length > 0 ? a + (Number(r[keys[0]]) || 0) : a;
-          }, 0);
+          data.forEach((r: any) => {
+            const tipo = String(r['tipo'] || '').toLowerCase();
+            if (tipo === 'pedido') {
+              const v = String(r['vendas do produto'] || '0').replace(/\./g, '').replace(',', '.');
+              receita += parseFloat(v) || 0;
+            } else if (tipo !== 'transferir') {
+              const v = String(r['total'] || '0').replace(/\./g, '').replace(',', '.');
+              receita += parseFloat(v) || 0;
+            }
+          });
+        } else {
+          // Shopee, Shein, Magazine Luiza — valores podem ser string BR ou number
+          vendas += data.length;
+          data.forEach((r: any) => {
+            // Skip rows where first numeric key is an ID (> 1 billion)
+            const keys = Object.keys(r).filter(k => {
+              const v = r[k];
+              if (typeof v === 'number') return v > 0 && v < 1000000000;
+              if (typeof v === 'string') {
+                const n = parseFloat(v.replace(/\./g, '').replace(',', '.'));
+                return !isNaN(n) && n > 0 && n < 1000000000;
+              }
+              return false;
+            });
+            if (keys.length > 0) {
+              const v = r[keys[0]];
+              const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/\./g, '').replace(',', '.'));
+              receita += n || 0;
+            }
+          });
         }
       });
       const margemBruta = receita - taxas - fretes;
