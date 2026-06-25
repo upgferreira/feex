@@ -534,122 +534,6 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value / total) * 100).toFixed(1) : '0' })).sort((a, b) => b.value - a.value).slice(0, 10);
   }, [filteredRaw, canal]);
 
-  // Unified pizza data — pieGroup = channel_group, pieCategory = channel_category
-  // Uses financial_categories to lookup group/category for each row
-  const channelCatMap = useMemo(() => {
-    const map: Record<string, {group: string, category: string}> = {};
-    categories.forEach((c: any) => {
-      if (String(c.channel || '').toUpperCase().trim() === canal) {
-        const key = String(c.channel_category || '').toLowerCase().trim();
-        if (key) map[key] = {
-          group: c.channel_group || 'Outros',
-          category: c.channel_category || 'Sem categoria',
-        };
-      }
-    });
-    return map;
-  }, [categories, canal]);
-
-  const lookupChannelCat = (channelCatValue: string) => {
-    const key = String(channelCatValue || '').toLowerCase().trim();
-    return channelCatMap[key] || { group: 'Outros', category: channelCatValue || 'Sem categoria' };
-  };
-
-  const pieGroup = useMemo(() => {
-    if (filteredRaw.length === 0) return [];
-    const parseNum = (v: any) => typeof v === 'number' ? v : parseFloat(String(v||'0').replace(',','.')) || 0;
-    const map: Record<string,number> = {};
-    if (canal === 'MERCADO LIVRE') {
-      filteredRaw.forEach((r: any) => {
-        const { group } = lookupChannelCat(r.Detalhe?.toString() || '');
-        map[group] = (map[group] || 0) + Math.abs(Number(r['Valor da tarifa']) || 0);
-      });
-    } else if (canal === 'TODOS') {
-      filteredRaw.forEach((r: any) => { const c = r['CATEGORIA PAI']?.toString()||'Sem categoria'; map[c]=(map[c]||0)+Math.abs(Number(r.VALOR)||0); });
-    } else if (canal === 'SHOPEE' || canal === 'SHEIN') {
-      // Shopee data is pivoted with 'Categoria' field after pivoting; in raw mode iterate fee columns
-      const FEE_COLS = ['Taxa de Envio Reversa','Taxa de transação','Taxa de comissão líquida','Taxa de serviço líquida','Desconto de Frete Aproximado','Desconto do vendedor','Taxa de envio pagas pelo comprador'];
-      filteredRaw.forEach((r: any) => {
-        if (String(r['Status do pedido']||'').toLowerCase().includes('cancelado')) return;
-        // If already pivoted, use Categoria field
-        if (r['Categoria']) {
-          const { group } = lookupChannelCat(String(r['Categoria']));
-          map[group] = (map[group] || 0) + Math.abs(parseNum(r['Valor'] || r['Valor da tarifa']));
-        } else {
-          FEE_COLS.forEach(col => {
-            const v = Math.abs(parseNum(r[col]));
-            if (v === 0) return;
-            const { group } = lookupChannelCat(col);
-            map[group] = (map[group] || 0) + v;
-          });
-        }
-      });
-    } else if (canal === 'AMAZON') {
-      filteredRaw.forEach((r: any) => {
-        const tipo = String(r['tipo']||'').toLowerCase();
-        if (tipo === 'transferir') return;
-        if (tipo === 'pedido') {
-          // Pivot fees
-          const FEE_COLS = ['créditos de remessa','créditos de embalagem de presente','descontos promocionais','imposto de vendas coletados','tarifas de venda','taxas fba','taxas de outras transações','outro'];
-          FEE_COLS.forEach(col => {
-            const v = Math.abs(parseNum(r[col]));
-            if (v === 0) return;
-            const { group } = lookupChannelCat(col);
-            map[group] = (map[group] || 0) + v;
-          });
-        } else {
-          const cat = r['descrição'] || tipo === 'reembolso' ? 'Reembolso' : tipo;
-          const { group } = lookupChannelCat(String(cat));
-          map[group] = (map[group] || 0) + Math.abs(parseNum(r['total']));
-        }
-      });
-    }
-    const total = Object.values(map).reduce((a, b) => a + b, 0);
-    return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value/total)*100).toFixed(1) : '0' })).sort((a, b) => b.value - a.value).slice(0, 10);
-  }, [filteredRaw, canal, channelCatMap]);
-
-  const pieCategory = useMemo(() => {
-    if (filteredRaw.length === 0) return [];
-    const parseNum = (v: any) => typeof v === 'number' ? v : parseFloat(String(v||'0').replace(',','.')) || 0;
-    const map: Record<string,number> = {};
-    if (canal === 'MERCADO LIVRE') {
-      filteredRaw.forEach((r: any) => { const d = r.Detalhe?.toString() || 'Sem detalhe'; map[d] = (map[d] || 0) + Math.abs(Number(r['Valor da tarifa']) || 0); });
-    } else if (canal === 'TODOS') {
-      filteredRaw.forEach((r: any) => { const c = r.CATEGORIA?.toString()||'Sem categoria'; map[c]=(map[c]||0)+Math.abs(Number(r.VALOR)||0); });
-    } else if (canal === 'SHOPEE' || canal === 'SHEIN') {
-      const FEE_COLS = ['Taxa de Envio Reversa','Taxa de transação','Taxa de comissão líquida','Taxa de serviço líquida','Desconto de Frete Aproximado','Desconto do vendedor','Taxa de envio pagas pelo comprador'];
-      filteredRaw.forEach((r: any) => {
-        if (String(r['Status do pedido']||'').toLowerCase().includes('cancelado')) return;
-        if (r['Categoria']) {
-          map[r['Categoria']] = (map[r['Categoria']] || 0) + Math.abs(parseNum(r['Valor'] || r['Valor da tarifa']));
-        } else {
-          FEE_COLS.forEach(col => {
-            const v = Math.abs(parseNum(r[col]));
-            if (v === 0) return;
-            map[col] = (map[col] || 0) + v;
-          });
-        }
-      });
-    } else if (canal === 'AMAZON') {
-      filteredRaw.forEach((r: any) => {
-        const tipo = String(r['tipo']||'').toLowerCase();
-        if (tipo === 'transferir') return;
-        if (tipo === 'pedido') {
-          const FEE_COLS = ['créditos de remessa','créditos de embalagem de presente','descontos promocionais','imposto de vendas coletados','tarifas de venda','taxas fba','taxas de outras transações','outro'];
-          FEE_COLS.forEach(col => {
-            const v = Math.abs(parseNum(r[col]));
-            if (v === 0) return;
-            map[col] = (map[col] || 0) + v;
-          });
-        } else {
-          const cat = String(r['descrição'] || (tipo === 'reembolso' ? 'Reembolso' : tipo));
-          map[cat] = (map[cat] || 0) + Math.abs(parseNum(r['total']));
-        }
-      });
-    }
-    const total = Object.values(map).reduce((a, b) => a + b, 0);
-    return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value/total)*100).toFixed(1) : '0' })).sort((a, b) => b.value - a.value).slice(0, 10);
-  }, [filteredRaw, canal]);
 
 
 
@@ -864,6 +748,123 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       window.removeEventListener('categories-updated', load);
     };
   }, []);
+
+  // Unified pizza data — pieGroup = channel_group, pieCategory = channel_category
+  // Uses financial_categories to lookup group/category for each row
+  const channelCatMap = useMemo(() => {
+    const map: Record<string, {group: string, category: string}> = {};
+    categories.forEach((c: any) => {
+      if (String(c.channel || '').toUpperCase().trim() === canal) {
+        const key = String(c.channel_category || '').toLowerCase().trim();
+        if (key) map[key] = {
+          group: c.channel_group || 'Outros',
+          category: c.channel_category || 'Sem categoria',
+        };
+      }
+    });
+    return map;
+  }, [categories, canal]);
+
+  const lookupChannelCat = (channelCatValue: string) => {
+    const key = String(channelCatValue || '').toLowerCase().trim();
+    return channelCatMap[key] || { group: 'Outros', category: channelCatValue || 'Sem categoria' };
+  };
+
+  const pieGroup = useMemo(() => {
+    if (filteredRaw.length === 0) return [];
+    const parseNum = (v: any) => typeof v === 'number' ? v : parseFloat(String(v||'0').replace(',','.')) || 0;
+    const map: Record<string,number> = {};
+    if (canal === 'MERCADO LIVRE') {
+      filteredRaw.forEach((r: any) => {
+        const { group } = lookupChannelCat(r.Detalhe?.toString() || '');
+        map[group] = (map[group] || 0) + Math.abs(Number(r['Valor da tarifa']) || 0);
+      });
+    } else if (canal === 'TODOS') {
+      filteredRaw.forEach((r: any) => { const c = r['CATEGORIA PAI']?.toString()||'Sem categoria'; map[c]=(map[c]||0)+Math.abs(Number(r.VALOR)||0); });
+    } else if (canal === 'SHOPEE' || canal === 'SHEIN') {
+      // Shopee data is pivoted with 'Categoria' field after pivoting; in raw mode iterate fee columns
+      const FEE_COLS = ['Taxa de Envio Reversa','Taxa de transação','Taxa de comissão líquida','Taxa de serviço líquida','Desconto de Frete Aproximado','Desconto do vendedor','Taxa de envio pagas pelo comprador'];
+      filteredRaw.forEach((r: any) => {
+        if (String(r['Status do pedido']||'').toLowerCase().includes('cancelado')) return;
+        // If already pivoted, use Categoria field
+        if (r['Categoria']) {
+          const { group } = lookupChannelCat(String(r['Categoria']));
+          map[group] = (map[group] || 0) + Math.abs(parseNum(r['Valor'] || r['Valor da tarifa']));
+        } else {
+          FEE_COLS.forEach(col => {
+            const v = Math.abs(parseNum(r[col]));
+            if (v === 0) return;
+            const { group } = lookupChannelCat(col);
+            map[group] = (map[group] || 0) + v;
+          });
+        }
+      });
+    } else if (canal === 'AMAZON') {
+      filteredRaw.forEach((r: any) => {
+        const tipo = String(r['tipo']||'').toLowerCase();
+        if (tipo === 'transferir') return;
+        if (tipo === 'pedido') {
+          // Pivot fees
+          const FEE_COLS = ['créditos de remessa','créditos de embalagem de presente','descontos promocionais','imposto de vendas coletados','tarifas de venda','taxas fba','taxas de outras transações','outro'];
+          FEE_COLS.forEach(col => {
+            const v = Math.abs(parseNum(r[col]));
+            if (v === 0) return;
+            const { group } = lookupChannelCat(col);
+            map[group] = (map[group] || 0) + v;
+          });
+        } else {
+          const cat = r['descrição'] || tipo === 'reembolso' ? 'Reembolso' : tipo;
+          const { group } = lookupChannelCat(String(cat));
+          map[group] = (map[group] || 0) + Math.abs(parseNum(r['total']));
+        }
+      });
+    }
+    const total = Object.values(map).reduce((a, b) => a + b, 0);
+    return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value/total)*100).toFixed(1) : '0' })).sort((a, b) => b.value - a.value).slice(0, 10);
+  }, [filteredRaw, canal, channelCatMap]);
+
+  const pieCategory = useMemo(() => {
+    if (filteredRaw.length === 0) return [];
+    const parseNum = (v: any) => typeof v === 'number' ? v : parseFloat(String(v||'0').replace(',','.')) || 0;
+    const map: Record<string,number> = {};
+    if (canal === 'MERCADO LIVRE') {
+      filteredRaw.forEach((r: any) => { const d = r.Detalhe?.toString() || 'Sem detalhe'; map[d] = (map[d] || 0) + Math.abs(Number(r['Valor da tarifa']) || 0); });
+    } else if (canal === 'TODOS') {
+      filteredRaw.forEach((r: any) => { const c = r.CATEGORIA?.toString()||'Sem categoria'; map[c]=(map[c]||0)+Math.abs(Number(r.VALOR)||0); });
+    } else if (canal === 'SHOPEE' || canal === 'SHEIN') {
+      const FEE_COLS = ['Taxa de Envio Reversa','Taxa de transação','Taxa de comissão líquida','Taxa de serviço líquida','Desconto de Frete Aproximado','Desconto do vendedor','Taxa de envio pagas pelo comprador'];
+      filteredRaw.forEach((r: any) => {
+        if (String(r['Status do pedido']||'').toLowerCase().includes('cancelado')) return;
+        if (r['Categoria']) {
+          map[r['Categoria']] = (map[r['Categoria']] || 0) + Math.abs(parseNum(r['Valor'] || r['Valor da tarifa']));
+        } else {
+          FEE_COLS.forEach(col => {
+            const v = Math.abs(parseNum(r[col]));
+            if (v === 0) return;
+            map[col] = (map[col] || 0) + v;
+          });
+        }
+      });
+    } else if (canal === 'AMAZON') {
+      filteredRaw.forEach((r: any) => {
+        const tipo = String(r['tipo']||'').toLowerCase();
+        if (tipo === 'transferir') return;
+        if (tipo === 'pedido') {
+          const FEE_COLS = ['créditos de remessa','créditos de embalagem de presente','descontos promocionais','imposto de vendas coletados','tarifas de venda','taxas fba','taxas de outras transações','outro'];
+          FEE_COLS.forEach(col => {
+            const v = Math.abs(parseNum(r[col]));
+            if (v === 0) return;
+            map[col] = (map[col] || 0) + v;
+          });
+        } else {
+          const cat = String(r['descrição'] || (tipo === 'reembolso' ? 'Reembolso' : tipo));
+          map[cat] = (map[cat] || 0) + Math.abs(parseNum(r['total']));
+        }
+      });
+    }
+    const total = Object.values(map).reduce((a, b) => a + b, 0);
+    return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value/total)*100).toFixed(1) : '0' })).sort((a, b) => b.value - a.value).slice(0, 10);
+  }, [filteredRaw, canal]);
 
   const erpInputData = useMemo((): any[] => {
     if (!['SHOPEE', 'SHEIN', 'AMAZON'].includes(canal)) return filteredRaw;
