@@ -432,6 +432,35 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value / total) * 100).toFixed(1) : '0' })).sort((a, b) => b.value - a.value).slice(0, 10);
   }, [filteredRaw, canal]);
 
+  const shopeeData = useMemo(() => {
+    if (!['SHOPEE', 'SHEIN'].includes(canal) || filteredRaw.length === 0) return [];
+    const map: Record<string, number> = {};
+    filteredRaw.forEach((r: any) => {
+      if (String(r['Status do pedido'] || '').toLowerCase().includes('cancelado')) return;
+      const cat = r['Categoria do produto'] || r['Categoria'] || 'Sem categoria';
+      const v = parseFloat(String(r['Subtotal do produto'] || r['Preço acordado'] || '0').replace(',', '.')) || 0;
+      map[String(cat)] = (map[String(cat)] || 0) + v;
+    });
+    const total = Object.values(map).reduce((a, b) => a + b, 0);
+    return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value/total)*100).toFixed(1) : '0' })).sort((a,b) => b.value - a.value).slice(0,10);
+  }, [filteredRaw, canal]);
+
+  const amazonData = useMemo(() => {
+    if (canal !== 'AMAZON' || filteredRaw.length === 0) return [];
+    const map: Record<string, number> = {};
+    filteredRaw.forEach((r: any) => {
+      const tipo = String(r['tipo'] || '').toLowerCase();
+      if (tipo === 'transferir') return;
+      const cat = tipo === 'pedido' ? (r['descrição'] || 'Venda') : (r['descrição'] || tipo);
+      const v = tipo === 'pedido'
+        ? parseFloat(String(r['vendas do produto'] || '0').replace(',', '.')) || 0
+        : Math.abs(parseFloat(String(r['total'] || '0').replace(',', '.')) || 0);
+      if (v > 0) map[String(cat)] = (map[String(cat)] || 0) + v;
+    });
+    const total = Object.values(map).reduce((a, b) => a + b, 0);
+    return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value/total)*100).toFixed(1) : '0' })).sort((a,b) => b.value - a.value).slice(0,10);
+  }, [filteredRaw, canal]);
+
   const grupoData = useMemo(() => {
     if (canal !== 'MERCADO LIVRE' || filteredRaw.length === 0) return [];
     const map: Record<string, number> = {};
@@ -1091,6 +1120,16 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                     <>
                       {grupoData.length > 0 && <PieSection data={grupoData} title="Distribuição por Grupo" tooltipLabel="Valor da Tarifa" />}
                       {taxasDetalheData.length > 0 && <PieSection data={taxasDetalheData} title="Distribuição de Taxas por Detalhe" tooltipLabel="Valor da Tarifa" />}
+                    </>
+                  )}
+                  {(canal === 'SHOPEE' || canal === 'SHEIN') && (
+                    <>
+                      {shopeeData.length > 0 && <PieSection data={shopeeData} title="Receita por Categoria de Produto" tooltipLabel="Subtotal" />}
+                    </>
+                  )}
+                  {canal === 'AMAZON' && (
+                    <>
+                      {amazonData.length > 0 && <PieSection data={amazonData} title="Receita por Tipo de Transação" tooltipLabel="Valor" />}
                     </>
                   )}
                 </div>
