@@ -522,6 +522,58 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value / total) * 100).toFixed(1) : '0' })).sort((a, b) => b.value - a.value).slice(0, 10);
   }, [filteredRaw, canal]);
 
+  // Unified pizza data for dashboard framework
+  const pieGroup = useMemo(() => {
+    if (filteredRaw.length === 0) return [];
+    const parseNum = (v: any) => typeof v === 'number' ? v : parseFloat(String(v||'0').replace(',','.')) || 0;
+    const map: Record<string,number> = {};
+    if (canal === 'MERCADO LIVRE') {
+      filteredRaw.forEach((r: any) => { const g = ML_GRUPO_MAP[r.Detalhe?.toString()||'']||'Outros'; map[g]=(map[g]||0)+Math.abs(Number(r['Valor da tarifa'])||0); });
+    } else if (canal === 'TODOS') {
+      filteredRaw.forEach((r: any) => { const c = r['CATEGORIA PAI']?.toString()||'Sem categoria'; map[c]=(map[c]||0)+Math.abs(Number(r.VALOR)||0); });
+    } else if (canal === 'SHOPEE' || canal === 'SHEIN') {
+      filteredRaw.forEach((r: any) => { if(String(r['Status do pedido']||'').toLowerCase().includes('cancelado')) return; const k=String(r['Nº de referência do SKU principal']||r['Número de referência SKU']||r['Nome do Produto']||'Sem SKU'); map[k]=(map[k]||0)+parseNum(r['Subtotal do produto']||r['Preço acordado']); });
+    } else if (canal === 'AMAZON') {
+      filteredRaw.forEach((r: any) => { const tipo=String(r['tipo']||'').toLowerCase(); if(tipo==='transferir') return; const g=String(r['tipo']||'Outro'); const v=Math.abs(parseNum(tipo==='pedido'?r['vendas do produto']:r['total'])); if(v>0) map[g]=(map[g]||0)+v; });
+    }
+    const total=Object.values(map).reduce((a,b)=>a+b,0);
+    return Object.entries(map).map(([name,value])=>({name,value,percentage:total>0?((value/total)*100).toFixed(1):'0'})).sort((a,b)=>b.value-a.value).slice(0,10);
+  }, [filteredRaw, canal]);
+
+  const pieCategory = useMemo(() => {
+    if (filteredRaw.length === 0) return [];
+    const parseNum = (v: any) => typeof v === 'number' ? v : parseFloat(String(v||'0').replace(',','.')) || 0;
+    const map: Record<string,number> = {};
+    if (canal === 'MERCADO LIVRE') {
+      filteredRaw.forEach((r: any) => { const d=r.Detalhe?.toString()||'Sem detalhe'; map[d]=(map[d]||0)+Math.abs(Number(r['Valor da tarifa'])||0); });
+    } else if (canal === 'TODOS') {
+      filteredRaw.forEach((r: any) => { const c=r.CATEGORIA?.toString()||'Sem categoria'; map[c]=(map[c]||0)+Math.abs(Number(r.VALOR)||0); });
+    } else if (canal === 'SHOPEE' || canal === 'SHEIN') {
+      filteredRaw.forEach((r: any) => { if(String(r['Status do pedido']||'').toLowerCase().includes('cancelado')) return; const k=String(r['Nome do Produto']||'Sem produto'); map[k]=(map[k]||0)+parseNum(r['Subtotal do produto']||r['Preço acordado']); });
+    } else if (canal === 'AMAZON') {
+      filteredRaw.forEach((r: any) => { const tipo=String(r['tipo']||'').toLowerCase(); if(tipo!=='pedido') return; const k=String(r['sku']||r['descrição']||'Sem SKU'); const v=parseNum(r['vendas do produto']); if(v>0) map[k]=(map[k]||0)+v; });
+    }
+    const total=Object.values(map).reduce((a,b)=>a+b,0);
+    return Object.entries(map).map(([name,value])=>({name,value,percentage:total>0?((value/total)*100).toFixed(1):'0'})).sort((a,b)=>b.value-a.value).slice(0,10);
+  }, [filteredRaw, canal]);
+
+  // ERP pie data
+  const erpPieGroup = useMemo(() => {
+    if (dataView !== 'erp' || viewMode !== 'dashboard') return [];
+    const map: Record<string,number> = {};
+    erpDashboardData.byPai.forEach((r:any) => { map[r.name]=(map[r.name]||0)+r.value; });
+    const total=Object.values(map).reduce((a,b)=>a+b,0);
+    return Object.entries(map).map(([name,value])=>({name,value,percentage:total>0?((value/total)*100).toFixed(1):'0'})).sort((a,b)=>b.value-a.value).slice(0,10);
+  }, [erpDashboardData, dataView, viewMode]);
+
+  const erpPieCategory = useMemo(() => {
+    if (dataView !== 'erp' || viewMode !== 'dashboard') return [];
+    const map: Record<string,number> = {};
+    erpDashboardData.byCat.forEach((r:any) => { map[r.name]=(map[r.name]||0)+r.value; });
+    const total=Object.values(map).reduce((a,b)=>a+b,0);
+    return Object.entries(map).map(([name,value])=>({name,value,percentage:total>0?((value/total)*100).toFixed(1):'0'})).sort((a,b)=>b.value-a.value).slice(0,10);
+  }, [erpDashboardData, dataView, viewMode]);
+
   const receitaDia = useMemo(() => {
     if (filteredRaw.length === 0) return [];
     const map: Record<string, number> = {};
@@ -1075,9 +1127,10 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       {/* Content */}
       <div className="flex-1 overflow-hidden relative">
 
-        {/* ERP DASHBOARD */}
+                {/* ERP DASHBOARD */}
         {viewMode === 'dashboard' && dataView === 'erp' && (
           <div ref={dashboardRef} className="h-full overflow-auto p-6 pb-20">
+            {/* 8 KPI cards */}
             <div className="grid grid-cols-2 md:grid-cols-8 gap-3 mb-6">
               {erpStatCards.map(card => (
                 <div key={card.label} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
@@ -1099,12 +1152,45 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
               </div>
             ) : (
               <div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {erpDashboardData.byPai.length > 0 && <PieSection data={erpDashboardData.byPai} title="Distribuição por Categoria Pai" tooltipLabel="Valor" />}
-                  {erpDashboardData.byCat.length > 0 && <PieSection data={erpDashboardData.byCat} title="Distribuição por Categoria" tooltipLabel="Valor" />}
+                {/* Row 1: Tabela SKU ERP (col-span-2) + Pizza cat-pai + Pizza categoria */}
+                <div className="grid grid-cols-4 gap-4 mb-6">
+                  <div className="col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                    <div className="px-4 pt-4 pb-2">
+                      <h3 className="text-base font-semibold text-gray-900 dark:text-white">Lançamentos ERP</h3>
+                    </div>
+                    <div className="overflow-auto" style={{maxHeight: 280}}>
+                      <table className="w-full">
+                        <thead>
+                          <tr className="bg-green-600 sticky top-0">
+                            <th className="px-3 py-2 text-left text-xs font-medium text-white uppercase">Data</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-white uppercase">Categoria</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-white uppercase">Portador</th>
+                            <th className="px-3 py-2 text-right text-xs font-medium text-white uppercase">Valor</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                          {erpPreviewData.slice(0, 20).map((row: any, i: number) => (
+                            <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                              <td className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{row['Data']}</td>
+                              <td className="px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 max-w-[180px] truncate">{row['Categoria']}</td>
+                              <td className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{row['Portador']}</td>
+                              <td className="px-3 py-1.5 text-xs font-semibold text-gray-900 dark:text-white text-right whitespace-nowrap">{row['Valor']}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div className="col-span-1">
+                    {erpPieGroup.length > 0 && <PieSection data={erpPieGroup} title="Categoria Pai" tooltipLabel="Valor" />}
+                  </div>
+                  <div className="col-span-1">
+                    {erpPieCategory.length > 0 && <PieSection data={erpPieCategory} title="Categoria" tooltipLabel="Valor" />}
+                  </div>
                 </div>
+                {/* Row 2: Gráfico barras por dia */}
                 {erpReceitaDia.length > 0 && (
-                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mt-6">
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Lançamentos por Dia</h3>
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
@@ -1124,9 +1210,10 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
           </div>
         )}
 
-        {/* CANAL DASHBOARD */}
+{/* CANAL DASHBOARD */}
         {viewMode === 'dashboard' && dataView === 'canal' && (
           <div ref={dashboardRef} className="h-full overflow-auto p-6 pb-20">
+            {/* 8 KPI cards */}
             <div className="grid grid-cols-2 md:grid-cols-8 gap-3 mb-6">
               {statCards.map(card => (
                 <div key={card.label} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
@@ -1148,79 +1235,55 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
               </div>
             ) : (
               <div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {canal === 'TODOS' && (
-                    <>
-                      {categoriaPaiData.length > 0 && <PieSection data={categoriaPaiData} title="Distribuição por Categoria Pai" tooltipLabel="Valor" />}
-                      {categoriaData.length > 0 && <PieSection data={categoriaData} title="Distribuição por Categoria" tooltipLabel="Valor" />}
-                    </>
+                {/* Row 1: Tabela SKU (col-span-2) + Pizza grupo + Pizza categoria */}
+                <div className="grid grid-cols-4 gap-4 mb-6">
+                  {/* Tabela SKU — apenas Shopee/Shein/Amazon */}
+                  {skuData.length > 0 ? (
+                    <div className="col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <div className="px-4 pt-4 pb-2">
+                        <h3 className="text-base font-semibold text-gray-900 dark:text-white">Produtos</h3>
+                      </div>
+                      <div className="overflow-auto" style={{maxHeight: 280}}>
+                        <table className="w-full">
+                          <thead>
+                            <tr className="bg-gray-50 dark:bg-gray-700 sticky top-0">
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">SKU</th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Produto</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Qtd</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Receita</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                            {skuData.map((row: any, i: number) => (
+                              <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <td className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 font-mono whitespace-nowrap">{row.sku}</td>
+                                <td className="px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 max-w-[180px] truncate">{row.produto}</td>
+                                <td className="px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 text-right">{row.qtd}</td>
+                                <td className="px-3 py-1.5 text-xs font-semibold text-gray-900 dark:text-white text-right whitespace-nowrap">{formatBRL(row.receita)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Para ML e TODOS: as duas pizzas ocupam col-span-2 lado a lado */
+                    <div className="col-span-2 grid grid-cols-2 gap-4">
+                      {pieGroup.length > 0 && <PieSection data={pieGroup} title={canal === 'MERCADO LIVRE' ? 'Por Grupo' : 'Por Categoria Pai'} tooltipLabel="Valor" />}
+                      {pieCategory.length > 0 && <PieSection data={pieCategory} title={canal === 'MERCADO LIVRE' ? 'Por Detalhe' : 'Por Categoria'} tooltipLabel="Valor" />}
+                    </div>
                   )}
-                  {canal === 'MERCADO LIVRE' && (
-                    <>
-                      {grupoData.length > 0 && <PieSection data={grupoData} title="Distribuição por Grupo" tooltipLabel="Valor da Tarifa" />}
-                      {taxasDetalheData.length > 0 && <PieSection data={taxasDetalheData} title="Distribuição de Taxas por Detalhe" tooltipLabel="Valor da Tarifa" />}
-                    </>
+                  {/* Para Shopee/Amazon: pizzas nas últimas 2 colunas */}
+                  {skuData.length > 0 && pieGroup.length > 0 && (
+                    <div className="col-span-1"><PieSection data={pieGroup} title={canal === 'AMAZON' ? 'Por Tipo' : 'Por SKU'} tooltipLabel="Valor" /></div>
                   )}
-                  {(canal === 'SHOPEE' || canal === 'SHEIN') && (
-                    <>
-                      {shopeeData.length > 0 && <PieSection data={shopeeData} title="Receita por SKU" tooltipLabel="Subtotal" />}
-                    </>
-                  )}
-                  {canal === 'AMAZON' && (
-                    <>
-                      {(amazonData as any).produtos?.length > 0 && <PieSection data={(amazonData as any).produtos} title="Receita por SKU/Produto" tooltipLabel="Valor" />}
-                      {(amazonData as any).tipos?.length > 0 && <PieSection data={(amazonData as any).tipos} title="Receita por Tipo de Transação" tooltipLabel="Valor" />}
-                    </>
+                  {skuData.length > 0 && pieCategory.length > 0 && (
+                    <div className="col-span-1"><PieSection data={pieCategory} title={canal === 'AMAZON' ? 'Por Produto' : 'Por Produto'} tooltipLabel="Valor" /></div>
                   )}
                 </div>
-                {(skuData.length > 0 || shopeeData.length > 0 || (amazonData as any).produtos?.length > 0) && (
-                  <div className="grid grid-cols-4 gap-4 mt-6">
-                    {/* Tabela SKU — 2 colunas */}
-                    {skuData.length > 0 && (
-                      <div className="col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                        <div className="px-4 pt-4 pb-2">
-                          <h3 className="text-base font-semibold text-gray-900 dark:text-white">Produtos</h3>
-                        </div>
-                        <div className="overflow-auto max-h-64">
-                          <table className="w-full">
-                            <thead>
-                              <tr className="bg-gray-50 dark:bg-gray-700 sticky top-0">
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">SKU</th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Produto</th>
-                                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Qtd</th>
-                                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Receita</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                              {skuData.map((row: any, i: number) => (
-                                <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                  <td className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 font-mono whitespace-nowrap">{row.sku}</td>
-                                  <td className="px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 max-w-[180px] truncate">{row.produto}</td>
-                                  <td className="px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 text-right">{row.qtd}</td>
-                                  <td className="px-3 py-1.5 text-xs font-semibold text-gray-900 dark:text-white text-right whitespace-nowrap">{formatBRL(row.receita)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-                    {/* Pizza 1 — Shopee: por SKU / Amazon: por produto */}
-                    {(canal === 'SHOPEE' || canal === 'SHEIN') && shopeeData.length > 0 && (
-                      <div className="col-span-1"><PieSection data={shopeeData} title="Receita por SKU" tooltipLabel="Subtotal" /></div>
-                    )}
-                    {canal === 'AMAZON' && (amazonData as any).produtos?.length > 0 && (
-                      <div className="col-span-1"><PieSection data={(amazonData as any).produtos} title="Por Produto" tooltipLabel="Valor" /></div>
-                    )}
-                    {/* Pizza 2 — Amazon: por tipo de transação */}
-                    {canal === 'AMAZON' && (amazonData as any).tipos?.length > 0 && (
-                      <div className="col-span-1"><PieSection data={(amazonData as any).tipos} title="Por Tipo" tooltipLabel="Valor" /></div>
-                    )}
-                    {/* Shopee só tem 1 pizza — preenche 2ª coluna com vazio ou remove */}
-                  </div>
-                )}
+                {/* Row 2: Gráfico barras por dia */}
                 {receitaDia.length > 0 && (
-                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mt-6">
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Receita por Dia</h3>
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
@@ -1240,7 +1303,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
           </div>
         )}
 
-        {/* TABELA */}
+{/* TABELA */}
         {viewMode === 'tabela' && (
           <div className="h-full flex flex-col">
             <div className="flex-1 overflow-auto" style={{ overflowX: 'auto' }}>
