@@ -339,10 +339,25 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       return { vendas, receita, taxas, fretes, outros, margemBruta, margemLiquida, ticketMedio: vendas > 0 ? receita / vendas : 0 };
     }
     const vendas = filteredRaw.length;
-    const receita = filteredRaw.reduce((a: number, r: any) => {
-      const keys = Object.keys(r).filter(k => typeof r[k] === 'number' && r[k] > 0);
-      return keys.length > 0 ? a + (Number(r[keys[0]]) || 0) : a;
-    }, 0);
+    const parseNumBR = (v: any) => {
+      if (typeof v === 'number') return v;
+      const s = String(v || '0').replace(/\./g, '').replace(',', '.');
+      return parseFloat(s) || 0;
+    };
+    let receita = 0;
+    if (canal === 'AMAZON') {
+      // Use 'vendas do produto' for revenue, ignore negative/fee rows
+      filteredRaw.forEach((r: any) => {
+        const tipo = String(r['tipo'] || '').toLowerCase();
+        if (tipo === 'pedido') receita += parseNumBR(r['vendas do produto']);
+        else if (tipo !== 'transferir') receita += parseNumBR(r['total']);
+      });
+    } else {
+      receita = filteredRaw.reduce((a: number, r: any) => {
+        const keys = Object.keys(r).filter(k => typeof r[k] === 'number' && r[k] > 0);
+        return keys.length > 0 ? a + (Number(r[keys[0]]) || 0) : a;
+      }, 0);
+    }
     const margemBruta = receita;
     return { vendas, receita, taxas: 0, fretes: 0, outros: 0, margemBruta, margemLiquida: margemBruta, ticketMedio: vendas > 0 ? receita / vendas : 0 };
   }, [filteredRaw, canal, getAllChannelData]);
