@@ -1,24 +1,24 @@
 import React from 'react';
-import { X, Upload, BarChart2, Download, Database, HelpCircle, ArrowRight, CheckCircle } from 'lucide-react';
+import { X, Upload, BarChart2, Download, Database, HelpCircle, CheckCircle } from 'lucide-react';
 
 interface HelpModalProps { isOpen: boolean; onClose: () => void; }
 
 const cols = [
   {
-    id: 'feex',
+    id: 'app',
     color: 'bg-blue-600',
     lightBg: 'bg-blue-50 dark:bg-blue-900/20',
     border: 'border-blue-200 dark:border-blue-800',
     icon: <HelpCircle className="w-6 h-6 text-white" />,
-    title: 'FEEX',
+    title: 'APP',
     subtitle: 'Hub Financeiro Ecommerce',
     items: [
-      { label: 'O que é?', text: 'Sistema de conciliação financeira para marketplaces e gateways de pagamento.' },
-      { label: 'Para quem?', text: 'Empresas que vendem em múltiplos canais e precisam conciliar no ERP.' },
-      { label: 'Canais', text: 'Mercado Livre, Nuvem Pago, Amazon, Magalu, Shopee, Shein e mais.' },
-      { label: 'ERPs', text: 'Bling e Olist (Tiny). Exporta no formato de importação de caixa.' },
-      { label: 'Padrão de nome', text: 'CANAL_TIPO_ANO_COMPETENCIA_INICIO_FIM\nEx: MERCADO LIVRE_FATURAMENTO_2026_01-2026_01-01-2026_31-01-2026' },
-      { label: 'Pré-requisitos', text: 'Caixas, Categorias e Fornecedores devem estar cadastrados no ERP antes da importação.' },
+      { label: 'O que é a FEEX?', text: 'Sistema de conciliação financeira para marketplaces. Transforma os relatórios dos canais de venda no formato de lançamento de caixa do ERP.' },
+      { label: 'Para quem?', text: 'Empresas que vendem em múltiplos canais (Shopee, Amazon, Mercado Livre, Shein, Magalu) e precisam lançar no ERP sem retrabalho manual.' },
+      { label: 'ERPs suportados', text: 'Bling e Olist (Tiny). Exporta no formato de importação de Registros de Caixa.' },
+      { label: 'Nome dos arquivos', text: 'Padrão obrigatório:\nCANAL_TIPO_ANO_COMP_INICIO_FIM\nEx: SHOPEE_FATURAMENTO_2026_01-2026_01-01-2026_31-01-2026' },
+      { label: 'Pré-requisitos', text: 'Antes de exportar, cadastre no rodapé: CAIXAS (portador por canal), CATEGORIAS (de-para canal → ERP) e MÉTODOS (formas de pagamento).' },
+      { label: 'Suporte', text: 'Dúvidas? Entre em contato com a ARCA TECHNOLOGY via email ou WhatsApp.' },
     ],
   },
   {
@@ -30,12 +30,12 @@ const cols = [
     title: 'IMPORTAR',
     subtitle: 'Carregar relatórios dos canais',
     items: [
-      { label: 'Como usar', text: 'Clique em Upload Arquivo no canto superior direito.' },
-      { label: 'Passo 1', text: 'Selecione o Canal (ex: Mercado Livre).' },
-      { label: 'Passo 2', text: 'Escolha o tipo de relatório (Faturamento, etc.).' },
-      { label: 'Passo 3', text: 'Selecione o arquivo Excel ou CSV baixado do canal.' },
-      { label: 'Passo 4', text: 'Clique em Importar para carregar os dados.' },
-      { label: 'Dica', text: 'Use o filtro por canal no topo para navegar entre os arquivos. Clique para ordenar · Ctrl+clique para filtrar.' },
+      { label: 'Como funciona', text: 'Faça upload do arquivo Excel ou CSV baixado diretamente do marketplace. O sistema detecta o canal pelo nome do arquivo e processa automaticamente.' },
+      { label: 'Passo 1', text: 'Baixe o relatório de faturamento/liquidação no painel do canal (Shopee, Amazon, ML etc.).' },
+      { label: 'Passo 2', text: 'Renomeie o arquivo seguindo o padrão: CANAL_TIPO_ANO_COMP_INICIO_FIM.' },
+      { label: 'Passo 3', text: 'Clique em Upload Arquivo no canto superior direito da tela de Importação.' },
+      { label: 'Passo 4', text: 'O arquivo aparece na lista com canal, período e formato detectados automaticamente.' },
+      { label: 'Dica', text: 'Use o seletor de canal no topo para filtrar arquivos por marketplace. Múltiplos arquivos podem coexistir.' },
     ],
   },
   {
@@ -47,12 +47,12 @@ const cols = [
     title: 'VISUALIZAR',
     subtitle: 'Analisar e conferir os dados',
     items: [
-      { label: 'CANAL vs ERP', text: 'CANAL = dados originais do arquivo. ERP = preview convertido para Bling com Data, Categoria, Valor, Obs, Portador, CNPJ.' },
-      { label: 'TABELA', text: 'Dados linha a linha com ordenação (clique) e filtro estilo Excel (Ctrl+clique).' },
-      { label: 'MATRIZ', text: 'Agrupamento Categoria Pai › Categoria com totais e %. Clique para expandir.' },
-      { label: 'DASHBOARD', text: '8 KPIs + gráficos de pizza por categoria + gráfico de barras por dia.' },
-      { label: 'Calendário', text: 'Botão 📅 filtra os dados por período. Use presets ou selecione o mês.' },
-      { label: 'Pedidos', text: 'Botão de agrupamento agrupa os registros por número de pedido.' },
+      { label: 'CANAL vs ERP', text: 'CANAL mostra os dados originais do arquivo importado. ERP mostra o preview convertido para o formato Bling: Data, Competência, Categoria, Valor, Observações, Portador e CNPJ.' },
+      { label: 'TABELA', text: 'Dados linha a linha. Clique no cabeçalho para ordenar. Ctrl+clique para abrir filtro multi-seleção estilo Excel.' },
+      { label: 'MATRIZ', text: 'Agrupamento por Categoria Pai › Categoria com totais e percentual. Clique na linha para expandir e ver os detalhes.' },
+      { label: 'DASHBOARD', text: '8 KPIs (vendas, receita, taxas, fretes, margens) + gráficos de pizza por categoria + gráfico de barras por dia.' },
+      { label: 'Botão ⇄ Pivotar', text: 'Para Shopee, Shein e Amazon: transforma colunas de taxas em linhas individuais, facilitando a visualização e a conversão ERP.' },
+      { label: 'Filtro de data', text: 'Botão 📅 no toolbar filtra os dados por período. Selecione início e fim ou use o mês completo.' },
     ],
   },
   {
@@ -64,46 +64,29 @@ const cols = [
     title: 'EXPORTAR',
     subtitle: 'Gerar arquivo para o ERP',
     items: [
-      { label: 'Como usar', text: 'Clique em Download Arquivo no canto superior direito.' },
-      { label: 'Passo 1', text: 'Selecione o Canal e o ERP destino.' },
-      { label: 'Passo 2', text: 'Defina o período com o seletor de datas.' },
-      { label: 'Passo 3', text: 'Escolha o formato — CSV é obrigatório para Bling.' },
-      { label: 'Bloqueio', text: 'O sistema bloqueia exportação se houver categorias vazias ou não mapeadas.' },
-      { label: 'Estrutura Obs', text: 'CANAL: CLIENTE | PEDIDO > NF > DETALHE | PAI > CATEGORIA | DATA | COMPETÊNCIA' },
+      { label: 'Como funciona', text: 'Selecione o canal, o ERP destino e o período. O sistema converte os dados no formato de importação de Registros de Caixa do Bling.' },
+      { label: 'Passo 1', text: 'Acesse EXPORTAR e escolha o Canal e o período com o seletor de datas.' },
+      { label: 'Passo 2', text: 'Escolha o ERP destino (Bling ou Tiny) e clique em Gerar.' },
+      { label: 'Passo 3', text: 'Baixe o CSV gerado e importe no ERP em Financeiro › Registros de Caixa › Importar.' },
+      { label: 'Estrutura da Observação', text: 'CANAL: CLIENTE | PEDIDO > NF > DETALHE | PAI > CATEGORIA | DATA | COMPETÊNCIA' },
+      { label: 'Atenção', text: 'Categorias não mapeadas aparecem em branco. Verifique em VISUALIZAR › ERP › MATRIZ antes de exportar.' },
     ],
   },
   {
-    id: 'cadastros',
+    id: 'erp',
     color: 'bg-teal-600',
     lightBg: 'bg-teal-50 dark:bg-teal-900/20',
     border: 'border-teal-200 dark:border-teal-800',
     icon: <Database className="w-6 h-6 text-white" />,
-    title: 'CADASTROS',
-    subtitle: 'Mapeamento, Caixas, Categorias, Meios',
+    title: 'ERP',
+    subtitle: 'Cadastros e configurações',
     items: [
-      { label: 'MAPEAMENTO', text: 'De-para entre colunas do canal e colunas do ERP. Badges indicam origem: Coluna, Caixas, Categorias, Fixo.' },
-      { label: 'CAIXAS', text: 'Conta financeira por canal. Define Portador, Cliente/Fornecedor e CNPJ usados na conversão.' },
-      { label: 'CATEGORIAS', text: 'De-para canal → ERP. Coluna Canal + Categoria Pai ERP + Categoria ERP. Essencial para a exportação.' },
-      { label: 'MEIOS', text: 'Métodos de pagamento por canal com tipo, label e parcelas.' },
-      { label: 'Dica', text: 'Todos os cadastros têm checkbox de seleção, Editar inline, Excluir e Adicionar.' },
-      { label: 'Atalhos', text: 'Clique = ordenar · Ctrl+clique = filtrar estilo Excel com multi-seleção.' },
-    ],
-  },
-  {
-    id: 'fluxo',
-    color: 'bg-gray-700',
-    lightBg: 'bg-gray-50 dark:bg-gray-800',
-    border: 'border-gray-200 dark:border-gray-700',
-    icon: <ArrowRight className="w-6 h-6 text-white" />,
-    title: 'FLUXO',
-    subtitle: 'Processo completo passo a passo',
-    items: [
-      { label: '1. Cadastrar', text: 'Rodapé › CAIXAS — um registro por canal com portador e fornecedor.' },
-      { label: '2. Mapear', text: 'Rodapé › CATEGORIAS — de-para entre canal e ERP. Sem isso a exportação é bloqueada.' },
-      { label: '3. Importar', text: 'IMPORTAR › Upload — selecionar canal e arquivo do marketplace.' },
-      { label: '4. Conferir', text: 'VISUALIZAR › ERP › TABELA — verificar preview da conversão.' },
-      { label: '5. Verificar', text: 'VISUALIZAR › ERP › MATRIZ — checar categorias vazias antes de exportar.' },
-      { label: '6. Exportar', text: 'EXPORTAR › Gerar — baixar CSV e importar no ERP em Registros de Caixa.' },
+      { label: 'CAIXAS', text: 'Cadastre uma conta financeira para cada canal. Define o Portador (conta no ERP), Cliente/Fornecedor e CNPJ que aparecem em cada lançamento.' },
+      { label: 'CATEGORIAS', text: 'De-para entre a categoria do canal e a categoria do ERP. Informe Canal, Categoria do Canal, Categoria Pai ERP e Categoria ERP. Sem isso a exportação fica incompleta.' },
+      { label: 'MÉTODOS', text: 'Métodos de pagamento por canal. Define tipo, label e número de parcelas para cada forma de pagamento aceita.' },
+      { label: 'MAPEAMENTO', text: 'Visualização do de-para entre colunas do arquivo do canal e campos do ERP. Badges indicam a origem: Coluna, Caixas, Categorias ou Fixo.' },
+      { label: 'Modo APP vs ERP', text: 'No rodapé, cada modal tem dois modos: APP mostra os cadastros internos da FEEX. ERP conecta ao Bling via API e mostra os dados do ERP em tempo real.' },
+      { label: 'Atalhos', text: 'Clique = selecionar linha. Ctrl+clique = filtrar coluna. Botões: Editar inline, Excluir com confirmação, Adicionar nova linha.' },
     ],
   },
 ];
@@ -114,7 +97,6 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex">
       <div className="w-full h-full bg-white dark:bg-gray-900 flex flex-col">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-900">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-600 rounded-lg"><HelpCircle className="w-5 h-5 text-white" /></div>
@@ -128,28 +110,25 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* 6 columns */}
         <div className="flex-1 overflow-auto p-4">
-          <div className="grid grid-cols-6 gap-4 h-full min-h-0" style={{ minWidth: 900 }}>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 h-full" style={{ minWidth: 700 }}>
             {cols.map(col => (
-              <div key={col.id} className={`rounded-xl border ${col.border} flex flex-col overflow-hidden`}>
-                {/* Col header */}
-                <div className={`${col.color} px-3 py-3 flex items-center gap-2 flex-shrink-0`}>
+              <div key={col.id} className={'rounded-xl border ' + col.border + ' flex flex-col overflow-hidden'}>
+                <div className={col.color + ' px-3 py-3 flex items-center gap-2 flex-shrink-0'}>
                   {col.icon}
                   <div>
                     <p className="text-white font-bold text-sm">{col.title}</p>
                     <p className="text-white/70 text-xs leading-tight">{col.subtitle}</p>
                   </div>
                 </div>
-                {/* Items */}
-                <div className={`${col.lightBg} flex-1 p-3 space-y-3 overflow-auto`}>
+                <div className={col.lightBg + ' flex-1 p-3 space-y-3 overflow-auto'}>
                   {col.items.map((item, i) => (
                     <div key={i} className="flex flex-col gap-0.5">
                       <div className="flex items-center gap-1.5">
                         <CheckCircle className="w-3 h-3 text-gray-400 flex-shrink-0" />
                         <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{item.label}</span>
                       </div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 pl-4.5 leading-relaxed whitespace-pre-line">{item.text}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 pl-4 leading-relaxed whitespace-pre-line">{item.text}</p>
                     </div>
                   ))}
                 </div>
@@ -159,7 +138,7 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         <div className="px-6 py-2 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 text-xs text-gray-400 text-center">
-          FEEX | ARCA SYSTEMS LTDA — feex.netlify.app
+          FEEX | ARCA TECHNOLOGY LTDA — feex.netlify.app
         </div>
       </div>
     </div>
