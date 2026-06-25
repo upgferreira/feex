@@ -437,28 +437,67 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     const map: Record<string, number> = {};
     filteredRaw.forEach((r: any) => {
       if (String(r['Status do pedido'] || '').toLowerCase().includes('cancelado')) return;
-      const cat = r['Categoria do produto'] || r['Categoria'] || 'Sem categoria';
+      // Use SKU principal as category key, Nome do Produto as label
+      const key = String(r['Nº de referência do SKU principal'] || r['Número de referência SKU'] || r['Nome do Produto'] || 'Sem SKU');
       const v = parseFloat(String(r['Subtotal do produto'] || r['Preço acordado'] || '0').replace(',', '.')) || 0;
-      map[String(cat)] = (map[String(cat)] || 0) + v;
+      map[key] = (map[key] || 0) + v;
     });
     const total = Object.values(map).reduce((a, b) => a + b, 0);
     return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value/total)*100).toFixed(1) : '0' })).sort((a,b) => b.value - a.value).slice(0,10);
   }, [filteredRaw, canal]);
 
+  // SKU table data for Shopee/Amazon dashboard
+  const skuData = useMemo(() => {
+    if (!['SHOPEE', 'SHEIN', 'AMAZON'].includes(canal) || filteredRaw.length === 0) return [];
+    const map: Record<string, { produto: string; receita: number; qtd: number }> = {};
+    if (canal === 'AMAZON') {
+      filteredRaw.forEach((r: any) => {
+        if (String(r['tipo'] || '').toLowerCase() !== 'pedido') return;
+        const sku = String(r['sku'] || '-');
+        const produto = String(r['descrição'] || '-');
+        const v = parseFloat(String(r['vendas do produto'] || '0').replace(',', '.')) || 0;
+        if (!map[sku]) map[sku] = { produto, receita: 0, qtd: 0 };
+        map[sku].receita += v;
+        map[sku].qtd += typeof r['quantidade'] === 'number' ? r['quantidade'] : 1;
+      });
+    } else {
+      filteredRaw.forEach((r: any) => {
+        if (String(r['Status do pedido'] || '').toLowerCase().includes('cancelado')) return;
+        const sku = String(r['Número de referência SKU'] || r['Nº de referência do SKU principal'] || '-');
+        const produto = String(r['Nome do Produto'] || '-');
+        const v = parseFloat(String(r['Subtotal do produto'] || '0').replace(',', '.')) || 0;
+        const qtd = typeof r['Quantidade'] === 'number' ? r['Quantidade'] : parseInt(String(r['Quantidade'] || '1')) || 1;
+        if (!map[sku]) map[sku] = { produto, receita: 0, qtd: 0 };
+        map[sku].receita += v;
+        map[sku].qtd += qtd;
+      });
+    }
+    return Object.entries(map).map(([sku, d]) => ({ sku, produto: d.produto, receita: d.receita, qtd: d.qtd }))
+      .sort((a, b) => b.receita - a.receita).slice(0, 20);
+  }, [filteredRaw, canal]);
+
   const amazonData = useMemo(() => {
     if (canal !== 'AMAZON' || filteredRaw.length === 0) return [];
-    const map: Record<string, number> = {};
+    // Two charts: by SKU/product and by transaction type
+    const mapProduto: Record<string, number> = {};
+    const mapTipo: Record<string, number> = {};
     filteredRaw.forEach((r: any) => {
       const tipo = String(r['tipo'] || '').toLowerCase();
       if (tipo === 'transferir') return;
-      const cat = tipo === 'pedido' ? (r['descrição'] || 'Venda') : (r['descrição'] || tipo);
-      const v = tipo === 'pedido'
-        ? parseFloat(String(r['vendas do produto'] || '0').replace(',', '.')) || 0
-        : Math.abs(parseFloat(String(r['total'] || '0').replace(',', '.')) || 0);
-      if (v > 0) map[String(cat)] = (map[String(cat)] || 0) + v;
+      if (tipo === 'pedido') {
+        const sku = String(r['sku'] || r['descrição'] || 'Sem SKU');
+        const v = parseFloat(String(r['vendas do produto'] || '0').replace(',', '.')) || 0;
+        if (v > 0) mapProduto[sku] = (mapProduto[sku] || 0) + v;
+      }
+      const tipoLabel = String(r['tipo'] || 'Outro');
+      const vTotal = Math.abs(parseFloat(String(r['total'] || '0').replace(',', '.')) || 0);
+      if (vTotal > 0) mapTipo[tipoLabel] = (mapTipo[tipoLabel] || 0) + vTotal;
     });
-    const total = Object.values(map).reduce((a, b) => a + b, 0);
-    return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value/total)*100).toFixed(1) : '0' })).sort((a,b) => b.value - a.value).slice(0,10);
+    const toChartData = (map: Record<string, number>) => {
+      const total = Object.values(map).reduce((a, b) => a + b, 0);
+      return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value/total)*100).toFixed(1) : '0' })).sort((a,b) => b.value - a.value).slice(0,10);
+    };
+    return { produtos: toChartData(mapProduto), tipos: toChartData(mapTipo) };
   }, [filteredRaw, canal]);
 
   const grupoData = useMemo(() => {
@@ -1124,15 +1163,45 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                   )}
                   {(canal === 'SHOPEE' || canal === 'SHEIN') && (
                     <>
-                      {shopeeData.length > 0 && <PieSection data={shopeeData} title="Receita por Categoria de Produto" tooltipLabel="Subtotal" />}
+                      {shopeeData.length > 0 && <PieSection data={shopeeData} title="Receita por SKU" tooltipLabel="Subtotal" />}
                     </>
                   )}
                   {canal === 'AMAZON' && (
                     <>
-                      {amazonData.length > 0 && <PieSection data={amazonData} title="Receita por Tipo de Transação" tooltipLabel="Valor" />}
+                      {(amazonData as any).produtos?.length > 0 && <PieSection data={(amazonData as any).produtos} title="Receita por SKU/Produto" tooltipLabel="Valor" />}
+                      {(amazonData as any).tipos?.length > 0 && <PieSection data={(amazonData as any).tipos} title="Receita por Tipo de Transação" tooltipLabel="Valor" />}
                     </>
                   )}
                 </div>
+                {skuData.length > 0 && (
+                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mt-6">
+                    <div className="px-6 pt-4 pb-2">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Receita por Produto</h3>
+                    </div>
+                    <div className="overflow-auto max-h-64">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-gray-50 dark:bg-gray-700 sticky top-0">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">SKU</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Produto</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Qtd</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Receita</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                          {skuData.map((row: any, i: number) => (
+                            <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                              <td className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400 font-mono whitespace-nowrap">{row.sku}</td>
+                              <td className="px-4 py-2 text-xs text-gray-900 dark:text-gray-100 max-w-xs truncate">{row.produto}</td>
+                              <td className="px-4 py-2 text-xs text-gray-700 dark:text-gray-300 text-right">{row.qtd}</td>
+                              <td className="px-4 py-2 text-xs font-semibold text-gray-900 dark:text-white text-right">{formatBRL(row.receita)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
                 {receitaDia.length > 0 && (
                   <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 mt-6">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Receita por Dia</h3>
