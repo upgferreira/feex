@@ -1173,33 +1173,50 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                     </>
                   )}
                 </div>
-                {skuData.length > 0 && (
-                  <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 mt-6">
-                    <div className="px-6 pt-4 pb-2">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Receita por Produto</h3>
-                    </div>
-                    <div className="overflow-auto max-h-64">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="bg-gray-50 dark:bg-gray-700 sticky top-0">
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">SKU</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Produto</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Qtd</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Receita</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                          {skuData.map((row: any, i: number) => (
-                            <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                              <td className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400 font-mono whitespace-nowrap">{row.sku}</td>
-                              <td className="px-4 py-2 text-xs text-gray-900 dark:text-gray-100 max-w-xs truncate">{row.produto}</td>
-                              <td className="px-4 py-2 text-xs text-gray-700 dark:text-gray-300 text-right">{row.qtd}</td>
-                              <td className="px-4 py-2 text-xs font-semibold text-gray-900 dark:text-white text-right">{formatBRL(row.receita)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                {(skuData.length > 0 || shopeeData.length > 0 || (amazonData as any).produtos?.length > 0) && (
+                  <div className="grid grid-cols-4 gap-4 mt-6">
+                    {/* Tabela SKU — 2 colunas */}
+                    {skuData.length > 0 && (
+                      <div className="col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                        <div className="px-4 pt-4 pb-2">
+                          <h3 className="text-base font-semibold text-gray-900 dark:text-white">Produtos</h3>
+                        </div>
+                        <div className="overflow-auto max-h-64">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="bg-gray-50 dark:bg-gray-700 sticky top-0">
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">SKU</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Produto</th>
+                                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Qtd</th>
+                                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Receita</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                              {skuData.map((row: any, i: number) => (
+                                <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                  <td className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 font-mono whitespace-nowrap">{row.sku}</td>
+                                  <td className="px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 max-w-[180px] truncate">{row.produto}</td>
+                                  <td className="px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 text-right">{row.qtd}</td>
+                                  <td className="px-3 py-1.5 text-xs font-semibold text-gray-900 dark:text-white text-right whitespace-nowrap">{formatBRL(row.receita)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                    {/* Pizza 1 — Shopee: por SKU / Amazon: por produto */}
+                    {(canal === 'SHOPEE' || canal === 'SHEIN') && shopeeData.length > 0 && (
+                      <div className="col-span-1"><PieSection data={shopeeData} title="Receita por SKU" tooltipLabel="Subtotal" /></div>
+                    )}
+                    {canal === 'AMAZON' && (amazonData as any).produtos?.length > 0 && (
+                      <div className="col-span-1"><PieSection data={(amazonData as any).produtos} title="Por Produto" tooltipLabel="Valor" /></div>
+                    )}
+                    {/* Pizza 2 — Amazon: por tipo de transação */}
+                    {canal === 'AMAZON' && (amazonData as any).tipos?.length > 0 && (
+                      <div className="col-span-1"><PieSection data={(amazonData as any).tipos} title="Por Tipo" tooltipLabel="Valor" /></div>
+                    )}
+                    {/* Shopee só tem 1 pizza — preenche 2ª coluna com vazio ou remove */}
                   </div>
                 )}
                 {receitaDia.length > 0 && (
