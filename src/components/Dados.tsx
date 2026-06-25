@@ -338,23 +338,34 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
               receita += parseFloat(v) || 0;
             }
           });
+        } else if (c === 'SHOPEE' || c === 'SHEIN') {
+          // Shopee/Shein: use 'Subtotal do produto' or 'Preço acordado'
+          const receitaKey = 'Subtotal do produto';
+          const altKey = 'Preço acordado';
+          data.forEach((r: any) => {
+            const status = String(r['Status do pedido'] || '').toLowerCase();
+            if (status.includes('cancelado')) return;
+            const v = r[receitaKey] ?? r[altKey] ?? 0;
+            const n = typeof v === 'number' ? v : parseFloat(String(v).replace(',', '.')) || 0;
+            receita += n;
+          });
+          vendas += data.filter((r: any) => !String(r['Status do pedido'] || '').toLowerCase().includes('cancelado')).length;
         } else {
-          // Shopee, Shein, Magazine Luiza — valores podem ser string BR ou number
+          // Magazine Luiza e outros
           vendas += data.length;
           data.forEach((r: any) => {
-            // Skip rows where first numeric key is an ID (> 1 billion)
             const keys = Object.keys(r).filter(k => {
               const v = r[k];
               if (typeof v === 'number') return v > 0 && v < 1000000000;
               if (typeof v === 'string') {
-                const n = parseFloat(v.replace(/\./g, '').replace(',', '.'));
+                const n = parseFloat(v.replace(',', '.'));
                 return !isNaN(n) && n > 0 && n < 1000000000;
               }
               return false;
             });
             if (keys.length > 0) {
               const v = r[keys[0]];
-              const n = typeof v === 'number' ? v : parseFloat(String(v).replace(/\./g, '').replace(',', '.'));
+              const n = typeof v === 'number' ? v : parseFloat(String(v).replace(',', '.'));
               receita += n || 0;
             }
           });
@@ -364,25 +375,36 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       const margemLiquida = margemBruta - outros;
       return { vendas, receita, taxas, fretes, outros, margemBruta, margemLiquida, ticketMedio: vendas > 0 ? receita / vendas : 0 };
     }
-    const vendas = filteredRaw.length;
-    const parseNumBR = (v: any) => {
+    const parseNum = (v: any) => {
       if (typeof v === 'number') return v;
-      const s = String(v || '0').replace(/\./g, '').replace(',', '.');
-      return parseFloat(s) || 0;
+      return parseFloat(String(v || '0').replace(',', '.')) || 0;
     };
+    let vendas = 0;
     let receita = 0;
     if (canal === 'AMAZON') {
-      // Use 'vendas do produto' for revenue, ignore negative/fee rows
+      vendas = filteredRaw.length;
       filteredRaw.forEach((r: any) => {
         const tipo = String(r['tipo'] || '').toLowerCase();
-        if (tipo === 'pedido') receita += parseNumBR(r['vendas do produto']);
-        else if (tipo !== 'transferir') receita += parseNumBR(r['total']);
+        if (tipo === 'pedido') receita += parseNum(r['vendas do produto']);
+        else if (tipo !== 'transferir') receita += parseNum(r['total']);
+      });
+    } else if (canal === 'SHOPEE' || canal === 'SHEIN') {
+      const valid = filteredRaw.filter((r: any) => !String(r['Status do pedido'] || '').toLowerCase().includes('cancelado'));
+      vendas = valid.length;
+      valid.forEach((r: any) => {
+        receita += parseNum(r['Subtotal do produto'] ?? r['Preço acordado'] ?? 0);
       });
     } else {
-      receita = filteredRaw.reduce((a: number, r: any) => {
-        const keys = Object.keys(r).filter(k => typeof r[k] === 'number' && r[k] > 0);
-        return keys.length > 0 ? a + (Number(r[keys[0]]) || 0) : a;
-      }, 0);
+      vendas = filteredRaw.length;
+      filteredRaw.forEach((r: any) => {
+        const keys = Object.keys(r).filter(k => {
+          const v = r[k];
+          if (typeof v === 'number') return v > 0 && v < 1000000000;
+          if (typeof v === 'string') { const n = parseFloat(v.replace(',', '.')); return !isNaN(n) && n > 0 && n < 1000000000; }
+          return false;
+        });
+        if (keys.length > 0) receita += parseNum(r[keys[0]]);
+      });
     }
     const margemBruta = receita;
     return { vendas, receita, taxas: 0, fretes: 0, outros: 0, margemBruta, margemLiquida: margemBruta, ticketMedio: vendas > 0 ? receita / vendas : 0 };
