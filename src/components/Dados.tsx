@@ -446,9 +446,9 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value/total)*100).toFixed(1) : '0' })).sort((a,b) => b.value - a.value).slice(0,10);
   }, [filteredRaw, canal]);
 
-  // SKU table data for Shopee/Amazon dashboard
+  // SKU table data per channel
   const skuData = useMemo(() => {
-    if (!['SHOPEE', 'SHEIN', 'AMAZON'].includes(canal) || filteredRaw.length === 0) return [];
+    if (filteredRaw.length === 0) return [];
     const map: Record<string, { produto: string; receita: number; qtd: number }> = {};
     if (canal === 'AMAZON') {
       filteredRaw.forEach((r: any) => {
@@ -460,7 +460,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
         map[sku].receita += v;
         map[sku].qtd += typeof r['quantidade'] === 'number' ? r['quantidade'] : 1;
       });
-    } else {
+    } else if (canal === 'SHOPEE' || canal === 'SHEIN') {
       filteredRaw.forEach((r: any) => {
         if (String(r['Status do pedido'] || '').toLowerCase().includes('cancelado')) return;
         const sku = String(r['Número de referência SKU'] || r['Nº de referência do SKU principal'] || '-');
@@ -471,6 +471,18 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
         map[sku].receita += v;
         map[sku].qtd += qtd;
       });
+    } else if (canal === 'MERCADO LIVRE') {
+      filteredRaw.forEach((r: any) => {
+        const sku = String(r['SKU'] || '-');
+        const produto = String(r['Título do anúncio'] || '-');
+        if (!produto || produto === '-') return;
+        const v = Math.abs(Number(r['Valor da tarifa']) || 0);
+        if (!map[produto]) map[produto] = { produto, receita: 0, qtd: 0 };
+        map[produto].receita += v;
+        map[produto].qtd += 1;
+      });
+      return Object.entries(map).map(([_, d]) => ({ sku: '-', produto: d.produto, receita: d.receita, qtd: d.qtd }))
+        .sort((a, b) => b.receita - a.receita).slice(0, 20);
     }
     return Object.entries(map).map(([sku, d]) => ({ sku, produto: d.produto, receita: d.receita, qtd: d.qtd }))
       .sort((a, b) => b.receita - a.receita).slice(0, 20);
@@ -522,39 +534,121 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value / total) * 100).toFixed(1) : '0' })).sort((a, b) => b.value - a.value).slice(0, 10);
   }, [filteredRaw, canal]);
 
-  // Unified pizza data for dashboard framework
+  // Unified pizza data — pieGroup = channel_group, pieCategory = channel_category
+  // Uses financial_categories to lookup group/category for each row
+  const channelCatMap = useMemo(() => {
+    const map: Record<string, {group: string, category: string}> = {};
+    categories.forEach((c: any) => {
+      if (String(c.channel || '').toUpperCase().trim() === canal) {
+        const key = String(c.channel_category || '').toLowerCase().trim();
+        if (key) map[key] = {
+          group: c.channel_group || 'Outros',
+          category: c.channel_category || 'Sem categoria',
+        };
+      }
+    });
+    return map;
+  }, [categories, canal]);
+
+  const lookupChannelCat = (channelCatValue: string) => {
+    const key = String(channelCatValue || '').toLowerCase().trim();
+    return channelCatMap[key] || { group: 'Outros', category: channelCatValue || 'Sem categoria' };
+  };
+
   const pieGroup = useMemo(() => {
     if (filteredRaw.length === 0) return [];
     const parseNum = (v: any) => typeof v === 'number' ? v : parseFloat(String(v||'0').replace(',','.')) || 0;
     const map: Record<string,number> = {};
     if (canal === 'MERCADO LIVRE') {
-      filteredRaw.forEach((r: any) => { const g = ML_GRUPO_MAP[r.Detalhe?.toString()||'']||'Outros'; map[g]=(map[g]||0)+Math.abs(Number(r['Valor da tarifa'])||0); });
+      filteredRaw.forEach((r: any) => {
+        const { group } = lookupChannelCat(r.Detalhe?.toString() || '');
+        map[group] = (map[group] || 0) + Math.abs(Number(r['Valor da tarifa']) || 0);
+      });
     } else if (canal === 'TODOS') {
       filteredRaw.forEach((r: any) => { const c = r['CATEGORIA PAI']?.toString()||'Sem categoria'; map[c]=(map[c]||0)+Math.abs(Number(r.VALOR)||0); });
     } else if (canal === 'SHOPEE' || canal === 'SHEIN') {
-      filteredRaw.forEach((r: any) => { if(String(r['Status do pedido']||'').toLowerCase().includes('cancelado')) return; const k=String(r['Nº de referência do SKU principal']||r['Número de referência SKU']||r['Nome do Produto']||'Sem SKU'); map[k]=(map[k]||0)+parseNum(r['Subtotal do produto']||r['Preço acordado']); });
+      // Shopee data is pivoted with 'Categoria' field after pivoting; in raw mode iterate fee columns
+      const FEE_COLS = ['Taxa de Envio Reversa','Taxa de transação','Taxa de comissão líquida','Taxa de serviço líquida','Desconto de Frete Aproximado','Desconto do vendedor','Taxa de envio pagas pelo comprador'];
+      filteredRaw.forEach((r: any) => {
+        if (String(r['Status do pedido']||'').toLowerCase().includes('cancelado')) return;
+        // If already pivoted, use Categoria field
+        if (r['Categoria']) {
+          const { group } = lookupChannelCat(String(r['Categoria']));
+          map[group] = (map[group] || 0) + Math.abs(parseNum(r['Valor'] || r['Valor da tarifa']));
+        } else {
+          FEE_COLS.forEach(col => {
+            const v = Math.abs(parseNum(r[col]));
+            if (v === 0) return;
+            const { group } = lookupChannelCat(col);
+            map[group] = (map[group] || 0) + v;
+          });
+        }
+      });
     } else if (canal === 'AMAZON') {
-      filteredRaw.forEach((r: any) => { const tipo=String(r['tipo']||'').toLowerCase(); if(tipo==='transferir') return; const g=String(r['tipo']||'Outro'); const v=Math.abs(parseNum(tipo==='pedido'?r['vendas do produto']:r['total'])); if(v>0) map[g]=(map[g]||0)+v; });
+      filteredRaw.forEach((r: any) => {
+        const tipo = String(r['tipo']||'').toLowerCase();
+        if (tipo === 'transferir') return;
+        if (tipo === 'pedido') {
+          // Pivot fees
+          const FEE_COLS = ['créditos de remessa','créditos de embalagem de presente','descontos promocionais','imposto de vendas coletados','tarifas de venda','taxas fba','taxas de outras transações','outro'];
+          FEE_COLS.forEach(col => {
+            const v = Math.abs(parseNum(r[col]));
+            if (v === 0) return;
+            const { group } = lookupChannelCat(col);
+            map[group] = (map[group] || 0) + v;
+          });
+        } else {
+          const cat = r['descrição'] || tipo === 'reembolso' ? 'Reembolso' : tipo;
+          const { group } = lookupChannelCat(String(cat));
+          map[group] = (map[group] || 0) + Math.abs(parseNum(r['total']));
+        }
+      });
     }
-    const total=Object.values(map).reduce((a,b)=>a+b,0);
-    return Object.entries(map).map(([name,value])=>({name,value,percentage:total>0?((value/total)*100).toFixed(1):'0'})).sort((a,b)=>b.value-a.value).slice(0,10);
-  }, [filteredRaw, canal]);
+    const total = Object.values(map).reduce((a, b) => a + b, 0);
+    return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value/total)*100).toFixed(1) : '0' })).sort((a, b) => b.value - a.value).slice(0, 10);
+  }, [filteredRaw, canal, channelCatMap]);
 
   const pieCategory = useMemo(() => {
     if (filteredRaw.length === 0) return [];
     const parseNum = (v: any) => typeof v === 'number' ? v : parseFloat(String(v||'0').replace(',','.')) || 0;
     const map: Record<string,number> = {};
     if (canal === 'MERCADO LIVRE') {
-      filteredRaw.forEach((r: any) => { const d=r.Detalhe?.toString()||'Sem detalhe'; map[d]=(map[d]||0)+Math.abs(Number(r['Valor da tarifa'])||0); });
+      filteredRaw.forEach((r: any) => { const d = r.Detalhe?.toString() || 'Sem detalhe'; map[d] = (map[d] || 0) + Math.abs(Number(r['Valor da tarifa']) || 0); });
     } else if (canal === 'TODOS') {
-      filteredRaw.forEach((r: any) => { const c=r.CATEGORIA?.toString()||'Sem categoria'; map[c]=(map[c]||0)+Math.abs(Number(r.VALOR)||0); });
+      filteredRaw.forEach((r: any) => { const c = r.CATEGORIA?.toString()||'Sem categoria'; map[c]=(map[c]||0)+Math.abs(Number(r.VALOR)||0); });
     } else if (canal === 'SHOPEE' || canal === 'SHEIN') {
-      filteredRaw.forEach((r: any) => { if(String(r['Status do pedido']||'').toLowerCase().includes('cancelado')) return; const k=String(r['Nome do Produto']||'Sem produto'); map[k]=(map[k]||0)+parseNum(r['Subtotal do produto']||r['Preço acordado']); });
+      const FEE_COLS = ['Taxa de Envio Reversa','Taxa de transação','Taxa de comissão líquida','Taxa de serviço líquida','Desconto de Frete Aproximado','Desconto do vendedor','Taxa de envio pagas pelo comprador'];
+      filteredRaw.forEach((r: any) => {
+        if (String(r['Status do pedido']||'').toLowerCase().includes('cancelado')) return;
+        if (r['Categoria']) {
+          map[r['Categoria']] = (map[r['Categoria']] || 0) + Math.abs(parseNum(r['Valor'] || r['Valor da tarifa']));
+        } else {
+          FEE_COLS.forEach(col => {
+            const v = Math.abs(parseNum(r[col]));
+            if (v === 0) return;
+            map[col] = (map[col] || 0) + v;
+          });
+        }
+      });
     } else if (canal === 'AMAZON') {
-      filteredRaw.forEach((r: any) => { const tipo=String(r['tipo']||'').toLowerCase(); if(tipo!=='pedido') return; const k=String(r['sku']||r['descrição']||'Sem SKU'); const v=parseNum(r['vendas do produto']); if(v>0) map[k]=(map[k]||0)+v; });
+      filteredRaw.forEach((r: any) => {
+        const tipo = String(r['tipo']||'').toLowerCase();
+        if (tipo === 'transferir') return;
+        if (tipo === 'pedido') {
+          const FEE_COLS = ['créditos de remessa','créditos de embalagem de presente','descontos promocionais','imposto de vendas coletados','tarifas de venda','taxas fba','taxas de outras transações','outro'];
+          FEE_COLS.forEach(col => {
+            const v = Math.abs(parseNum(r[col]));
+            if (v === 0) return;
+            map[col] = (map[col] || 0) + v;
+          });
+        } else {
+          const cat = String(r['descrição'] || (tipo === 'reembolso' ? 'Reembolso' : tipo));
+          map[cat] = (map[cat] || 0) + Math.abs(parseNum(r['total']));
+        }
+      });
     }
-    const total=Object.values(map).reduce((a,b)=>a+b,0);
-    return Object.entries(map).map(([name,value])=>({name,value,percentage:total>0?((value/total)*100).toFixed(1):'0'})).sort((a,b)=>b.value-a.value).slice(0,10);
+    const total = Object.values(map).reduce((a, b) => a + b, 0);
+    return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value/total)*100).toFixed(1) : '0' })).sort((a, b) => b.value - a.value).slice(0, 10);
   }, [filteredRaw, canal]);
 
 
@@ -1115,9 +1209,9 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                 {/* ERP DASHBOARD */}
         {viewMode === 'dashboard' && dataView === 'erp' && (
           <div ref={dashboardRef} className="h-full overflow-auto p-6 pb-20">
-            {/* 8 KPI cards */}
+            {/* 8 KPI cards — mesmos do canal */}
             <div className="grid grid-cols-2 md:grid-cols-8 gap-3 mb-6">
-              {erpStatCards.map(card => (
+              {statCards.map(card => (
                 <div key={card.label} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
                   <div className="flex items-center">
                     <div className="flex-shrink-0">{card.icon}</div>
@@ -1254,16 +1348,16 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                   ) : (
                     /* Para ML e TODOS: as duas pizzas ocupam col-span-2 lado a lado */
                     <div className="col-span-2 grid grid-cols-2 gap-4">
-                      {pieGroup.length > 0 && <PieSection data={pieGroup} title={canal === 'MERCADO LIVRE' ? 'Por Grupo' : 'Por Categoria Pai'} tooltipLabel="Valor" />}
-                      {pieCategory.length > 0 && <PieSection data={pieCategory} title={canal === 'MERCADO LIVRE' ? 'Por Detalhe' : 'Por Categoria'} tooltipLabel="Valor" />}
+                      {pieGroup.length > 0 && <PieSection data={pieGroup} title="Por Grupo" tooltipLabel="Valor" />}
+                      {pieCategory.length > 0 && <PieSection data={pieCategory} title="Por Categoria" tooltipLabel="Valor" />}
                     </div>
                   )}
-                  {/* Para Shopee/Amazon: pizzas nas últimas 2 colunas */}
+                  {/* Para Shopee/Amazon/ML: pizzas nas últimas 2 colunas */}
                   {skuData.length > 0 && pieGroup.length > 0 && (
-                    <div className="col-span-1"><PieSection data={pieGroup} title={canal === 'AMAZON' ? 'Por Tipo' : 'Por SKU'} tooltipLabel="Valor" /></div>
+                    <div className="col-span-1"><PieSection data={pieGroup} title="Por Grupo" tooltipLabel="Valor" /></div>
                   )}
                   {skuData.length > 0 && pieCategory.length > 0 && (
-                    <div className="col-span-1"><PieSection data={pieCategory} title={canal === 'AMAZON' ? 'Por Produto' : 'Por Produto'} tooltipLabel="Valor" /></div>
+                    <div className="col-span-1"><PieSection data={pieCategory} title="Por Categoria" tooltipLabel="Valor" /></div>
                   )}
                 </div>
                 {/* Row 2: Gráfico barras por dia */}
