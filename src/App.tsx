@@ -125,7 +125,7 @@ function App() {
           selectedCanal={selectedCanal}
           onCanalChange={setSelectedCanal}
         />
-        <div className="flex-1 overflow-hidden pt-20 pb-16">
+        <div className="flex-1 overflow-hidden pt-20 md:pt-14 pb-16 md:pb-8">
           {renderContent()}
         </div>
         <Footer
