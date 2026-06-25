@@ -467,6 +467,41 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
         const date = r.DATA?.toString() || '';
         if (date) map[date] = (map[date] || 0) + Math.abs(Number(r.VALOR) || 0);
       });
+    } else if (canal === 'SHOPEE' || canal === 'SHEIN') {
+      filteredRaw.forEach((r: any) => {
+        const status = String(r['Status do pedido'] || '').toLowerCase();
+        if (status.includes('cancelado')) return;
+        const dateRaw = r['Data de criação do pedido'] || r['Hora do pagamento do pedido'] || '';
+        const date = dateRaw ? String(dateRaw).split(' ')[0].split('-').reverse().join('/') : '';
+        if (!date) return;
+        const v = parseFloat(String(r['Subtotal do produto'] || r['Preço acordado'] || '0').replace(',', '.')) || 0;
+        map[date] = (map[date] || 0) + v;
+      });
+    } else if (canal === 'AMAZON') {
+      filteredRaw.forEach((r: any) => {
+        const tipo = String(r['tipo'] || '').toLowerCase();
+        if (tipo === 'transferir') return;
+        const dateRaw = r['data/hora'] || '';
+        if (!dateRaw) return;
+        // Parse "2 de jan. de 2026 03:22:30 GMT-8" -> "02/01/2026"
+        const mesesPT: Record<string, string> = {
+          'jan': '01', 'fev': '02', 'mar': '03', 'abr': '04',
+          'mai': '05', 'jun': '06', 'jul': '07', 'ago': '08',
+          'set': '09', 'out': '10', 'nov': '11', 'dez': '12',
+        };
+        const m = String(dateRaw).match(/(\d{1,2})\s+de\s+(\w+)\.?\s+de\s+(\d{4})/i);
+        if (!m) return;
+        const day = m[1].padStart(2, '0');
+        const mon = mesesPT[m[2].toLowerCase().replace('.', '')] || '01';
+        const date = day + '/' + mon + '/' + m[3];
+        if (tipo === 'pedido') {
+          const v = parseFloat(String(r['vendas do produto'] || '0').replace(',', '.')) || 0;
+          map[date] = (map[date] || 0) + v;
+        } else {
+          const v = parseFloat(String(r['total'] || '0').replace(',', '.')) || 0;
+          map[date] = (map[date] || 0) + v;
+        }
+      });
     } else {
       return [];
     }
