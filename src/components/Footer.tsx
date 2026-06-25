@@ -12,13 +12,13 @@ interface FooterProps {
 export const Footer: React.FC<FooterProps> = ({
   onBoxClick, onCategoryClick, onMappingClick, onMethodsClick, onHelpClick, onCaixasClick,
 }) => {
-  const btn = (label: string, onClick: () => void) => (
+  const btn = (label: string, onClick: () => void, mobile = false) => (
     <button onClick={onClick}
-      className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-2 py-0.5 rounded">
+      className={'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-2 py-0.5 rounded ' + (mobile ? 'text-[9px]' : 'text-xs')}>
       {label}
     </button>
   );
-  const sep = <span className="text-gray-300 dark:text-gray-600 text-xs">|</span>;
+  const sep = (mobile = false) => <span className={'text-gray-300 dark:text-gray-600 ' + (mobile ? 'text-[9px]' : 'text-xs')}>|</span>;
 
   return (
     <footer className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 z-40">
@@ -26,7 +26,7 @@ export const Footer: React.FC<FooterProps> = ({
       {/* ── DESKTOP: linha única original (md+) ── */}
       <div className="hidden md:flex items-center justify-between h-8 px-6">
         <div className="text-xs text-gray-500 dark:text-gray-500">
-          FEEX | ARCA SYSTEMS LTDA | ARCA HOLD LLC @2025
+          FEEX | ARCA TECHNOLOGY LTDA | ARCA HOLD LLC @2026
         </div>
         <div className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1">
           Clique na coluna para ordenar &nbsp;·&nbsp;
@@ -35,39 +35,37 @@ export const Footer: React.FC<FooterProps> = ({
         </div>
         <div className="flex items-center gap-1">
           {btn('? AJUDA', onHelpClick)}
-          {sep}
+          {sep()}
           {btn('MAPEAMENTO', onMappingClick)}
-          {sep}
+          {sep()}
           {btn('CATEGORIAS', onCategoryClick)}
-          {sep}
+          {sep()}
           {btn('CONTAS', onBoxClick)}
-          {sep}
+          {sep()}
           {btn('MÉTODOS', onMethodsClick)}
-          {sep}
+          {sep()}
           {btn('CAIXAS', onCaixasClick)}
         </div>
       </div>
 
       {/* ── MOBILE: duas linhas (< md) ── */}
       <div className="md:hidden">
-        {/* Linha 1: módulos financeiros */}
-        <div className="flex items-center justify-center gap-0.5 h-8 px-2 border-b border-gray-100 dark:border-gray-800 overflow-x-auto">
-          {btn('CATEGORIAS', onCategoryClick)}
-          {sep}
-          {btn('CONTAS', onBoxClick)}
-          {sep}
-          {btn('MÉTODOS', onMethodsClick)}
-          {sep}
-          {btn('CAIXAS', onCaixasClick)}
-          {sep}
-          {btn('MAPEAMENTO', onMappingClick)}
+        <div className="flex items-center justify-center gap-0.5 h-7 px-2 border-b border-gray-100 dark:border-gray-800 overflow-x-auto">
+          {btn('CATEGORIAS', onCategoryClick, true)}
+          {sep(true)}
+          {btn('CONTAS', onBoxClick, true)}
+          {sep(true)}
+          {btn('MÉTODOS', onMethodsClick, true)}
+          {sep(true)}
+          {btn('CAIXAS', onCaixasClick, true)}
+          {sep(true)}
+          {btn('MAPEAMENTO', onMappingClick, true)}
         </div>
-        {/* Linha 2: texto original + ajuda */}
-        <div className="flex items-center justify-between h-8 px-4">
-          <div className="text-xs text-gray-500 dark:text-gray-500 truncate">
-            FEEX | ARCA SYSTEMS LTDA | ARCA HOLD LLC @2025
+        <div className="flex items-center justify-between h-7 px-4">
+          <div className="text-[9px] text-gray-500 dark:text-gray-500 truncate">
+            FEEX | ARCA TECHNOLOGY LTDA | ARCA HOLD LLC @2026
           </div>
-          {btn('? AJUDA', onHelpClick)}
+          {btn('? AJUDA', onHelpClick, true)}
         </div>
       </div>
 
