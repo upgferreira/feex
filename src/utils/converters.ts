@@ -347,13 +347,7 @@ function convertShopeeToBling(
     const valor = isPositive ? Math.abs(rawValor) : -Math.abs(rawValor);
 
     // Obs pattern: SHOPEE: CLIENTE | PEDIDO DE VENDA: XXXXXX/[PEDIDO] > NF: XX/XXXXXX > DETALHE | PAI > CAT | DATA | COMP
-    const obs = [
-      `SHOPEE: ${cliente.toUpperCase()}`,
-      `PEDIDO DE VENDA: XXXXXX/${pedido} > NF: XX/XXXXXX > ${detalhe.toUpperCase()}`,
-      pai && cat ? `${pai.toUpperCase()} > ${cat.toUpperCase()}` : (cat || pai || '').toUpperCase(),
-      dataFormatada,
-      competenciaMes,
-    ].filter(Boolean).join(' | ');
+    const obs = ['SHOPEE: ' + cliente.toUpperCase(), 'PEDIDO DE VENDA: XXXXXX/' + pedido + ' > NF: XX/XXXXXX > ' + detalhe.toUpperCase(), pai && cat ? pai.toUpperCase() + ' > ' + cat.toUpperCase() : (cat || pai || '').toUpperCase(), dataFormatada, competencia].filter(Boolean).join(' | ');
 
     resultado.push({
       'ID':                 '',
