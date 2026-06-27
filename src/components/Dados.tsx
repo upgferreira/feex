@@ -151,7 +151,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   }, []);
 
   const rawData = useMemo((): any[] => {
-    if (canal === 'TODOS') return CANAIS.flatMap(c => getAllChannelData(c));
+    if (canal === 'TODOS') return CANAIS.flatMap(c => getAllChannelData(c).map((row: any) => ({ ...row, _canal: c })));
     return getAllChannelData(canal);
   }, [canal, files, getAllChannelData]);
 
@@ -547,8 +547,27 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       });
     } else if (canal === 'TODOS') {
       filteredRaw.forEach((r: any) => {
-        const date = r.DATA?.toString() || '';
-        if (date) map[date] = (map[date] || 0) + Math.abs(Number(r.VALOR) || 0);
+        const ch = String(r._canal || '');
+        let date = ''; let v = 0;
+        if (ch === 'AMAZON') {
+          const tipo = String(r['tipo']||'').toLowerCase();
+          if (tipo === 'transferir') return;
+          const mesesPT: Record<string, string> = {'jan':'01','fev':'02','mar':'03','abr':'04','mai':'05','jun':'06','jul':'07','ago':'08','set':'09','out':'10','nov':'11','dez':'12'};
+          const raw = String(r['data/hora']||'');
+          const m = raw.match(/(\d{1,2})\s+de\s+(\w+)\.?\s+de\s+(\d{4})/i);
+          if (m) date = m[1].padStart(2,'0') + '/' + (mesesPT[m[2].toLowerCase().replace('.','')]||'01') + '/' + m[3];
+          if (tipo === 'pedido') v = parseFloat(String(r['vendas do produto']||'0').replace(',','.')) || 0;
+          else v = parseFloat(String(r['total']||'0').replace(',','.')) || 0;
+        } else if (ch === 'SHOPEE' || ch === 'SHEIN') {
+          if (String(r['Status do pedido']||'').toLowerCase().includes('cancelado')) return;
+          const raw = String(r['Data de criação do pedido']||'');
+          date = raw ? raw.split(' ')[0].split('-').reverse().join('/') : '';
+          v = parseFloat(String(r['Subtotal do produto']||'0').replace(',','.')) || 0;
+        } else {
+          date = formatDate(r['Data da tarifa']);
+          v = Math.abs(Number(r['Valor da tarifa']) || 0);
+        }
+        if (date && v > 0) map[date] = (map[date] || 0) + v;
       });
     } else if (canal === 'SHOPEE' || canal === 'SHEIN') {
       filteredRaw.forEach((r: any) => {
@@ -788,7 +807,20 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
         map[group] = (map[group] || 0) + Math.abs(Number(r['Valor da tarifa']) || 0);
       });
     } else if (canal === 'TODOS') {
-      filteredRaw.forEach((r: any) => { const c = r['CATEGORIA PAI']?.toString()||'Sem categoria'; map[c]=(map[c]||0)+Math.abs(Number(r.VALOR)||0); });
+      filteredRaw.forEach((r: any) => {
+        const ch = String(r._canal || 'Outros');
+        let v = 0;
+        if (ch === 'AMAZON') {
+          if (String(r['tipo']||'').toLowerCase() === 'pedido') v = parseNum(r['vendas do produto']);
+          else if (String(r['tipo']||'').toLowerCase() !== 'transferir') v = parseNum(r['total']);
+        } else if (ch === 'SHOPEE' || ch === 'SHEIN') {
+          if (String(r['Status do pedido']||'').toLowerCase().includes('cancelado')) return;
+          v = parseNum(r['Subtotal do produto'] || r['Preço acordado']);
+        } else {
+          v = Math.abs(Number(r['Valor da tarifa']) || 0);
+        }
+        if (v > 0) map[ch] = (map[ch] || 0) + v;
+      });
     } else if (canal === 'SHOPEE' || canal === 'SHEIN') {
       // Shopee data is pivoted with 'Categoria' field after pivoting; in raw mode iterate fee columns
       const FEE_COLS = ['Taxa de Envio Reversa','Taxa de transação','Taxa de comissão líquida','Taxa de serviço líquida','Desconto de Frete Aproximado','Desconto do vendedor','Taxa de envio pagas pelo comprador'];
@@ -838,7 +870,23 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     if (canal === 'MERCADO LIVRE') {
       filteredRaw.forEach((r: any) => { const d = r.Detalhe?.toString() || 'Sem detalhe'; map[d] = (map[d] || 0) + Math.abs(Number(r['Valor da tarifa']) || 0); });
     } else if (canal === 'TODOS') {
-      filteredRaw.forEach((r: any) => { const c = r.CATEGORIA?.toString()||'Sem categoria'; map[c]=(map[c]||0)+Math.abs(Number(r.VALOR)||0); });
+      filteredRaw.forEach((r: any) => {
+        const ch = String(r._canal || 'Outros');
+        let v = 0; let cat = '';
+        if (ch === 'AMAZON') {
+          const tipo = String(r['tipo']||'').toLowerCase();
+          if (tipo === 'pedido') { v = parseNum(r['vendas do produto']); cat = String(r['descrição']||'Venda'); }
+          else if (tipo !== 'transferir') { v = parseNum(r['total']); cat = String(r['descrição']||tipo); }
+        } else if (ch === 'SHOPEE' || ch === 'SHEIN') {
+          if (String(r['Status do pedido']||'').toLowerCase().includes('cancelado')) return;
+          v = parseNum(r['Subtotal do produto'] || r['Preço acordado']);
+          cat = String(r['Nome do Produto'] || 'Sem produto');
+        } else {
+          v = Math.abs(Number(r['Valor da tarifa']) || 0);
+          cat = String(r['Detalhe'] || 'Sem detalhe');
+        }
+        if (v > 0 && cat) map[cat] = (map[cat] || 0) + v;
+      });
     } else if (canal === 'SHOPEE' || canal === 'SHEIN') {
       const FEE_COLS = ['Taxa de Envio Reversa','Taxa de transação','Taxa de comissão líquida','Taxa de serviço líquida','Desconto de Frete Aproximado','Desconto do vendedor','Taxa de envio pagas pelo comprador'];
       filteredRaw.forEach((r: any) => {
