@@ -450,6 +450,29 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   const skuData = useMemo(() => {
     if (filteredRaw.length === 0) return [];
     const map: Record<string, { produto: string; receita: number; qtd: number }> = {};
+    if (canal === 'TODOS') {
+      filteredRaw.forEach((r: any) => {
+        const ch = String(r._canal || '');
+        if (ch === 'AMAZON') {
+          if (String(r['tipo']||'').toLowerCase() !== 'pedido') return;
+          const sku = String(r['sku'] || '-');
+          const produto = String(r['descrição'] || '-');
+          const v = parseFloat(String(r['vendas do produto']||'0').replace(',','.')) || 0;
+          if (!map[sku]) map[sku] = { produto, receita: 0, qtd: 0 };
+          map[sku].receita += v; map[sku].qtd += 1;
+        } else if (ch === 'SHOPEE' || ch === 'SHEIN') {
+          if (String(r['Status do pedido']||'').toLowerCase().includes('cancelado')) return;
+          const sku = String(r['Número de referência SKU'] || r['Nº de referência do SKU principal'] || '-');
+          const produto = String(r['Nome do Produto'] || '-');
+          const v = parseFloat(String(r['Subtotal do produto']||'0').replace(',','.')) || 0;
+          if (!map[sku]) map[sku] = { produto, receita: 0, qtd: 0 };
+          map[sku].receita += v;
+          map[sku].qtd += typeof r['Quantidade'] === 'number' ? r['Quantidade'] : 1;
+        }
+      });
+      return Object.entries(map).map(([sku, d]) => ({ sku, produto: d.produto, receita: d.receita, qtd: d.qtd }))
+        .sort((a, b) => b.receita - a.receita).slice(0, 20);
+    }
     if (canal === 'AMAZON') {
       filteredRaw.forEach((r: any) => {
         if (String(r['tipo'] || '').toLowerCase() !== 'pedido') return;
@@ -792,6 +815,19 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     return map;
   }, [categories, canal]);
 
+  // Global lookup across ALL channels for TODOS mode
+  const globalCatMap = useMemo(() => {
+    const map: Record<string, Record<string, string>> = {};
+    categories.forEach((c: any) => {
+      const ch = String(c.channel || '').toUpperCase().trim();
+      const key = String(c.channel_category || '').toLowerCase().trim();
+      const group = c.channel_group || 'Outros';
+      if (!map[ch]) map[ch] = {};
+      if (key) map[ch][key] = group;
+    });
+    return map;
+  }, [categories]);
+
   const lookupChannelCat = (channelCatValue: string) => {
     const key = String(channelCatValue || '').toLowerCase().trim();
     return channelCatMap[key] || { group: 'Outros', category: channelCatValue || 'Sem categoria' };
@@ -807,19 +843,30 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
         map[group] = (map[group] || 0) + Math.abs(Number(r['Valor da tarifa']) || 0);
       });
     } else if (canal === 'TODOS') {
+      const AMAZON_FEE = ['créditos de remessa','créditos de embalagem de presente','descontos promocionais','imposto de vendas coletados','tarifas de venda','taxas fba','taxas de outras transações','outro'];
       filteredRaw.forEach((r: any) => {
-        const ch = String(r._canal || 'Outros');
-        let v = 0;
+        const ch = String(r._canal || '');
+        const chMap = (globalCatMap as any)[ch] || {};
+        const addToGroup = (key: string, v: number) => {
+          if (v === 0) return;
+          const g = chMap[key.toLowerCase()] || 'Outros';
+          map[g] = (map[g] || 0) + Math.abs(v);
+        };
         if (ch === 'AMAZON') {
-          if (String(r['tipo']||'').toLowerCase() === 'pedido') v = parseNum(r['vendas do produto']);
-          else if (String(r['tipo']||'').toLowerCase() !== 'transferir') v = parseNum(r['total']);
+          const tipo = String(r['tipo']||'').toLowerCase();
+          if (tipo === 'transferir') return;
+          if (tipo === 'pedido') {
+            AMAZON_FEE.forEach(col => addToGroup(col, parseNum(r[col])));
+          } else {
+            addToGroup(String(r['descrição']||tipo), parseNum(r['total']));
+          }
         } else if (ch === 'SHOPEE' || ch === 'SHEIN') {
           if (String(r['Status do pedido']||'').toLowerCase().includes('cancelado')) return;
-          v = parseNum(r['Subtotal do produto'] || r['Preço acordado']);
+          const SHOPEE_FEE = ['Taxa de Envio Reversa','Taxa de transação','Taxa de comissão líquida','Taxa de serviço líquida','Desconto de Frete Aproximado','Desconto do vendedor','Taxa de envio pagas pelo comprador'];
+          SHOPEE_FEE.forEach(col => addToGroup(col, Math.abs(parseNum(r[col]))));
         } else {
-          v = Math.abs(Number(r['Valor da tarifa']) || 0);
+          addToGroup(String(r['Detalhe']||''), Math.abs(Number(r['Valor da tarifa'])||0));
         }
-        if (v > 0) map[ch] = (map[ch] || 0) + v;
       });
     } else if (canal === 'SHOPEE' || canal === 'SHEIN') {
       // Shopee data is pivoted with 'Categoria' field after pivoting; in raw mode iterate fee columns
@@ -870,22 +917,21 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     if (canal === 'MERCADO LIVRE') {
       filteredRaw.forEach((r: any) => { const d = r.Detalhe?.toString() || 'Sem detalhe'; map[d] = (map[d] || 0) + Math.abs(Number(r['Valor da tarifa']) || 0); });
     } else if (canal === 'TODOS') {
+      // Por Canal — revenue per channel
       filteredRaw.forEach((r: any) => {
         const ch = String(r._canal || 'Outros');
-        let v = 0; let cat = '';
+        let v = 0;
         if (ch === 'AMAZON') {
           const tipo = String(r['tipo']||'').toLowerCase();
-          if (tipo === 'pedido') { v = parseNum(r['vendas do produto']); cat = String(r['descrição']||'Venda'); }
-          else if (tipo !== 'transferir') { v = parseNum(r['total']); cat = String(r['descrição']||tipo); }
+          if (tipo === 'pedido') v = parseNum(r['vendas do produto']);
+          else if (tipo !== 'transferir') v = parseNum(r['total']);
         } else if (ch === 'SHOPEE' || ch === 'SHEIN') {
           if (String(r['Status do pedido']||'').toLowerCase().includes('cancelado')) return;
           v = parseNum(r['Subtotal do produto'] || r['Preço acordado']);
-          cat = String(r['Nome do Produto'] || 'Sem produto');
         } else {
           v = Math.abs(Number(r['Valor da tarifa']) || 0);
-          cat = String(r['Detalhe'] || 'Sem detalhe');
         }
-        if (v > 0 && cat) map[cat] = (map[cat] || 0) + v;
+        if (v > 0) map[ch] = (map[ch] || 0) + v;
       });
     } else if (canal === 'SHOPEE' || canal === 'SHEIN') {
       const FEE_COLS = ['Taxa de Envio Reversa','Taxa de transação','Taxa de comissão líquida','Taxa de serviço líquida','Desconto de Frete Aproximado','Desconto do vendedor','Taxa de envio pagas pelo comprador'];
@@ -1446,8 +1492,8 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                   ) : (
                     /* Para ML e TODOS: as duas pizzas ocupam col-span-2 lado a lado */
                     <div className="col-span-2 grid grid-cols-2 gap-4">
-                      {pieGroup.length > 0 && <PieSection data={pieGroup} title="Por Grupo" tooltipLabel="Valor" />}
-                      {pieCategory.length > 0 && <PieSection data={pieCategory} title="Por Categoria" tooltipLabel="Valor" />}
+                      {pieGroup.length > 0 && <PieSection data={pieGroup} title={canal === 'TODOS' ? 'Por Grupo ERP' : 'Por Grupo'} tooltipLabel="Valor" />}
+                      {pieCategory.length > 0 && <PieSection data={pieCategory} title={canal === 'TODOS' ? 'Por Canal' : 'Por Categoria'} tooltipLabel="Valor" />}
                     </div>
                   )}
                   {/* Para Shopee/Amazon/ML: pizzas nas últimas 2 colunas */}
