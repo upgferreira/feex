@@ -352,7 +352,7 @@ function convertShopeeToBling(
       `PEDIDO DE VENDA: XXXXXX/${pedido} > NF: XX/XXXXXX > ${detalhe.toUpperCase()}`,
       pai && cat ? `${pai.toUpperCase()} > ${cat.toUpperCase()}` : (cat || pai || '').toUpperCase(),
       dataFormatada,
-      lineCompetencia,
+      competenciaMes,
     ].filter(Boolean).join(' | ');
 
     resultado.push({
@@ -457,7 +457,8 @@ function convertAmazonToBling(
     const dataFormatada   = dataLinha.toLocaleDateString('pt-BR');
     const mm              = String(dataLinha.getMonth() + 1).padStart(2, '0');
     const yyyy            = String(dataLinha.getFullYear());
-    const lineCompetencia = mm + '/' + yyyy;
+    const competenciaMes  = mm + '/' + yyyy;          // MM/YYYY — vai nas obs
+    const lineCompetencia = dataFormatada;             // DD/MM/YYYY — vai na coluna
     const { cat, pai }    = findCat(detalhe);
 
     const obs = [
