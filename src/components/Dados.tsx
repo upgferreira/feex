@@ -869,20 +869,64 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   const erpInputData = useMemo((): any[] => {
     if (!['SHOPEE', 'SHEIN', 'AMAZON'].includes(canal)) return filteredRaw;
     if (filteredRaw.length === 0) return [];
-    if (filteredRaw[0] && 'Categoria' in filteredRaw[0] && !('Status do pedido' in filteredRaw[0])) return filteredRaw;
+    // Already pivoted? Check by absence of raw columns
+    if (filteredRaw[0] && 'Categoria' in filteredRaw[0] && !('Status do pedido' in filteredRaw[0]) && !('tipo' in filteredRaw[0]) && !('data/hora' in filteredRaw[0])) return filteredRaw;
+
+    const parseNum = (v: any) => {
+      if (typeof v === 'number') return v;
+      const s = String(v || '0').replace(/\./g, '').replace(',', '.');
+      return parseFloat(s) || 0;
+    };
+    const result: any[] = [];
+
+    if (canal === 'AMAZON') {
+      const AMAZON_FEE_COLS = ['créditos de remessa','créditos de embalagem de presente','descontos promocionais','imposto de vendas coletados','tarifas de venda','taxas fba','taxas de outras transações','outro'];
+      filteredRaw.forEach((row: any) => {
+        const tipo = String(row['tipo'] || '').toLowerCase();
+        if (tipo === 'transferir') return;
+        if (tipo === 'pedido') {
+          AMAZON_FEE_COLS.forEach(col => {
+            const colKey = Object.keys(row).find(k => k.trim().toLowerCase() === col.toLowerCase());
+            if (!colKey) return;
+            const valor = parseNum(row[colKey]);
+            if (valor === 0) return;
+            result.push({
+              'data/hora': row['data/hora'],
+              'id de liquidação': row['id de liquidação'],
+              'tipo': row['tipo'],
+              'id do pedido': row['id do pedido'],
+              'tipo de conta': row['tipo de conta'],
+              'Categoria': col,
+              'Valor da tarifa': valor,
+              'Relatório': row['Relatório'],
+            });
+          });
+        } else {
+          const valor = parseNum(row['total']);
+          if (valor === 0) return;
+          const categoria = tipo === 'reembolso' ? 'Reembolso' : (row['descrição'] || row['tipo'] || '');
+          result.push({
+            'data/hora': row['data/hora'],
+            'id de liquidação': row['id de liquidação'],
+            'tipo': row['tipo'],
+            'id do pedido': row['id do pedido'],
+            'tipo de conta': row['tipo de conta'],
+            'Categoria': categoria,
+            'Valor da tarifa': valor,
+            'Relatório': row['Relatório'],
+          });
+        }
+      });
+      return result;
+    }
+
+    // SHOPEE / SHEIN
     const PIVOT_COLS = [
-      'Taxa de Envio Reversa',
-      'Taxa de transação',
-      'Taxa de comissão líquida',
-      'Taxa de comissão',
-      'Taxa de serviço líquida',
-      'Taxa de serviço',
-      'Desconto de Frete Aproximado',
-      'Desconto do vendedor',
-      'Taxa de envio pagas pelo comprador',
+      'Taxa de Envio Reversa','Taxa de transação','Taxa de comissão líquida','Taxa de comissão',
+      'Taxa de serviço líquida','Taxa de serviço','Desconto de Frete Aproximado',
+      'Desconto do vendedor','Taxa de envio pagas pelo comprador',
     ];
     const POSITIVE = new Set(['Taxa de envio pagas pelo comprador']);
-    const result: any[] = [];
     filteredRaw.forEach((row: any) => {
       const status = String(row['Status do pedido'] || '').toLowerCase();
       if (status.includes('cancelado')) return;
@@ -894,26 +938,13 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
         let valor = parseFloat(vStr) || 0;
         if (valor === 0) return;
         valor = POSITIVE.has(col) ? Math.abs(valor) : -Math.abs(valor);
-        if (canal === 'AMAZON') {
-          result.push({
-            'data/hora':        row['data/hora'],
-            'id de liquidação': row['id de liquidação'],
-            'tipo':             row['tipo'],
-            'id do pedido':     row['id do pedido'],
-            'tipo de conta':    row['tipo de conta'],
-            'Categoria':        col,
-            'Valor da tarifa':  valor,
-            'Relatório':        row['Relatório'],
-          });
-        } else {
-          result.push({
-            'Data de criação do pedido': row['Data de criação do pedido'],
-            'ID do pedido': row['ID do pedido'],
-            'Nome de usuário (comprador)': row['Nome de usuário (comprador)'],
-            'Categoria': col.replace(/\s*\(\d+\)\s*/g, '').trim(),
-            'Valor': valor,
-          });
-        }
+        result.push({
+          'Data de criação do pedido': row['Data de criação do pedido'],
+          'ID do pedido': row['ID do pedido'],
+          'Nome de usuário (comprador)': row['Nome de usuário (comprador)'],
+          'Categoria': col.replace(/\s*\(\d+\)\s*/g, '').trim(),
+          'Valor': valor,
+        });
       });
     });
     return result;
@@ -1224,43 +1255,50 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                 </div>
               ))}
             </div>
-            {erpPreviewData.length === 0 ? (
+            {rawData.length === 0 ? (
               <div className="p-12 text-center">
                 <BarChart2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500 dark:text-gray-400 text-lg">Sem dados ERP para {canal}</p>
-                <p className="text-gray-400 dark:text-gray-500 mt-2">Selecione um canal e mude para o modo ERP</p>
+                <p className="text-gray-500 dark:text-gray-400 text-lg">Nenhum dado para {canal}</p>
+                <p className="text-gray-400 dark:text-gray-500 mt-2">Importe arquivos na seção de Importação</p>
               </div>
             ) : (
               <div>
                 {/* Row 1: Tabela SKU ERP (col-span-2) + Pizza cat-pai + Pizza categoria */}
                 <div className="grid grid-cols-4 gap-4 mb-6">
-                  <div className="col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                    <div className="px-4 pt-4 pb-2">
-                      <h3 className="text-base font-semibold text-gray-900 dark:text-white">Lançamentos ERP</h3>
-                    </div>
-                    <div className="overflow-auto" style={{maxHeight: 280}}>
-                      <table className="w-full">
-                        <thead>
-                          <tr className="bg-green-600 sticky top-0">
-                            <th className="px-3 py-2 text-left text-xs font-medium text-white uppercase">Data</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-white uppercase">Categoria</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-white uppercase">Portador</th>
-                            <th className="px-3 py-2 text-right text-xs font-medium text-white uppercase">Valor</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                          {erpPreviewData.slice(0, 20).map((row: any, i: number) => (
-                            <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                              <td className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{row['Data']}</td>
-                              <td className="px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 max-w-[180px] truncate">{row['Categoria']}</td>
-                              <td className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{row['Portador']}</td>
-                              <td className="px-3 py-1.5 text-xs font-semibold text-gray-900 dark:text-white text-right whitespace-nowrap">{row['Valor']}</td>
+                  {/* Tabela de produtos — mesma do canal */}
+                  {skuData.length > 0 ? (
+                    <div className="col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                      <div className="px-4 pt-4 pb-2">
+                        <h3 className="text-base font-semibold text-gray-900 dark:text-white">Produtos</h3>
+                      </div>
+                      <div className="overflow-auto" style={{maxHeight: 280}}>
+                        <table className="w-full">
+                          <thead>
+                            <tr className="bg-gray-50 dark:bg-gray-700 sticky top-0">
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">SKU</th>
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Produto</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Qtd</th>
+                              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Receita</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                            {skuData.map((row: any, i: number) => (
+                              <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                <td className="px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 font-mono whitespace-nowrap">{row.sku}</td>
+                                <td className="px-3 py-1.5 text-xs text-gray-900 dark:text-gray-100 max-w-[180px] truncate">{row.produto}</td>
+                                <td className="px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 text-right">{row.qtd}</td>
+                                <td className="px-3 py-1.5 text-xs font-semibold text-gray-900 dark:text-white text-right whitespace-nowrap">{formatBRL(row.receita)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex items-center justify-center" style={{minHeight: 280}}>
+                      <p className="text-sm text-gray-400">Sem produtos para exibir</p>
+                    </div>
+                  )}
                   <div className="col-span-1">
                     {erpDashboardData.byPai.length > 0 && <PieSection data={erpDashboardData.byPai.map((r:any) => ({...r, percentage: erpDashboardData.total > 0 ? ((r.value/erpDashboardData.total)*100).toFixed(1) : '0'}))} title="Categoria Pai" tooltipLabel="Valor" />}
                   </div>
@@ -1269,17 +1307,17 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
                   </div>
                 </div>
                 {/* Row 2: Gráfico barras por dia */}
-                {erpReceitaDia.length > 0 && (
+                {receitaDia.length > 0 && (
                   <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Lançamentos por Dia</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Receita por Dia</h3>
                     <div className="h-64">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={erpReceitaDia} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                        <BarChart data={receitaDia} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="date" angle={-45} textAnchor="end" height={100} fontSize={12} />
                           <YAxis />
-                          <Tooltip formatter={(v: any) => [formatBRL(v), 'Valor']} labelFormatter={(l: any) => `Data: ${l}`} />
-                          <Bar dataKey="valor" fill="#16a34a" name="Valor" radius={[4, 4, 0, 0]} />
+                          <Tooltip formatter={(v: any) => [formatBRL(v), 'Receita']} labelFormatter={(l: any) => `Data: ${l}`} />
+                          <Bar dataKey="valor" fill="#3B82F6" name="Receita" radius={[4, 4, 0, 0]} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
