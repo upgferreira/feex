@@ -456,12 +456,11 @@ function convertAmazonToBling(
     const { cat, pai }    = findCat(detalhe);
 
     const obs = [
-      pedido
-        ? 'AMAZON: [CLIENTE] | PEDIDO DE VENDA: XXXXXX/' + pedido + ' > NF: XX/XXXXXX > ' + detalhe.toUpperCase()
-        : 'AMAZON: ' + detalhe.toUpperCase(),
+      pedido ? 'AMAZON: [CLIENTE]' : 'AMAZON',
+      pedido ? 'PEDIDO DE VENDA: XXXXXX/' + pedido + ' > NF: XX/XXXXXX > ' + detalhe.toUpperCase() : detalhe.toUpperCase(),
       pai && cat ? pai.toUpperCase() + ' > ' + cat.toUpperCase() : (cat || pai || '').toUpperCase(),
       dataFormatada,
-      lineCompetencia,
+      competenciaMes,
     ].filter(Boolean).join(' | ');
 
     resultado.push({
