@@ -698,38 +698,51 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     { label: 'Margem Líquida',value: formatBRL(stats.margemLiquida),       icon: <TrendingUp className="h-6 w-6 text-indigo-600" /> },
   ];
 
-  const PieSection = ({ data, title, tooltipLabel }: { data: any[]; title: string; tooltipLabel: string }) => (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{title}</h3>
-      {data.length > 0 ? (
-        <div className="flex items-center h-64">
-          <div className="w-1/2 h-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={data} cx="50%" cy="50%" innerRadius={40} outerRadius={80} dataKey="value" label={false}>
-                  {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(v: any) => [formatBRL(v), tooltipLabel]} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="w-1/2 pl-6 space-y-2 max-h-56 overflow-y-auto">
-            {data.map((item, i) => (
-              <div key={item.name} className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <div className="w-4 h-4 rounded mr-2 flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                  <span className="text-sm text-gray-700 dark:text-gray-300 truncate max-w-xs" title={item.name}>{item.name}</span>
+  const PieSection = ({ data, title, tooltipLabel }: { data: any[]; title: string; tooltipLabel: string }) => {
+    // Max 5 items + "Outros"
+    const MAX = 5;
+    const sorted = [...data].sort((a, b) => b.value - a.value);
+    const top = sorted.slice(0, MAX);
+    const rest = sorted.slice(MAX);
+    const outrosVal = rest.reduce((s, r) => s + r.value, 0);
+    const chartData = outrosVal > 0 ? [...top, { name: 'Outros', value: outrosVal, percentage: '' }] : top;
+    const total = chartData.reduce((s, r) => s + r.value, 0);
+    chartData.forEach((r, i) => { r.percentage = total > 0 ? ((r.value / total) * 100).toFixed(1) : '0'; r._i = i; });
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 h-full flex flex-col">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex-shrink-0">{title}</h3>
+        {chartData.length > 0 ? (
+          <div className="flex items-start gap-2 flex-1 min-h-0">
+            {/* Pizza — lado esquerdo, alinhada com o título */}
+            <div className="flex-shrink-0" style={{width: 100, height: 100}}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={chartData} cx="50%" cy="50%" innerRadius={24} outerRadius={44} dataKey="value" label={false}>
+                    {chartData.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(v: any) => [formatBRL(v), tooltipLabel]} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            {/* Legenda — à direita */}
+            <div className="flex-1 space-y-1 overflow-y-auto" style={{maxHeight: 120}}>
+              {chartData.map((item: any, i: number) => (
+                <div key={item.name} className="flex items-start gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0 mt-0.5" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] text-gray-700 dark:text-gray-300 leading-tight break-words">{item.name}</span>
+                  </div>
+                  <span className="text-[10px] font-semibold text-gray-900 dark:text-white flex-shrink-0 ml-1">{item.percentage}%</span>
                 </div>
-                <span className="text-sm font-medium text-gray-900 dark:text-white ml-2">{item.percentage}%</span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="h-64 flex items-center justify-center text-gray-400 text-sm">Sem dados</div>
-      )}
-    </div>
-  );
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-gray-400 text-xs">Sem dados</div>
+        )}
+      </div>
+    );
+  };
 
   const { getCategories, getAccounts } = useAdmin();
   const [categories, setCategories] = useState<any[]>([]);
@@ -1046,29 +1059,32 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     if (dataView !== 'erp' || viewMode !== 'dashboard') return { byPai: [], byCat: [], total: 0 };
     if (!erpPreviewData.length) return { byPai: [], byCat: [], total: 0 };
 
+    // Build lookup: erp_category -> erp_parent_category from categories table
+    const erpCatToPai: Record<string, string> = {};
+    categories.forEach((c: any) => {
+      const erpCat = String(c.erp_category || c.categoria_erp || '').trim().toUpperCase();
+      const erpPai = String(c.erp_parent_category || c.categoria_pai_erp || '').trim().toUpperCase();
+      if (erpCat) erpCatToPai[erpCat] = erpPai || 'Sem categoria pai';
+    });
+
     const paiMap: Record<string, number> = {};
     const catMap: Record<string, number> = {};
     let total = 0;
 
     erpPreviewData.forEach((row: any) => {
-      const obs = row['Observações'] || '';
-      const cat = row['Categoria'] || 'Sem categoria';
-      const parts = obs.split(' | ');
-      const catPart = parts[2] || cat;
-      const [pai, catName] = catPart.includes(' > ')
-        ? catPart.split(' > ').map((s: string) => s.trim())
-        : ['Sem categoria pai', catPart.trim()];
+      const cat = String(row['Categoria'] || 'Sem categoria').trim().toUpperCase();
+      const pai = erpCatToPai[cat] || 'Sem categoria pai';
       const valor = Math.abs(Number(String(row['Valor'] || '0').replace(',', '.')) || 0);
       total += valor;
       paiMap[pai] = (paiMap[pai] || 0) + valor;
-      catMap[catName] = (catMap[catName] || 0) + valor;
+      catMap[cat] = (catMap[cat] || 0) + valor;
     });
 
     const sort = (m: Record<string, number>) =>
       Object.entries(m).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
 
     return { byPai: sort(paiMap), byCat: sort(catMap), total };
-  }, [dataView, viewMode, erpPreviewData]);
+  }, [dataView, viewMode, erpPreviewData, categories]);
 
   const erpStatCards = useMemo(() => {
     if (!erpPreviewData.length) return [];
