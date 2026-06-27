@@ -699,46 +699,41 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   ];
 
   const PieSection = ({ data, title, tooltipLabel }: { data: any[]; title: string; tooltipLabel: string }) => {
-    // Max 5 items + "Outros"
     const MAX = 5;
     const sorted = [...data].sort((a, b) => b.value - a.value);
     const top = sorted.slice(0, MAX);
     const rest = sorted.slice(MAX);
-    const outrosVal = rest.reduce((s, r) => s + r.value, 0);
+    const outrosVal = rest.reduce((s: number, r: any) => s + r.value, 0);
     const chartData = outrosVal > 0 ? [...top, { name: 'Outros', value: outrosVal, percentage: '' }] : top;
-    const total = chartData.reduce((s, r) => s + r.value, 0);
-    chartData.forEach((r, i) => { r.percentage = total > 0 ? ((r.value / total) * 100).toFixed(1) : '0'; r._i = i; });
+    const total = chartData.reduce((s: number, r: any) => s + r.value, 0);
+    chartData.forEach((r: any) => { r.percentage = total > 0 ? ((r.value / total) * 100).toFixed(1) : '0'; });
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 h-full flex flex-col">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex-shrink-0">{title}</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{title}</h3>
         {chartData.length > 0 ? (
-          <div className="flex items-start gap-2 flex-1 min-h-0">
-            {/* Pizza — lado esquerdo, alinhada com o título */}
-            <div className="flex-shrink-0" style={{width: 100, height: 100}}>
+          <div className="flex items-center h-64">
+            <div className="w-1/2 h-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={chartData} cx="50%" cy="50%" innerRadius={24} outerRadius={44} dataKey="value" label={false}>
+                  <Pie data={chartData} cx="50%" cy="50%" innerRadius={40} outerRadius={80} dataKey="value" label={false}>
                     {chartData.map((_: any, i: number) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={(v: any) => [formatBRL(v), tooltipLabel]} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            {/* Legenda — à direita */}
-            <div className="flex-1 space-y-1 overflow-y-auto" style={{maxHeight: 120}}>
+            <div className="w-1/2 pl-4 space-y-1.5 max-h-56 overflow-y-auto">
               {chartData.map((item: any, i: number) => (
-                <div key={item.name} className="flex items-start gap-1.5">
-                  <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0 mt-0.5" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[10px] text-gray-700 dark:text-gray-300 leading-tight break-words">{item.name}</span>
-                  </div>
-                  <span className="text-[10px] font-semibold text-gray-900 dark:text-white flex-shrink-0 ml-1">{item.percentage}%</span>
+                <div key={item.name} className="flex items-start gap-2">
+                  <div className="w-3 h-3 rounded-sm flex-shrink-0 mt-0.5" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                  <span className="text-xs text-gray-700 dark:text-gray-300 leading-tight break-words flex-1">{item.name}</span>
+                  <span className="text-xs font-semibold text-gray-900 dark:text-white flex-shrink-0">{item.percentage}%</span>
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-400 text-xs">Sem dados</div>
+          <div className="h-64 flex items-center justify-center text-gray-400 text-sm">Sem dados</div>
         )}
       </div>
     );
