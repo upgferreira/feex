@@ -9,7 +9,7 @@ import { useFileData } from '../hooks/useFileData';
 import { useAuth } from '../hooks/useAuth';
 import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
-import { convertToBling, formatDateToBR, formatValueToBR, cleanText, BlingRow } from '../utils/converters';
+import { convertToBling, convertToOlist, formatDateToBR, formatValueToBR, cleanText, BlingRow, OlistRow } from '../utils/converters';
 
 export const Exportacao: React.FC = () => {
   const { files, getAllChannelData } = useFileData();
@@ -269,19 +269,25 @@ export const Exportacao: React.FC = () => {
   // ── File generation ───────────────────────────────────────────────────────
   const generateFileName = (exportData: any, formato: string): string => {
     const { canal, erp, ano, dataInicial, dataFinal } = exportData;
+    const canalFmt = canal.replace(/ /g,'_');
+    const dataInicialObj = dataInicial ? new Date(dataInicial) : new Date();
+    const comp = (dataInicialObj.getMonth() + 1).toString().padStart(2, '0');
+    const yr = ano || new Date().getFullYear();
     if (erp === 'BLING') {
-      const dataInicialObj = dataInicial ? new Date(dataInicial) : new Date();
-      const competencia = (dataInicialObj.getMonth() + 1).toString().padStart(2, '0');
-      const yr = ano || new Date().getFullYear();
-      return `${canal.replace(/ /g,'_')}_FATURAMENTO_${yr}_${competencia}-${yr}_${formatDateForFileName(dataInicial)}_${formatDateForFileName(dataFinal)}_bling-modelo-registro-caixa.${formato.toLowerCase()}`;
+      return canalFmt + '_FATURAMENTO_' + yr + '_' + comp + '-' + yr + '_' + formatDateForFileName(dataInicial) + '_' + formatDateForFileName(dataFinal) + '_bling-modelo-registro-caixa.' + formato.toLowerCase();
     }
-    return `dados_exportacao_${canal}_${new Date().toISOString().split('T')[0]}.${formato.toLowerCase()}`;
+    if (erp === 'OLIST') {
+      return canalFmt + '_FATURAMENTO_' + yr + '_' + comp + '-' + yr + '_' + formatDateForFileName(dataInicial) + '_' + formatDateForFileName(dataFinal) + '_olist.' + formato.toLowerCase();
+    }
+    return 'dados_exportacao_' + canal + '_' + new Date().toISOString().split('T')[0] + '.' + formato.toLowerCase();
   };
 
-  const exportToCSV = (data: any[], fileName?: string) => {
+  const exportToCSV = (data: any[], fileName?: string, erpType?: string) => {
     if (!data.length) return;
     const SEP = ';'; // semicolon for Excel PT-BR and Bling compatibility
-    const headers = Object.keys(data[0]);
+    const olistKeys = ['Data','Categoria','Historico','Tipo','Valor','ID','Contato','CNPJ','Marcadores','Conta de destino','Nr documento'];
+    const blingKeys = ['ID','Data','Competencia','Cliente/Fornecedor','Observacoes','Valor','Categoria','Portador','Saldo','CNPJ'];
+    const autoKeys = Object.keys(data[0]);
     const escape = (v: any) => {
       const s = v == null ? '' : v.toString();
       return s.includes(SEP) || s.includes('\n') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
@@ -411,6 +417,14 @@ export const Exportacao: React.FC = () => {
         return generateEmptyBlingTemplate();
       }
     }
+    if (erp === 'OLIST') {
+      try {
+        return convertToOlist(canal, channelData, dataInicial, dataFinal, competencia, categories, accounts);
+      } catch (e) {
+        console.error('Erro na conversão Olist:', e);
+        return [];
+      }
+    }
     return channelData;
   };
 
@@ -458,7 +472,7 @@ export const Exportacao: React.FC = () => {
     exportData.formatos.forEach(formato => {
       const fileName = generateFileName({ ...exportData, ano }, formato);
       try {
-        if (formato === 'CSV')       exportToCSV(finalData, fileName);
+        if (formato === 'CSV')       exportToCSV(finalData, fileName, record.erp);
         else if (formato === 'XLSX') exportToExcel(finalData, 'xlsx', fileName);
         else if (formato === 'XLS')  exportToExcel(finalData, 'xls', fileName);
         else if (formato === 'OFX')  exportToOFX(finalData, fileName);
@@ -466,14 +480,24 @@ export const Exportacao: React.FC = () => {
     });
   };
 
+  const CHUNK_SIZE = 1000;
+
   const handleDownloadRecord = (record: ExportRecord) => {
     const finalData = getConvertedData(record.canal, record.erp, record.periodoInicial, record.periodoFinal, record.competencia);
+    const chunks: any[][] = [];
+    for (let i = 0; i < finalData.length; i += CHUNK_SIZE) chunks.push(finalData.slice(i, i + CHUNK_SIZE));
+    if (chunks.length === 0) chunks.push(finalData);
+    const needsSplit = chunks.length > 1;
     record.formatos.forEach(formato => {
-      const fileName = generateFileName(record, formato);
-      if (formato === 'CSV')       exportToCSV(finalData, fileName);
-      else if (formato === 'XLSX') exportToExcel(finalData, 'xlsx', fileName);
-      else if (formato === 'XLS')  exportToExcel(finalData, 'xls', fileName);
-      else if (formato === 'OFX')  exportToOFX(finalData, fileName);
+      chunks.forEach((chunk, idx) => {
+        const baseName = generateFileName(record, formato);
+        const ext = '.' + formato.toLowerCase();
+        const fileName = needsSplit ? baseName.replace(ext, '_parte' + String(idx + 1).padStart(2, '0') + ext) : baseName;
+        if (formato === 'CSV')       exportToCSV(chunk, fileName, record.erp);
+        else if (formato === 'XLSX') exportToExcel(chunk, 'xlsx', fileName);
+        else if (formato === 'XLS')  exportToExcel(chunk, 'xls', fileName);
+        else if (formato === 'OFX')  exportToOFX(chunk, fileName);
+      });
     });
   };
 
