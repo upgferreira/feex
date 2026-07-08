@@ -14,6 +14,20 @@ export interface BlingRow {
   CNPJ: string;
 }
 
+export interface OlistRow {
+  Data: string;
+  Categoria: string;
+  Historico: string;
+  Tipo: string;
+  Valor: string;
+  ID: string;
+  Contato: string;
+  CNPJ: string;
+  Marcadores: string;
+  'Conta de destino': string;
+  'Nr documento': string;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 export function normalizeText(text: string) {
   if (!text) return '';
@@ -493,5 +507,128 @@ export function convertToBling(
   if (canal === 'NUVEM PAGO')   return convertNuvemPagoToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
   if (canal === 'SHOPEE')         return convertShopeeToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
   if (canal === 'AMAZON')         return convertAmazonToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
+  return [];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TINY (Olist) converters
+// Format: Data | Categoria | Histórico | Tipo | Valor | ID | Contato | CNPJ | Marcadores | Conta de destino | Nº documento
+// ─────────────────────────────────────────────────────────────────────────────
+
+function buildOlistObs(canal: string, detalhe: string, numVenda: string, cliente: string, categoria: string, competencia: string): string {
+  return [
+    canal.toUpperCase(),
+    [detalhe, numVenda, cliente].filter(Boolean).join(' > ').toUpperCase(),
+    categoria.toUpperCase(),
+    competencia.toUpperCase(),
+  ].filter(Boolean).join(' | ');
+}
+
+function convertMLToOlist(data: any[], dataInicial: string, dataFinal: string, competencia: string, categories: any[], accounts: any[]): OlistRow[] {
+  const account = accounts.find(a => String(a.canal || a.channel || '').toUpperCase().trim() === 'MERCADO LIVRE');
+  const portador = account?.caixa || account?.portador || '';
+  const contato  = account?.fornecedor_razao_social || account?.fornecedor || 'MERCADO LIVRE';
+  const cnpj     = account?.fornecedor_cnpj || account?.cnpj || '';
+  const findCat = (detalhe: string) => {
+    const norm = normalizeText(detalhe);
+    const m = categories.find(c => String(c.channel||c.canal||'').toUpperCase().trim() === 'MERCADO LIVRE' && normalizeText(c.channel_category||c.categoria_canal||'') === norm);
+    return { cat: m?.erp_category||m?.categoria_erp||'', pai: m?.erp_parent_category||m?.categoria_pai_erp||'' };
+  };
+  const resultado: OlistRow[] = [];
+  data.forEach((row: any) => {
+    const dataVal = row['Data'] || row['Data da tarifa'] || '';
+    const detalhe = row['Detalhe'] || '';
+    const valor   = row['Valor da tarifa'];
+    const numVenda = row['Número de referência da venda'] || row['Número de venda'] || '';
+    const cliente  = row['Comprador nickname'] || row['Nome comprador'] || '';
+    if (!dataVal || !detalhe || valor === undefined) return;
+    const dataObj = parseDateBR(dataVal);
+    if (!dataObj) return;
+    const iso = dataObj.toISOString().split('T')[0];
+    if (dataInicial && iso < dataInicial) return;
+    if (dataFinal && iso > dataFinal) return;
+    const dataFormatada = dataObj.toLocaleDateString('pt-BR');
+    const { cat } = findCat(detalhe);
+    const obs = buildOlistObs('MERCADO LIVRE', detalhe, numVenda, cliente, cat, competencia);
+    resultado.push({ Data: dataFormatada, Categoria: cat, Historico: obs, Tipo: '', Valor: String(Number(valor) * -1), ID: '', Contato: contato, CNPJ: cnpj, Marcadores: '', 'Conta de destino': portador, 'Nr documento': '' });
+  });
+  return resultado;
+}
+
+function convertShopeeToOlist(data: any[], dataInicial: string, dataFinal: string, competencia: string, categories: any[], accounts: any[]): OlistRow[] {
+  const account = accounts.find(a => String(a.canal || a.channel || '').toUpperCase().trim() === 'SHOPEE');
+  const portador = account?.caixa || account?.portador || '';
+  const contato  = account?.fornecedor_razao_social || account?.fornecedor || 'SHOPEE';
+  const cnpj     = account?.fornecedor_cnpj || account?.cnpj || '';
+  const POSITIVE = new Set(['Taxa de envio pagas pelo comprador']);
+  const PIVOT_COLS = ['Taxa de Envio Reversa','Taxa de transação','Taxa de comissão líquida','Taxa de comissão','Taxa de serviço líquida','Taxa de serviço','Desconto de Frete Aproximado','Desconto do vendedor','Taxa de envio pagas pelo comprador'];
+  const findCat = (col: string) => {
+    const norm = normalizeText(col);
+    const m = categories.find(c => String(c.channel||c.canal||'').toUpperCase().trim() === 'SHOPEE' && normalizeText(c.channel_category||c.categoria_canal||'') === norm);
+    return m?.erp_category||m?.categoria_erp||'';
+  };
+  const resultado: OlistRow[] = [];
+  data.forEach((row: any) => {
+    const status = String(row['Status do pedido']||'').toLowerCase();
+    if (status.includes('cancelado')) return;
+    const dateRaw = String(row['Data de criação do pedido'] || row['Hora do pagamento do pedido'] || '');
+    const dataFormatada = dateRaw ? dateRaw.split(' ')[0].split('-').reverse().join('/') : '';
+    if (!dataFormatada) return;
+    PIVOT_COLS.forEach(col => {
+      const rawCell = String(row[col]||'0');
+      const v = parseFloat(rawCell.replace(',','.')) || 0;
+      if (v === 0) return;
+      const valor = POSITIVE.has(col) ? Math.abs(v) : -Math.abs(v);
+      const cat = findCat(col);
+      const obs = buildOlistObs('SHOPEE', col, row['ID do pedido']||'', '', cat, competencia);
+      resultado.push({ Data: dataFormatada, Categoria: cat, Historico: obs, Tipo: '', Valor: String(valor), ID: '', Contato: contato, CNPJ: cnpj, Marcadores: '', 'Conta de destino': portador, 'Nr documento': '' });
+    });
+  });
+  return resultado;
+}
+
+function convertAmazonToOlist(data: any[], dataInicial: string, dataFinal: string, competencia: string, categories: any[], accounts: any[]): OlistRow[] {
+  const account = accounts.find(a => String(a.canal || a.channel || '').toUpperCase().trim() === 'AMAZON');
+  const portador = account?.caixa || account?.portador || '';
+  const contato  = account?.fornecedor_razao_social || account?.fornecedor || 'AMAZON';
+  const cnpj     = account?.fornecedor_cnpj || account?.cnpj || '';
+  const mesesPT: Record<string,string> = {'jan':'01','fev':'02','mar':'03','abr':'04','mai':'05','jun':'06','jul':'07','ago':'08','set':'09','out':'10','nov':'11','dez':'12'};
+  const parseAmazonDate = (v: any) => {
+    const s = String(v||'');
+    const m = s.match(/(\d{1,2})\s+de\s+(\w+)\.?\s+de\s+(\d{4})/i);
+    if (!m) return null;
+    return new Date(`${m[3]}-${mesesPT[m[2].toLowerCase().replace('.','')]||'01'}-${m[1].padStart(2,'0')}T12:00:00`);
+  };
+  const parseNum = (v: any) => { if (typeof v === 'number') return v; return parseFloat(String(v||'0').replace(/\./g,'').replace(',','.')) || 0; };
+  const findCat = (detalhe: string) => {
+    const norm = normalizeText(detalhe);
+    const m = categories.find(c => String(c.channel||c.canal||'').toUpperCase().trim() === 'AMAZON' && normalizeText(c.channel_category||c.categoria_canal||'') === norm);
+    return m?.erp_category||m?.categoria_erp||'';
+  };
+  const resultado: OlistRow[] = [];
+  data.forEach((row: any) => {
+    const dataVal = row['data/hora']||'';
+    const detalhe = row['Categoria']||'';
+    const rawValor = row['Valor da tarifa'];
+    if (!dataVal || !detalhe || detalhe.toLowerCase() === 'vendas do produto') return;
+    const valor = parseNum(rawValor);
+    if (valor === 0) return;
+    const dataLinha = parseAmazonDate(dataVal);
+    if (!dataLinha) return;
+    const iso = dataLinha.toISOString().split('T')[0];
+    if (dataInicial && iso < dataInicial) return;
+    if (dataFinal && iso > dataFinal) return;
+    const dataFormatada = dataLinha.toLocaleDateString('pt-BR');
+    const cat = findCat(detalhe);
+    const obs = buildOlistObs('AMAZON', detalhe, row['id do pedido']||'', '', cat, competencia);
+    resultado.push({ Data: dataFormatada, Categoria: cat, Historico: obs, Tipo: '', Valor: String(valor), ID: '', Contato: contato, CNPJ: cnpj, Marcadores: '', 'Conta de destino': portador, 'Nr documento': '' });
+  });
+  return resultado;
+}
+
+export function convertToOlist(canal: string, data: any[], dataInicial: string, dataFinal: string, competencia: string, categories: any[], accounts: any[]): OlistRow[] {
+  if (canal === 'MERCADO LIVRE') return convertMLToOlist(data, dataInicial, dataFinal, competencia, categories, accounts);
+  if (canal === 'SHOPEE')        return convertShopeeToOlist(data, dataInicial, dataFinal, competencia, categories, accounts);
+  if (canal === 'AMAZON')        return convertAmazonToOlist(data, dataInicial, dataFinal, competencia, categories, accounts);
   return [];
 }
