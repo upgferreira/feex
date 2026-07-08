@@ -1,634 +1,595 @@
+import React, { useState, useEffect } from 'react';
+import { Download, Trash2, ArrowUp, ArrowDown, Filter } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { ExportRecord } from '../types';
+import { ExportModal } from './ExportModal';
+import { DataTable, FormatBadge, DataTableColumn } from './DataTable';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { useFileData } from '../hooks/useFileData';
+import { useAuth } from '../hooks/useAuth';
+import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
+import { convertToBling, convertToOlist, formatDateToBR, formatValueToBR, cleanText, BlingRow, OlistRow } from '../utils/converters';
 
-// ── Shared types ──────────────────────────────────────────────────────────────
-export interface BlingRow {
-  ID: string;
-  Data: string;
-  Competencia: string;
-  'Cliente/Fornecedor': string;
-  Observacoes: string;
-  Valor: string;
-  Categoria: string;
-  Portador: string;
-  Saldo: string;
-  CNPJ: string;
-}
+export const Exportacao: React.FC = () => {
+  const { files, getAllChannelData } = useFileData();
+  const canais = React.useMemo(() => [...new Set(files.map((f: any) => f.canal))].sort(), [files]);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
+  const [exportRecords, setExportRecords] = useState<ExportRecord[]>([]);
+  const [sortColumn, setSortColumn] = useState<keyof ExportRecord | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [columnFilters, setColumnFilters] = useState<{[key: string]: string}>({});
+  const [categories, setCategories] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
+  const { user } = useAuth();
+  const { getCategories, getAccounts } = useAdmin();
 
-export interface OlistRow {
-  Data: string;
-  Categoria: string;
-  Historico: string;
-  Tipo: string;
-  Valor: string;
-  ID: string;
-  Contato: string;
-  CNPJ: string;
-  Marcadores: string;
-  'Conta de destino': string;
-  'Nr documento': string;
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-export function normalizeText(text: string) {
-  if (!text) return '';
-  return text
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // remove accents
-    .replace(/[^a-zA-Z0-9\s]/g, ' ')  // remove special chars including 'do', punctuation
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toUpperCase();
-}
-
-export function convertExcelDate(serialDate: number): string {
-  if (!serialDate || isNaN(serialDate)) return '';
-  const d = new Date(new Date(1900, 0, 1).getTime() + (serialDate - 1) * 86400000);
-  if (serialDate > 59) d.setTime(d.getTime() - 86400000);
-  return d.toLocaleDateString('pt-BR');
-}
-
-export function cleanText(text: string) {
-  return text ? text.replace(/\t/g, ' ').replace(/\s+/g, ' ').trim() : '';
-}
-
-export function formatDateToBR(dateString: string): string {
-  const serial = Number(dateString);
-  if (!isNaN(serial) && serial > 1 && serial < 100000) return convertExcelDate(serial);
-  if (dateString.includes('/')) return dateString;
-  if (dateString.includes('-')) {
-    const [y, m, d] = dateString.split('-');
-    return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
-  }
-  return dateString;
-}
-
-export function formatValueToBR(value: number) {
-  return value.toFixed(2).replace('.', ',');
-}
-
-export function toDate(val: any): Date | null {
-  if (!val) return null;
-  if (val instanceof Date) return val;
-  if (typeof val === 'number') {
-    const d = new Date(new Date(1900, 0, 1).getTime() + (val - 1) * 86400000);
-    if (val > 59) d.setTime(d.getTime() - 86400000);
-    return d;
-  }
-  if (typeof val === 'string') {
-    if (val.includes('/')) {
-      const [d, m, y] = val.split('/');
-      return new Date(+y, +m - 1, +d);
+  useEffect(() => {
+    if (user) {
+      loadExportRecords();
+      loadCategories();
+      loadAccounts();
     }
-    return new Date(val);
-  }
-  return null;
-}
+  }, [user]);
 
-export function toDateStr(val: any): string {
-  const d = toDate(val);
-  return d && !isNaN(d.getTime()) ? d.toLocaleDateString('pt-BR') : '';
-}
+  const loadCategories = async () => {
+    try { setCategories(await getCategories()); }
+    catch (e) { console.error('Erro ao carregar categorias:', e); }
+  };
 
-// ── ML → Bling ────────────────────────────────────────────────────────────────
-export function convertMLToBling(
-  data: any[],
-  dataInicial: string,
-  dataFinal: string,
-  competencia: string,
-  categories: any[],
-  accounts: any[]
-): BlingRow[] {
-  if (!data?.length) return [];
+  const loadAccounts = async () => {
+    try {
+      const { data } = await supabase.from('financial_accounts').select('*').order('canal', { ascending: true });
+      setAccounts(data || []);
+    } catch (e) { console.error('Erro ao carregar contas:', e); }
+  };
 
-  const conta = accounts.find(a => String(a.canal || '').toUpperCase().trim() === 'MERCADO LIVRE');
-  const clienteFornecedor = conta?.fornecedor_razao_social || conta?.fornecedor_nome_fantasia || 'EBAZAR.COM.BR. LTDA';
-  const portador          = conta?.caixa                  || 'Banco | MERCADO PAGO | C/C';
-  const cnpj              = conta?.fornecedor_cnpj        || '03.007.331/0001-41';
+  const loadExportRecords = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('exported_files')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setExportRecords(data.map(r => ({
+        id: r.id,
+        canal: r.channel,
+        erp: r.type,
+        ano: r.year,
+        competencia: r.competence,
+        periodoInicial: r.start_period,
+        periodoFinal: r.end_period,
+        formatos: Array.isArray(r.format) ? r.format : (r.format ? [r.format] : []),
+        arquivo: r.file_name,
+        dataDownload: new Date(r.created_at),
+      })));
+    } catch (e) { console.error('Error loading export records:', e); }
+  };
 
-  const dataInicialObj = new Date(dataInicial + 'T00:00:00');
-  const dataFinalObj   = new Date(dataFinal   + 'T23:59:59');
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const normalizeText = (text: string) => {
+    if (!text) return '';
+    return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s-]/g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+  };
 
-  const findCat = (detalhe: string) => {
+  const findMappedCategory = (detalhe: string): string => {
+    if (!detalhe) return 'Nao mapeado';
     const norm = normalizeText(detalhe);
-    // 1. Exact normalized match
-    let matches = categories.filter(c => {
+    const match = categories.find(c => {
       const ch = String(c.channel || c.canal || '').toUpperCase().trim();
       if (ch !== 'MERCADO LIVRE') return false;
       const key = normalizeText(c.channel_category || c.categoria_canal || '');
-      return key === norm;
+      return key === norm || key.includes(norm) || norm.includes(key);
     });
-    // 2. If no exact match, try partial (one contains the other)
-    if (!matches.length) {
-      matches = categories.filter(c => {
-        const ch = String(c.channel || c.canal || '').toUpperCase().trim();
-        if (ch !== 'MERCADO LIVRE') return false;
-        const key = normalizeText(c.channel_category || c.categoria_canal || '');
-        if (!key || !norm) return false;
-        return key.includes(norm) || norm.includes(key);
-      });
-    }
-    // 3. Prefer the one with erp_category filled
-    const withCat = matches.find(c => !!(c.erp_category || c.categoria_erp));
-    const match = withCat || matches[0];
-    return {
-      cat: match?.erp_category || match?.categoria_erp || '',
-      pai: match?.erp_parent_category || match?.categoria_pai_erp || '',
-    };
+    console.log('findMappedCategory:', detalhe, '->', match?.erp_category || match?.categoria_erp, '| categories count:', categories.length);
+    return match?.erp_category || match?.categoria_erp || 'Nao mapeado';
   };
 
-  const resultado: BlingRow[] = [];
+  const convertExcelDate = (serialDate: number): string => {
+    if (!serialDate || isNaN(serialDate)) return '';
+    const d = new Date(new Date(1900, 0, 1).getTime() + (serialDate - 1) * 86400000);
+    if (serialDate > 59) d.setTime(d.getTime() - 86400000);
+    return d.toLocaleDateString('pt-BR');
+  };
 
-  data.forEach((row, index) => {
-    try {
-      const dataTarifa  = row['Data da tarifa'];
-      const detalhe     = String(row['Detalhe']         || '');
-      const valorTarifa = row['Valor da tarifa'];
-      const numVendaML  = String(row['Número da venda'] || '');
-      const cliente     = String(row['Cliente']         || '');
+  const cleanText = (text: string) =>
+    text ? text.replace(/\t/g, ' ').replace(/\s+/g, ' ').trim() : '';
 
-      if (!dataTarifa || !detalhe || valorTarifa == null) return;
+  const formatDateToBR = (dateString: string): string => {
+    const serial = Number(dateString);
+    if (!isNaN(serial) && serial > 1 && serial < 100000) return convertExcelDate(serial);
+    if (dateString.includes('/')) return dateString;
+    if (dateString.includes('-')) {
+      const [y, m, d] = dateString.split('-');
+      return `${d.padStart(2,'0')}/${m.padStart(2,'0')}/${y}`;
+    }
+    return dateString;
+  };
 
-      const dataLinha = toDate(dataTarifa);
-      if (!dataLinha || isNaN(dataLinha.getTime())) return;
+  const formatValueToBR = (value: number) => value.toFixed(2).replace('.', ',');
+
+  const formatDate = (date: Date) =>
+    new Intl.DateTimeFormat('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }).format(date);
+
+  const formatDateForFileName = (dateString: string): string => {
+    if (!dateString || typeof dateString !== 'string') return '01-01-1970';
+    const parts = dateString.split('-');
+    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    return dateString.replace(/[^\d-]/g, '') || '01-01-1970';
+  };
+
+  // ── Converters ────────────────────────────────────────────────────────────
+  const convertMercadoLivreToBling = (data: any[], dataInicial: string, dataFinal: string, competencia: string) => {
+    if (!data?.length) return [];
+    const clienteFornecedor = 'EBAZAR.COM.BR. LTDA';
+    const portador = 'Banco | MERCADO PAGO | C/C';
+    const cnpj = '03.007.331/0001-41';
+    const dataInicialObj = new Date(dataInicial);
+    const dataFinalObj = new Date(dataFinal);
+    const resultado: any[] = [];
+
+    data.forEach((row, index) => {
+      try {
+        const dataTarifa = row['Data da tarifa'];
+        const detalhe = row['Detalhe'];
+        const valorTarifa = row['Valor da tarifa'];
+        const numVenda = row['Número da venda'];
+        const cliente = row['Cliente'];
+        if (!dataTarifa || !detalhe || valorTarifa == null) return;
+
+        let dataLinha: Date, dataFormatada: string;
+        if (typeof dataTarifa === 'number') {
+          dataFormatada = convertExcelDate(dataTarifa);
+          const [d, m, y] = dataFormatada.split('/');
+          dataLinha = new Date(+y, +m - 1, +d);
+        } else if (typeof dataTarifa === 'string') {
+          if (dataTarifa.includes('/')) {
+            dataFormatada = dataTarifa;
+            const [d, m, y] = dataTarifa.split('/');
+            dataLinha = new Date(+y, +m - 1, +d);
+          } else {
+            dataLinha = new Date(dataTarifa);
+            dataFormatada = dataLinha.toLocaleDateString('pt-BR');
+          }
+        } else {
+          dataLinha = new Date(dataTarifa);
+          dataFormatada = dataLinha.toLocaleDateString('pt-BR');
+        }
+
+        if (isNaN(dataLinha.getTime()) || dataLinha < dataInicialObj || dataLinha > dataFinalObj) return;
+
+        const categoria = findMappedCategory(detalhe);
+        const obs = cleanText([
+          'MERCADO LIVRE',
+          cleanText([detalhe, numVenda, cliente].filter(Boolean).join(' > ').toUpperCase()),
+          categoria.toUpperCase(),
+          `${formatDateToBR(dataInicial)} - ${formatDateToBR(dataFinal)}`,
+          competencia,
+        ].filter(Boolean).join(' | '));
+
+        resultado.push({
+          'ID': '', 'Data': dataFormatada, 'Competencia': dataFormatada,
+          'Cliente/Fornecedor': clienteFornecedor, 'Observacoes': obs,
+          'Valor': formatValueToBR(Number(valorTarifa) * -1),
+          'Categoria': categoria, 'Portador': portador, 'Saldo': 'N', 'CNPJ': cnpj,
+        });
+      } catch (e) { console.error(`Linha ${index}:`, e); }
+    });
+    return resultado;
+  };
+
+  const convertNuvemPagoToBling = (data: any[], dataInicial: string, dataFinal: string, competencia: string) => {
+    if (!data?.length) return [];
+
+    const conta = accounts.find(a => String(a.canal || '').toUpperCase().trim() === 'NUVEM PAGO');
+    console.log('NuvemPago conta:', conta, 'from accounts:', accounts.map(a=>a.canal));
+    const portador          = conta?.caixa                    || '';
+    const clienteFornecedor = conta?.fornecedor_nome_fantasia || 'NUVEM PAGO';
+    const cnpj              = conta?.fornecedor_cnpj          || '';
+
+    const catRow = categories.find(c => {
+      const canal    = String(c.channel || c.canal || '').toUpperCase();
+      const catCanal = String(c.channel_category || c.categoria_canal || '').toUpperCase();
+      return canal === 'NUVEM PAGO' && catCanal === 'TAXAS';
+    });
+    const categoriaERP = catRow?.erp_category || catRow?.categoria_erp || '';
+    const categoriaPai = catRow?.erp_parent_category || catRow?.categoria_pai_erp || '';
+
+    const pedidos: Record<string, any> = {};
+    // Set date range with time at start/end of day to avoid boundary issues
+    const dataInicialObj = new Date(dataInicial + 'T00:00:00');
+    const dataFinalObj   = new Date(dataFinal   + 'T23:59:59');
+
+    const parseValor = (v: any) => {
+      if (v == null || v === '') return 0;
+      const s = String(v).trim().replace('R$','').replace(/\s/g,'');
+      // BR format: 1.234,56 → has comma as decimal
+      if (s.includes(',')) return Number(s.replace(/\./g,'').replace(',','.')) || 0;
+      // EN format: 7.25 → dot is decimal, parse directly
+      return Number(s) || 0;
+    };
+
+    data.forEach(row => {
+      // Pedido pode vir como número float (ex: 146.0) — converter para inteiro string
+      const pedidoRaw = row['Número do Pedido'];
+      if (pedidoRaw == null || pedidoRaw === '') return;
+      const numeroPedido  = String(Math.round(Number(pedidoRaw)));
+      const comprador     = String(row['Nome do comprador'] || '').trim();
+      const dataPagamento = row['Data de pagamento'];
+      const taxa  = parseValor(row['Taxas']);
+      const juros = parseValor(row['Juros']);
+      if (!numeroPedido || !dataPagamento) return;
+
+      // Data pode vir como Date object, string ISO, ou número serial
+      let dataLinha: Date;
+      if (dataPagamento instanceof Date) {
+        dataLinha = dataPagamento;
+      } else if (typeof dataPagamento === 'number') {
+        dataLinha = new Date(Math.round((dataPagamento - 25569) * 86400 * 1000));
+      } else {
+        dataLinha = new Date(dataPagamento);
+      }
+      if (isNaN(dataLinha.getTime())) return;
       if (dataLinha < dataInicialObj || dataLinha > dataFinalObj) return;
 
-      const dataFormatada = dataLinha.toLocaleDateString('pt-BR');
+      if (!pedidos[numeroPedido]) {
+        pedidos[numeroPedido] = { pedido: numeroPedido, comprador, dataPagamento: dataLinha, valor: 0, juros: 0 };
+      }
+      pedidos[numeroPedido].valor += (taxa + juros) * -1;
+      pedidos[numeroPedido].juros += juros;
+    });
 
-      const { cat: categoria, pai: categoriaPai } = findCat(detalhe);
-      const catDisplay = categoriaPai && categoria
-        ? `${categoriaPai.toUpperCase()} > ${categoria.toUpperCase()}`
-        : categoria.toUpperCase();
-      const pedido = numVendaML ? `XXXXXX/${numVendaML}` : '';
-
-      const parte1 = cliente ? `MERCADO LIVRE: ${cliente.toUpperCase()}` : 'MERCADO LIVRE';
-      const parte2 = pedido
-        ? [`PEDIDO DE VENDA: ${pedido}`, 'NF: XX/XXXXXX', detalhe.toUpperCase()].join(' > ')
-        : detalhe.toUpperCase();
-      const lineCompetencia = `${String(dataLinha.getMonth() + 1).padStart(2,'0')}/${dataLinha.getFullYear()}`;
-      const obs = cleanText([parte1, parte2, catDisplay, dataFormatada, lineCompetencia].filter(Boolean).join(' | '));
-
-      resultado.push({
+    return Object.values(pedidos).map((item: any) => {
+      const dataFormatada = item.dataPagamento.toLocaleDateString('pt-BR');
+      const obs = cleanText([
+        `NUVEM PAGO: ${item.comprador.toUpperCase()}`,
+        [`PEDIDO DE VENDA: XXXXXX/${item.pedido}`, 'NF: XX/XXXXXX', item.juros > 0 ? 'TAXA + JUROS' : 'TAXA'].join(' > '),
+        categoriaPai && categoriaERP ? `${categoriaPai.toUpperCase()} > ${categoriaERP.toUpperCase()}` : '',
+        `${formatDateToBR(dataInicial)} - ${formatDateToBR(dataFinal)}`,
+        competencia,
+      ].filter(Boolean).join(' | '));
+      return {
         'ID': '', 'Data': dataFormatada, 'Competencia': dataFormatada,
         'Cliente/Fornecedor': clienteFornecedor, 'Observacoes': obs,
-        'Valor': formatValueToBR(Number(valorTarifa) * -1),
-        'Categoria': categoria, 'Portador': portador, 'Saldo': 'N', 'CNPJ': cnpj,
-      });
-    } catch (e) { console.error(`ML linha ${index}:`, e); }
-  });
-
-  return resultado;
-}
-
-// ── Nuvem Pago → Bling ───────────────────────────────────────────────────────
-export function convertNuvemPagoToBling(
-  data: any[],
-  dataInicial: string,
-  dataFinal: string,
-  competencia: string,
-  categories: any[],
-  accounts: any[]
-): BlingRow[] {
-  if (!data?.length) return [];
-
-  const conta = accounts.find(a => String(a.canal || '').toUpperCase().trim() === 'NUVEM PAGO');
-  const clienteFornecedor = conta?.fornecedor_razao_social || conta?.fornecedor_nome_fantasia || 'NUVEM PAGO';
-  const portador          = conta?.caixa                  || '';
-  const cnpj              = conta?.fornecedor_cnpj        || '';
-
-  const catRow = categories.find(c =>
-    String(c.channel || c.canal || '').toUpperCase().trim() === 'NUVEM PAGO' &&
-    String(c.channel_category || c.categoria_canal || '').toUpperCase().trim() === 'TAXAS'
-  );
-  const categoriaERP = catRow?.erp_category || catRow?.categoria_erp || '';
-  const categoriaPai = catRow?.erp_parent_category || catRow?.categoria_pai_erp || '';
-
-  const dataInicialObj = new Date(dataInicial + 'T00:00:00');
-  const dataFinalObj   = new Date(dataFinal   + 'T23:59:59');
-
-  const pedidos: Record<string, any> = {};
-
-  const parseV = (v: any) => {
-    if (!v) return 0;
-    const s = String(v).trim();
-    return s.includes(',') ? Number(s.replace(/\./g, '').replace(',', '.')) : Number(s) || 0;
-  };
-
-  data.forEach(row => {
-    const pedidoRaw = row['Número do Pedido'];
-    if (!pedidoRaw) return;
-    const numeroPedido  = String(Math.round(Number(pedidoRaw)));
-    const comprador     = String(row['Nome do comprador'] || '').trim();
-    const dataPagamento = row['Data de pagamento'];
-    const taxa  = parseV(row['Taxas']);
-    const juros = parseV(row['Juros']);
-    if (!dataPagamento) return;
-
-    const dataLinha = toDate(dataPagamento);
-    if (!dataLinha || isNaN(dataLinha.getTime())) return;
-    if (dataLinha < dataInicialObj || dataLinha > dataFinalObj) return;
-
-    if (!pedidos[numeroPedido]) {
-      pedidos[numeroPedido] = { pedido: numeroPedido, comprador, dataPagamento: dataLinha, valor: 0, juros: 0 };
-    }
-    pedidos[numeroPedido].valor += (taxa + juros) * -1;
-    pedidos[numeroPedido].juros += juros;
-  });
-
-  return Object.values(pedidos).map((item: any) => {
-    const dataFormatada = item.dataPagamento.toLocaleDateString('pt-BR');
-    const catCompleta = categoriaPai && categoriaERP
-      ? `${categoriaPai.toUpperCase()} > ${categoriaERP.toUpperCase()}`
-      : categoriaERP.toUpperCase();
-    const dataFormatadaItem = item.dataPagamento.toLocaleDateString('pt-BR');
-    const lineCompetencia = `${String(item.dataPagamento.getMonth() + 1).padStart(2,'0')}/${item.dataPagamento.getFullYear()}`;
-    const obs = cleanText([
-      `NUVEM PAGO: ${item.comprador.toUpperCase()}`,
-      [`PEDIDO DE VENDA: XXXXXX/${item.pedido}`, 'NF: XX/XXXXXX', item.juros > 0 ? 'TAXA + JUROS' : 'TAXA'].join(' > '),
-      catCompleta,
-      dataFormatadaItem,
-      lineCompetencia,
-    ].filter(Boolean).join(' | '));
-
-    return {
-      'ID': '', 'Data': dataFormatada, 'Competencia': dataFormatada,
-      'Cliente/Fornecedor': clienteFornecedor, 'Observacoes': obs,
-      'Valor': formatValueToBR(item.valor),
-      'Categoria': categoriaERP, 'Portador': portador, 'Saldo': 'N', 'CNPJ': cnpj,
-    };
-  });
-}
-
-// ── Generic converter ─────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SHOPEE → Bling  (receives already-pivoted data)
-// Pivoted row format: { 'Data de criação do pedido', 'ID do pedido',
-//                       'Nome de usuário (comprador)', 'Categoria', 'Valor',
-//                       '_source': originalRow }
-// ─────────────────────────────────────────────────────────────────────────────
-function convertShopeeToBling(
-  data: any[],
-  dataInicial: string,
-  dataFinal: string,
-  competencia: string,
-  categories: any[],
-  accounts: any[]
-): BlingRow[] {
-  // Find account for SHOPEE
-  const account = accounts.find(a => {
-    const canal = String(a.canal || a.channel || '').toUpperCase().trim();
-    return canal === 'SHOPEE';
-  });
-  const portador   = account?.caixa || account?.portador || '';
-  const fornecedor = account?.fornecedor_razao_social || account?.fornecedor_nome_fantasia || account?.fornecedor || 'SHOPEE';
-  const cnpj       = account?.fornecedor_cnpj || account?.cnpj || '';
-
-  // Category finder for SHOPEE
-  const findCat = (detalhe: string) => {
-    const norm = normalizeText(detalhe);
-    let matches = categories.filter(c => {
-      const ch = String(c.channel || c.canal || '').toUpperCase().trim();
-      if (ch !== 'SHOPEE') return false;
-      const key = normalizeText(c.channel_category || c.categoria_canal || '');
-      return key === norm;
+        'Valor': formatValueToBR(item.valor),
+        'Categoria': categoriaERP, 'Portador': portador, 'Saldo': 'N', 'CNPJ': cnpj,
+      };
     });
-    if (!matches.length) {
-      matches = categories.filter(c => {
-        const ch = String(c.channel || c.canal || '').toUpperCase().trim();
-        if (ch !== 'SHOPEE') return false;
-        const key = normalizeText(c.channel_category || c.categoria_canal || '');
-        return key && norm && (key.includes(norm) || norm.includes(key));
-      });
-    }
-    const withCat = matches.find(c => !!(c.erp_category || c.categoria_erp));
-    const match = withCat || matches[0];
-    return {
-      cat: match?.erp_category  || match?.categoria_erp       || '',
-      pai: match?.erp_parent_category || match?.categoria_pai_erp || '',
-    };
   };
 
-  // Positive columns (receita) — all others are negative (despesa)
-  const POSITIVE_COLS = new Set([
-    'taxa de envio pagas pelo comprador',
-  ]);
+  const generateEmptyBlingTemplate = () => [{
+    'ID': '', 'Data': '', 'Competencia': '', 'Cliente/Fornecedor': '',
+    'Observacoes': '', 'Valor': '', 'Categoria': '', 'Portador': '', 'Saldo': '', 'CNPJ': '',
+  }];
 
-  const resultado: BlingRow[] = [];
+  // ── File generation ───────────────────────────────────────────────────────
+  const generateFileName = (exportData: any, formato: string): string => {
+    const { canal, erp, ano, dataInicial, dataFinal } = exportData;
+    const canalFmt = canal.replace(/ /g,'_');
+    const dataInicialObj = dataInicial ? new Date(dataInicial) : new Date();
+    const comp = (dataInicialObj.getMonth() + 1).toString().padStart(2, '0');
+    const yr = ano || new Date().getFullYear();
+    if (erp === 'BLING') {
+      return canalFmt + '_FATURAMENTO_' + yr + '_' + comp + '-' + yr + '_' + formatDateForFileName(dataInicial) + '_' + formatDateForFileName(dataFinal) + '_bling-modelo-registro-caixa.' + formato.toLowerCase();
+    }
+    if (erp === 'OLIST') {
+      return canalFmt + '_FATURAMENTO_' + yr + '_' + comp + '-' + yr + '_' + formatDateForFileName(dataInicial) + '_' + formatDateForFileName(dataFinal) + '_olist.' + formato.toLowerCase();
+    }
+    return 'dados_exportacao_' + canal + '_' + new Date().toISOString().split('T')[0] + '.' + formato.toLowerCase();
+  };
 
-  data.forEach((row: any) => {
-    // Pivoted row: has 'Categoria' and 'Valor' columns
-    const dataStr = row['Data de criação do pedido'] || '';
-    const pedido  = row['ID do pedido'] || '';
-    const cliente = row['Nome de usuário (comprador)'] || '';
-    const detalhe = row['Categoria'] || '';
-    const rawStr2 = String(row['Valor'] || '0');
-    const rawValor = Number(
-      rawStr2.includes(',') ? rawStr2.replace(/\./g, '').replace(',', '.') : rawStr2
-    ) || 0;
+  const exportToCSV = (data: any[], fileName?: string, erpType?: string) => {
+    if (!data.length) return;
+    const SEP = ';'; // semicolon for Excel PT-BR and Bling compatibility
+    const olistKeys = ['Data','Categoria','Historico','Tipo','Valor','ID','Contato','CNPJ','Marcadores','Conta de destino','Nr documento'];
+    const blingKeys = ['ID','Data','Competencia','Cliente/Fornecedor','Observacoes','Valor','Categoria','Portador','Saldo','CNPJ'];
+    const headers = erpType === 'OLIST' ? olistKeys : erpType === 'BLING' ? blingKeys : Object.keys(data[0]);
+    const escape = (v: any) => {
+      const s = v == null ? '' : v.toString();
+      return s.includes(SEP) || s.includes('\n') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csv = [headers.join(SEP), ...data.map(row => headers.map(h => escape(row[h])).join(SEP))].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
+    a.download = fileName || `exportacao_${Date.now()}.csv`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 100);
+  };
 
-    if (!dataStr || !detalhe || rawValor === 0) return;
+  const exportToExcel = (data: any[], format: 'xlsx' | 'xls', fileName?: string) => {
+    if (!data.length) return;
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'Dados');
+    XLSX.writeFile(wb, fileName || `exportacao_${Date.now()}.${format}`);
+  };
 
-    // Parse date
-    let dataLinha: Date;
-    if (dataStr instanceof Date) {
-      dataLinha = dataStr;
-    } else if (typeof dataStr === 'number') {
-      dataLinha = new Date(new Date(1900, 0, 1).getTime() + (dataStr - 1) * 86400000);
-      if (dataStr > 59) dataLinha = new Date(dataLinha.getTime() - 86400000);
-    } else {
-      const parts = String(dataStr).split('/');
-      if (parts.length === 3) {
-        dataLinha = new Date(+parts[2], +parts[1] - 1, +parts[0]);
-      } else {
-        dataLinha = new Date(dataStr);
+  const exportToOFX = (data: any[], fileName?: string) => {
+    if (!data.length) return;
+    const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0];
+    const content = `OFXHEADER:100\nDATA:OFXSGML\nVERSION:102\nSECURITY:NONE\nENCODING:USASCII\nCHARSET:1252\nCOMPRESSION:NONE\nOLDFILEUID:NONE\nNEWFILEUID:NONE\n\n<OFX><SIGNONMSGSRSV1><SONRS><STATUS><CODE>0<SEVERITY>INFO</STATUS><DTSERVER>${now}<LANGUAGE>POR</SONRS></SIGNONMSGSRSV1></OFX>`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([content], { type: 'application/x-ofx' }));
+    a.download = fileName || `exportacao_${Date.now()}.ofx`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 100);
+  };
+
+  const SHOPEE_PIVOT_COLS = [
+    'Taxa de Envio Reversa',
+    'Taxa de transação',
+    'Taxa de comissão líquida',
+    'Taxa de comissão',
+    'Taxa de serviço líquida',
+    'Taxa de serviço',
+    'Desconto de Frete Aproximado',
+    'Desconto do vendedor',
+    'Taxa de envio pagas pelo comprador',
+  ];
+  const SHOPEE_POSITIVE = new Set(['Taxa de envio pagas pelo comprador']);
+
+  const pivotShopeeData = (data: any[]): any[] => {
+    const result: any[] = [];
+    data.forEach((row: any) => {
+      const status = String(row['Status do pedido'] || '').toLowerCase();
+      if (status.includes('cancelado')) return;
+      SHOPEE_PIVOT_COLS.forEach(col => {
+        const colKey = Object.keys(row).find(k => k.trim().toLowerCase() === col.toLowerCase());
+        if (!colKey) return;
+        const _rawCell = String(row[colKey] || '0');
+        let valor = parseFloat(
+          _rawCell.includes(',') ? _rawCell.replace(/\./g, '').replace(',', '.') : _rawCell
+        ) || 0;
+        if (valor === 0) return;
+        valor = SHOPEE_POSITIVE.has(col) ? Math.abs(valor) : -Math.abs(valor);
+        result.push({
+          'Data de criação do pedido': row['Data de criação do pedido'],
+          'ID do pedido':              row['ID do pedido'],
+          'Nome de usuário (comprador)': row['Nome de usuário (comprador)'],
+          'Categoria':                 col.replace(/\s*\(\d+\)\s*/g, '').trim(),
+          'Valor':                     valor,
+        });
+      });
+    });
+    return result;
+  };
+
+  const getConvertedData = (canal: string, erp: string, dataInicial: string, dataFinal: string, competencia: string) => {
+    const rawData = getAllChannelData(canal);
+
+    const parseNumAmazon = (v: any) => {
+      if (typeof v === 'number') return v;
+      const s = String(v || '0').replace(/\./g, '').replace(',', '.');
+      return parseFloat(s) || 0;
+    };
+
+    const pivotAmazonData = (rows: any[]): any[] => {
+      const PIVOT_COLS = [
+        'créditos de remessa','créditos de embalagem de presente','descontos promocionais',
+        'imposto de vendas coletados','tarifas de venda','taxas fba','taxas de outras transações',
+        'outro','vendas do produto',
+      ];
+      const result: any[] = [];
+      rows.forEach((row: any) => {
+        const tipo = String(row['tipo'] || '').toLowerCase();
+        if (tipo === 'transferir') return;
+        if (tipo === 'pedido') {
+          PIVOT_COLS.forEach(col => {
+            const colKey = Object.keys(row).find(k => k.trim().toLowerCase() === col.toLowerCase());
+            if (!colKey) return;
+            const valor = parseNumAmazon(row[colKey]);
+            if (valor === 0) return;
+            result.push({
+              'data/hora': row['data/hora'], 'id de liquidação': row['id de liquidação'],
+              'tipo': row['tipo'], 'id do pedido': row['id do pedido'],
+              'tipo de conta': row['tipo de conta'], 'Categoria': col,
+              'Valor da tarifa': valor, 'Relatório': row['Relatório'],
+            });
+          });
+        } else {
+          const valor = parseNumAmazon(row['total']);
+          if (valor === 0) return;
+          const categoria = tipo === 'reembolso' ? 'Reembolso' : (row['descrição'] || row['tipo'] || '');
+          result.push({
+            'data/hora': row['data/hora'], 'id de liquidação': row['id de liquidação'],
+            'tipo': row['tipo'], 'id do pedido': row['id do pedido'],
+            'tipo de conta': row['tipo de conta'], 'Categoria': categoria,
+            'Valor da tarifa': valor, 'Relatório': row['Relatório'],
+          });
+        }
+      });
+      return result;
+    };
+
+    // Pivot before converting
+    const channelData = canal === 'SHOPEE' ? pivotShopeeData(rawData)
+                      : canal === 'AMAZON' ? pivotAmazonData(rawData)
+                      : rawData;
+    if (erp === 'BLING') {
+      try {
+        const result = convertToBling(canal, channelData, dataInicial, dataFinal, competencia, categories, accounts);
+        return result?.length ? result : generateEmptyBlingTemplate();
+      } catch (e) {
+        console.error('Erro na conversão:', e);
+        return generateEmptyBlingTemplate();
       }
     }
-    if (isNaN(dataLinha.getTime())) return;
+    if (erp === 'OLIST') {
+      try {
+        return convertToOlist(canal, channelData, dataInicial, dataFinal, competencia, categories, accounts);
+      } catch (e) {
+        console.error('Erro na conversão Olist:', e);
+        return [];
+      }
+    }
+    return channelData;
+  };
 
-    // Date filter
-    const iso = dataLinha.toISOString().split('T')[0];
-    if (dataInicial && iso < dataInicial) return;
-    if (dataFinal   && iso > dataFinal)   return;
+  const saveExportRecord = async (exportData: { canal: string; erp: string; dataInicial: string; dataFinal: string; formatos: string[] }) => {
+    if (!user) return;
+    try {
+      const dataObj = new Date(exportData.dataInicial);
+      const ano = dataObj.getFullYear().toString();
+      const competence = (dataObj.getMonth() + 1).toString().padStart(2, '0') + '/' + ano;
+      const fileName = generateFileName({ ...exportData, ano }, exportData.formatos[0]);
+      const { data, error } = await supabase.from('exported_files').insert({
+        channel: exportData.canal, type: exportData.erp, year: ano, competence,
+        start_period: exportData.dataInicial, end_period: exportData.dataFinal,
+        format: exportData.formatos, file_name: fileName.replace(/\.[^/.]+$/, ''),
+        file_data: {}, user_id: user.id,
+      }).select().single();
+      if (error) throw error;
+      setExportRecords(prev => [{
+        id: data.id, canal: data.channel, erp: data.type, ano: data.year,
+        competencia: data.competence, periodoInicial: data.start_period,
+        periodoFinal: data.end_period, formatos: Array.isArray(data.format) ? data.format : (data.format ? [data.format] : []),
+        arquivo: data.file_name, dataDownload: new Date(data.created_at),
+      }, ...prev]);
+      // Also reload to ensure consistency
+      await loadExportRecords();
+    } catch (e) { console.error('Erro ao salvar exported_file:', JSON.stringify(e)); }
+  };
 
-    const dataFormatada = dataLinha.toLocaleDateString('pt-BR');
-    // Competência: igual à data
-    const lineCompetencia = dataFormatada;
+  const handleExport = async (exportData: { canal: string; erp: string; dataInicial: string; dataFinal: string; formatos: string[] }) => {
+    const dataObj = new Date(exportData.dataInicial);
+    const ano = dataObj.getFullYear().toString();
+    const competencia = (dataObj.getMonth() + 1).toString().padStart(2, '0') + '/' + ano;
+    const finalData = getConvertedData(exportData.canal, exportData.erp, exportData.dataInicial, exportData.dataFinal, competencia);
 
-    const { cat, pai } = findCat(detalhe);
+    // Block export if any row has empty category
+    if (exportData.erp === 'BLING') {
+      const semCategoria = finalData.filter((r: any) => !r['Categoria'] || r['Categoria'].trim() === '' || r['Categoria'] === 'Nao mapeado');
+      if (semCategoria.length > 0) {
+        alert(`⚠️ ${semCategoria.length} registro(s) sem categoria mapeada. Verifique o mapeamento de categorias antes de exportar.`);
+        return;
+      }
+    }
 
-    // Apply sign: positive for receita, negative for despesa
-    const isPositive = POSITIVE_COLS.has(detalhe.toLowerCase().trim());
-    const valor = isPositive ? Math.abs(rawValor) : -Math.abs(rawValor);
-
-    // Obs pattern: SHOPEE: CLIENTE | PEDIDO DE VENDA: XXXXXX/[PEDIDO] > NF: XX/XXXXXX > DETALHE | PAI > CAT | DATA | COMP
-    const obs = ['SHOPEE: ' + cliente.toUpperCase(), 'PEDIDO DE VENDA: XXXXXX/' + pedido + ' > NF: XX/XXXXXX > ' + detalhe.toUpperCase(), pai && cat ? pai.toUpperCase() + ' > ' + cat.toUpperCase() : (cat || pai || '').toUpperCase(), dataFormatada, competencia].filter(Boolean).join(' | ');
-
-    resultado.push({
-      'ID':                 '',
-      'Data':               dataFormatada,
-      'Competencia':        lineCompetencia,
-      'Cliente/Fornecedor': fornecedor,
-      'Observacoes':        obs,
-      'Valor':              String(valor.toFixed(2)).replace('.', ','),
-      'Categoria':          cat,
-      'Portador':           portador,
-      'Saldo':              'N',
-      'CNPJ':               cnpj,
+    await saveExportRecord(exportData);
+    const exportChunks: any[][] = [];
+    for (let i = 0; i < finalData.length; i += CHUNK_SIZE) exportChunks.push(finalData.slice(i, i + CHUNK_SIZE));
+    if (exportChunks.length === 0) exportChunks.push(finalData);
+    const exportNeedsSplit = exportChunks.length > 1;
+    exportData.formatos.forEach(formato => {
+      exportChunks.forEach((chunk, idx) => {
+        const baseName = generateFileName({ ...exportData, ano }, formato);
+        const ext = '.' + formato.toLowerCase();
+        const fileName = exportNeedsSplit ? baseName.replace(ext, '_parte' + String(idx + 1).padStart(2, '0') + ext) : baseName;
+        try {
+          if (formato === 'CSV')       exportToCSV(chunk, fileName, exportData.erp);
+          else if (formato === 'XLSX') exportToExcel(chunk, 'xlsx', fileName);
+          else if (formato === 'XLS')  exportToExcel(chunk, 'xls', fileName);
+          else if (formato === 'OFX')  exportToOFX(chunk, fileName);
+        } catch (e) { console.error('Erro ao gerar ' + formato + ':', e); }
+      });
     });
-  });
+  };
 
-  return resultado;
-}
+  const CHUNK_SIZE = 1000;
 
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// AMAZON → Bling  (receives already-pivoted data)
-// ─────────────────────────────────────────────────────────────────────────────
-function convertAmazonToBling(
-  data: any[],
-  dataInicial: string,
-  dataFinal: string,
-  competencia: string,
-  categories: any[],
-  accounts: any[]
-): BlingRow[] {
-  const account = accounts.find(a => String(a.canal || a.channel || '').toUpperCase().trim() === 'AMAZON');
-  const portador   = account?.caixa || account?.portador || '';
-  const fornecedor = account?.fornecedor_razao_social || account?.fornecedor_nome_fantasia || account?.fornecedor || 'AMAZON';
-  const cnpj       = account?.fornecedor_cnpj || account?.cnpj || '';
-
-  const findCat = (detalhe: string) => {
-    const norm = normalizeText(detalhe);
-    let matches = categories.filter(c => {
-      const ch = String(c.channel || c.canal || '').toUpperCase().trim();
-      if (ch !== 'AMAZON') return false;
-      return normalizeText(c.channel_category || c.categoria_canal || '') === norm;
+  const handleDownloadRecord = (record: ExportRecord) => {
+    const finalData = getConvertedData(record.canal, record.erp, record.periodoInicial, record.periodoFinal, record.competencia);
+    const chunks: any[][] = [];
+    for (let i = 0; i < finalData.length; i += CHUNK_SIZE) chunks.push(finalData.slice(i, i + CHUNK_SIZE));
+    if (chunks.length === 0) chunks.push(finalData);
+    const needsSplit = chunks.length > 1;
+    record.formatos.forEach(formato => {
+      chunks.forEach((chunk, idx) => {
+        const baseName = generateFileName(record, formato);
+        const ext = '.' + formato.toLowerCase();
+        const fileName = needsSplit ? baseName.replace(ext, '_parte' + String(idx + 1).padStart(2, '0') + ext) : baseName;
+        if (formato === 'CSV')       exportToCSV(chunk, fileName, record.erp);
+        else if (formato === 'XLSX') exportToExcel(chunk, 'xlsx', fileName);
+        else if (formato === 'XLS')  exportToExcel(chunk, 'xls', fileName);
+        else if (formato === 'OFX')  exportToOFX(chunk, fileName);
+      });
     });
-    if (!matches.length) {
-      matches = categories.filter(c => {
-        const ch = String(c.channel || c.canal || '').toUpperCase().trim();
-        if (ch !== 'AMAZON') return false;
-        const key = normalizeText(c.channel_category || c.categoria_canal || '');
-        return key && norm && (key.includes(norm) || norm.includes(key));
+  };
+
+  const handleDeleteConfirm = async (password: string) => {
+    if (!recordToDelete || !user) return false;
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: user.email!, password });
+      if (error) return false;
+      const { error: deleteError } = await supabase.from('exported_files').delete().eq('id', recordToDelete).eq('user_id', user.id);
+      if (deleteError) throw deleteError;
+      setExportRecords(prev => prev.filter(r => r.id !== recordToDelete));
+      setDeleteModalOpen(false);
+      setRecordToDelete(null);
+      return true;
+    } catch { return false; }
+  };
+
+  const filteredAndSortedRecords = React.useMemo(() => {
+    let result = [...exportRecords];
+    Object.entries(columnFilters).forEach(([col, val]) => {
+      if (val) result = result.filter(r => {
+        const v = r[col as keyof ExportRecord];
+        if (Array.isArray(v)) return v.some(x => x.toLowerCase().includes(val.toLowerCase()));
+        return v?.toString().toLowerCase().includes(val.toLowerCase());
+      });
+    });
+    if (sortColumn) {
+      result.sort((a, b) => {
+        const av = a[sortColumn], bv = b[sortColumn];
+        if (av == null) return 1; if (bv == null) return -1;
+        const cmp = av instanceof Date && bv instanceof Date ? av.getTime() - bv.getTime() : av.toString().localeCompare(bv.toString());
+        return sortDirection === 'asc' ? cmp : -cmp;
       });
     }
-    const m = matches.find(c => c.erp_category || c.categoria_erp) || matches[0];
-    return { cat: m?.erp_category || m?.categoria_erp || '', pai: m?.erp_parent_category || m?.categoria_pai_erp || '' };
-  };
+    return result;
+  }, [exportRecords, columnFilters, sortColumn, sortDirection]);
 
-  const parseAmazonDate = (v: any): Date | null => {
-    if (!v) return null;
-    if (v instanceof Date) return v;
-    const s = String(v);
-    const mesesPT: Record<string, string> = {
-      'jan': '01', 'fev': '02', 'mar': '03', 'abr': '04',
-      'mai': '05', 'jun': '06', 'jul': '07', 'ago': '08',
-      'set': '09', 'out': '10', 'nov': '11', 'dez': '12',
-    };
-    const m = s.match(/(\d{1,2})\s+de\s+(\w+)\.?\s+de\s+(\d{4})/i);
-    if (m) {
-      const day = m[1].padStart(2, '0');
-      const mon = mesesPT[m[2].toLowerCase().replace('.', '')] || '01';
-      return new Date(`${m[3]}-${mon}-${day}T12:00:00`);
-    }
-    const d = new Date(s.replace(/GMT[+-]?\d*/g, '').trim());
-    return isNaN(d.getTime()) ? null : d;
-  };
+  return (
+    <>
+      <div className="h-full flex flex-col">
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Exportação de Dados</h2>
+              <span className="text-xs text-gray-400 dark:text-gray-500">{filteredAndSortedRecords.length} registro(s)</span>
+            </div>
+            <button onClick={() => setExportModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <Download className="w-4 h-4" /> Download Arquivo
+            </button>
+          </div>
+        </div>
 
-  const parseNum = (v: any): number => {
-    if (typeof v === 'number') return v;
-    const s = String(v || '0').replace(/\./g, '').replace(',', '.');
-    return parseFloat(s) || 0;
-  };
+        <DataTable
+          columns={[
+            { key: 'canal', label: 'Canal', render: (v: string) => (
+              <span className={'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + (v === 'AMAZON' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400' : v === 'MERCADO LIVRE' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' : v === 'MAGAZINE LUIZA' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' : v === 'SHEIN' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400' : v === 'SHOPEE' ? 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300')}>{v}</span>
+            )},
+            { key: 'erp', label: 'Tipo', render: (v: string) => (
+              <span className={'inline-flex px-2 py-0.5 rounded text-xs font-medium ' + (v === 'BLING' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300')}>{v}</span>
+            )},
+            { key: 'ano', label: 'Ano', width: 'compact' as const },
+            { key: 'competencia', label: 'Competência', width: 'compact' as const },
+            { key: 'periodoInicial', label: 'Período Inicial', width: 'compact' as const, render: (v: string) => v ? formatDateToBR(v) : '-' },
+            { key: 'periodoFinal', label: 'Período Final', width: 'compact' as const, render: (v: string) => v ? formatDateToBR(v) : '-' },
+            { key: 'arquivo', label: 'Arquivo', width: 'wrap' as const },
+            { key: 'formatos', label: 'Formato', render: (v: string[]) => v?.length ? <FormatBadge value={v[0]} /> : '-' },
+            { key: 'dataDownload', label: 'Data Download', width: 'compact' as const, render: (v: Date) => v ? formatDate(v) : '-' },
+          ]}
+          data={filteredAndSortedRecords}
+          rowKey={row => row.id}
+          emptyIcon={<Download className="w-12 h-12 text-gray-400" />}
+          emptyText="Nenhum arquivo exportado"
+          emptySubText="Clique em Download Arquivo para gerar uma exportação"
+          actions={record => (
+            <div className="flex items-center gap-2">
+              <button onClick={() => handleDownloadRecord(record)} className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300" title="Download"><Download className="w-4 h-4" /></button>
+              <button onClick={() => { setRecordToDelete(record.id); setDeleteModalOpen(true); }} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Excluir"><Trash2 className="w-4 h-4" /></button>
+            </div>
+          )}
+        />
+      </div>
 
-  const resultado: BlingRow[] = [];
-
-  data.forEach((row: any) => {
-    const dataVal  = row['data/hora'] || '';
-    const pedido   = row['id do pedido'] || '';
-    const detalhe  = row['Categoria'] || '';
-    const rawValor = row['Valor da tarifa'];
-
-    if (!dataVal || !detalhe) return;
-    if (detalhe.toLowerCase() === 'vendas do produto') return;
-    const valor = parseNum(rawValor);
-    if (valor === 0) return;
-
-    const dataLinha = parseAmazonDate(dataVal);
-    if (!dataLinha) return;
-
-    const iso = dataLinha.toISOString().split('T')[0];
-    if (dataInicial && iso < dataInicial) return;
-    if (dataFinal   && iso > dataFinal)   return;
-
-    const dataFormatada   = dataLinha.toLocaleDateString('pt-BR');
-    const mm              = String(dataLinha.getMonth() + 1).padStart(2, '0');
-    const yyyy            = String(dataLinha.getFullYear());
-    const competenciaMes  = mm + '/' + yyyy;          // MM/YYYY — vai nas obs
-    const lineCompetencia = dataFormatada;             // DD/MM/YYYY — vai na coluna
-    const { cat, pai }    = findCat(detalhe);
-
-    const obs = [
-      pedido ? 'AMAZON: [CLIENTE]' : 'AMAZON',
-      pedido ? 'PEDIDO DE VENDA: XXXXXX/' + pedido + ' > NF: XX/XXXXXX > ' + detalhe.toUpperCase() : detalhe.toUpperCase(),
-      pai && cat ? pai.toUpperCase() + ' > ' + cat.toUpperCase() : (cat || pai || '').toUpperCase(),
-      dataFormatada,
-      competenciaMes,
-    ].filter(Boolean).join(' | ');
-
-    resultado.push({
-      'ID':                 '',
-      'Data':               dataFormatada,
-      'Competencia':        lineCompetencia,
-      'Cliente/Fornecedor': fornecedor,
-      'Observacoes':        obs,
-      'Valor':              String(valor.toFixed(2)).replace('.', ','),
-      'Categoria':          cat,
-      'Portador':           portador,
-      'Saldo':              'N',
-      'CNPJ':               cnpj,
-    });
-  });
-
-  return resultado;
-}
-
-export function convertToBling(
-  canal: string,
-  data: any[],
-  dataInicial: string,
-  dataFinal: string,
-  competencia: string,
-  categories: any[],
-  accounts: any[]
-): BlingRow[] {
-  if (canal === 'MERCADO LIVRE') return convertMLToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
-  if (canal === 'NUVEM PAGO')   return convertNuvemPagoToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
-  if (canal === 'SHOPEE')         return convertShopeeToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
-  if (canal === 'AMAZON')         return convertAmazonToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
-  return [];
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TINY (Olist) converters
-// Format: Data | Categoria | Histórico | Tipo | Valor | ID | Contato | CNPJ | Marcadores | Conta de destino | Nº documento
-// ─────────────────────────────────────────────────────────────────────────────
-
-function buildOlistObs(canal: string, detalhe: string, numVenda: string, cliente: string, categoria: string, competencia: string): string {
-  return [
-    canal.toUpperCase(),
-    [detalhe, numVenda, cliente].filter(Boolean).join(' > ').toUpperCase(),
-    categoria.toUpperCase(),
-    competencia.toUpperCase(),
-  ].filter(Boolean).join(' | ');
-}
-
-function convertMLToOlist(data: any[], dataInicial: string, dataFinal: string, competencia: string, categories: any[], accounts: any[]): OlistRow[] {
-  const account = accounts.find(a => String(a.canal || a.channel || '').toUpperCase().trim() === 'MERCADO LIVRE');
-  const portador = account?.caixa || account?.portador || '';
-  const contato  = account?.fornecedor_razao_social || account?.fornecedor || 'MERCADO LIVRE';
-  const cnpj     = account?.fornecedor_cnpj || account?.cnpj || '';
-  const findCat = (detalhe: string) => {
-    const norm = normalizeText(detalhe);
-    const m = categories.find(c => String(c.channel||c.canal||'').toUpperCase().trim() === 'MERCADO LIVRE' && normalizeText(c.channel_category||c.categoria_canal||'') === norm);
-    return { cat: m?.erp_category||m?.categoria_erp||'', pai: m?.erp_parent_category||m?.categoria_pai_erp||'' };
-  };
-  const resultado: OlistRow[] = [];
-  data.forEach((row: any) => {
-    const dataVal = row['Data'] || row['Data da tarifa'] || '';
-    const detalhe = row['Detalhe'] || '';
-    const valor   = row['Valor da tarifa'];
-    const numVenda = row['Número de referência da venda'] || row['Número de venda'] || '';
-    const cliente  = row['Comprador nickname'] || row['Nome comprador'] || '';
-    if (!dataVal || !detalhe || valor === undefined) return;
-    const dataObj = parseDateBR(dataVal);
-    if (!dataObj) return;
-    const iso = dataObj.toISOString().split('T')[0];
-    if (dataInicial && iso < dataInicial) return;
-    if (dataFinal && iso > dataFinal) return;
-    const dataFormatada = dataObj.toLocaleDateString('pt-BR');
-    const { cat } = findCat(detalhe);
-    const obs = buildOlistObs('MERCADO LIVRE', detalhe, numVenda, cliente, cat, competencia);
-    resultado.push({ Data: dataFormatada, Categoria: cat, Historico: obs, Tipo: '', Valor: String(Number(valor) * -1), ID: '', Contato: contato, CNPJ: cnpj, Marcadores: '', 'Conta de destino': portador, 'Nr documento': '' });
-  });
-  return resultado;
-}
-
-function convertShopeeToOlist(data: any[], dataInicial: string, dataFinal: string, competencia: string, categories: any[], accounts: any[]): OlistRow[] {
-  const account = accounts.find(a => String(a.canal || a.channel || '').toUpperCase().trim() === 'SHOPEE');
-  const portador = account?.caixa || account?.portador || '';
-  const contato  = account?.fornecedor_razao_social || account?.fornecedor || 'SHOPEE';
-  const cnpj     = account?.fornecedor_cnpj || account?.cnpj || '';
-  const POSITIVE = new Set(['Taxa de envio pagas pelo comprador']);
-  const PIVOT_COLS = ['Taxa de Envio Reversa','Taxa de transação','Taxa de comissão líquida','Taxa de comissão','Taxa de serviço líquida','Taxa de serviço','Desconto de Frete Aproximado','Desconto do vendedor','Taxa de envio pagas pelo comprador'];
-  const findCat = (col: string) => {
-    const norm = normalizeText(col);
-    const m = categories.find(c => String(c.channel||c.canal||'').toUpperCase().trim() === 'SHOPEE' && normalizeText(c.channel_category||c.categoria_canal||'') === norm);
-    return m?.erp_category||m?.categoria_erp||'';
-  };
-  const resultado: OlistRow[] = [];
-  data.forEach((row: any) => {
-    const status = String(row['Status do pedido']||'').toLowerCase();
-    if (status.includes('cancelado')) return;
-    const dateRaw = String(row['Data de criação do pedido'] || row['Hora do pagamento do pedido'] || '');
-    const dataFormatada = dateRaw ? dateRaw.split(' ')[0].split('-').reverse().join('/') : '';
-    if (!dataFormatada) return;
-    PIVOT_COLS.forEach(col => {
-      const rawCell = String(row[col]||'0');
-      const v = parseFloat(rawCell.replace(',','.')) || 0;
-      if (v === 0) return;
-      const valor = POSITIVE.has(col) ? Math.abs(v) : -Math.abs(v);
-      const cat = findCat(col);
-      const obs = buildOlistObs('SHOPEE', col, row['ID do pedido']||'', '', cat, competencia);
-      resultado.push({ Data: dataFormatada, Categoria: cat, Historico: obs, Tipo: '', Valor: String(valor), ID: '', Contato: contato, CNPJ: cnpj, Marcadores: '', 'Conta de destino': portador, 'Nr documento': '' });
-    });
-  });
-  return resultado;
-}
-
-function convertAmazonToOlist(data: any[], dataInicial: string, dataFinal: string, competencia: string, categories: any[], accounts: any[]): OlistRow[] {
-  const account = accounts.find(a => String(a.canal || a.channel || '').toUpperCase().trim() === 'AMAZON');
-  const portador = account?.caixa || account?.portador || '';
-  const contato  = account?.fornecedor_razao_social || account?.fornecedor || 'AMAZON';
-  const cnpj     = account?.fornecedor_cnpj || account?.cnpj || '';
-  const mesesPT: Record<string,string> = {'jan':'01','fev':'02','mar':'03','abr':'04','mai':'05','jun':'06','jul':'07','ago':'08','set':'09','out':'10','nov':'11','dez':'12'};
-  const parseAmazonDate = (v: any) => {
-    const s = String(v||'');
-    const m = s.match(/(\d{1,2})\s+de\s+(\w+)\.?\s+de\s+(\d{4})/i);
-    if (!m) return null;
-    return new Date(`${m[3]}-${mesesPT[m[2].toLowerCase().replace('.','')]||'01'}-${m[1].padStart(2,'0')}T12:00:00`);
-  };
-  const parseNum = (v: any) => { if (typeof v === 'number') return v; return parseFloat(String(v||'0').replace(/\./g,'').replace(',','.')) || 0; };
-  const findCat = (detalhe: string) => {
-    const norm = normalizeText(detalhe);
-    const m = categories.find(c => String(c.channel||c.canal||'').toUpperCase().trim() === 'AMAZON' && normalizeText(c.channel_category||c.categoria_canal||'') === norm);
-    return m?.erp_category||m?.categoria_erp||'';
-  };
-  const resultado: OlistRow[] = [];
-  data.forEach((row: any) => {
-    const dataVal = row['data/hora']||'';
-    const detalhe = row['Categoria']||'';
-    const rawValor = row['Valor da tarifa'];
-    if (!dataVal || !detalhe || detalhe.toLowerCase() === 'vendas do produto') return;
-    const valor = parseNum(rawValor);
-    if (valor === 0) return;
-    const dataLinha = parseAmazonDate(dataVal);
-    if (!dataLinha) return;
-    const iso = dataLinha.toISOString().split('T')[0];
-    if (dataInicial && iso < dataInicial) return;
-    if (dataFinal && iso > dataFinal) return;
-    const dataFormatada = dataLinha.toLocaleDateString('pt-BR');
-    const cat = findCat(detalhe);
-    const obs = buildOlistObs('AMAZON', detalhe, row['id do pedido']||'', '', cat, competencia);
-    resultado.push({ Data: dataFormatada, Categoria: cat, Historico: obs, Tipo: '', Valor: String(valor), ID: '', Contato: contato, CNPJ: cnpj, Marcadores: '', 'Conta de destino': portador, 'Nr documento': '' });
-  });
-  return resultado;
-}
-
-export function convertToOlist(canal: string, data: any[], dataInicial: string, dataFinal: string, competencia: string, categories: any[], accounts: any[]): OlistRow[] {
-  if (canal === 'MERCADO LIVRE') return convertMLToOlist(data, dataInicial, dataFinal, competencia, categories, accounts);
-  if (canal === 'SHOPEE')        return convertShopeeToOlist(data, dataInicial, dataFinal, competencia, categories, accounts);
-  if (canal === 'AMAZON')        return convertAmazonToOlist(data, dataInicial, dataFinal, competencia, categories, accounts);
-  return [];
-}
+      <ExportModal isOpen={exportModalOpen} canais={canais} onClose={() => setExportModalOpen(false)} onExport={handleExport} />
+      <DeleteConfirmModal isOpen={deleteModalOpen} onClose={() => setDeleteModalOpen(false)} onConfirm={handleDeleteConfirm} />
+    </>
+  );
+};
