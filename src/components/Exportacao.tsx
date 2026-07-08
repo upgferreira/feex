@@ -9,6 +9,7 @@ import { useFileData } from '../hooks/useFileData';
 import { useAuth } from '../hooks/useAuth';
 import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
+import JSZip from 'jszip';
 import { convertToBling, convertToOlist, formatDateToBR, formatValueToBR, cleanText, BlingRow, OlistRow } from '../utils/converters';
 
 export const Exportacao: React.FC = () => {
@@ -277,25 +278,51 @@ export const Exportacao: React.FC = () => {
       return canalFmt + '_FATURAMENTO_' + yr + '_' + comp + '-' + yr + '_' + formatDateForFileName(dataInicial) + '_' + formatDateForFileName(dataFinal) + '_bling-modelo-registro-caixa.' + formato.toLowerCase();
     }
     if (erp === 'OLIST') {
-      return canalFmt + '_FATURAMENTO_' + yr + '_' + comp + '-' + yr + '_' + formatDateForFileName(dataInicial) + '_' + formatDateForFileName(dataFinal) + '_olist.' + formato.toLowerCase();
+      return canalFmt + '_FATURAMENTO_' + yr + '_' + comp + '-' + yr + '_' + formatDateForFileName(dataInicial) + '_' + formatDateForFileName(dataFinal) + '_olist.zip';
     }
     return 'dados_exportacao_' + canal + '_' + new Date().toISOString().split('T')[0] + '.' + formato.toLowerCase();
   };
 
+  const OLIST_KEYS = ['Data','Categoria','Historico','Tipo','Valor','ID','Contato','CNPJ','Marcadores','Conta de destino','Nr documento'];
+  const BLING_KEYS = ['ID','Data','Competencia','Cliente/Fornecedor','Observacoes','Valor','Categoria','Portador','Saldo','CNPJ'];
+  const SEP = ';';
+
+  const escapeCSV = (v: any) => {
+    const s = v == null ? '' : v.toString();
+    return s.includes(SEP) || s.includes('\n') || s.includes('"') ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+
+  const buildCSVContent = (data: any[], erpType?: string): string => {
+    const headers = erpType === 'OLIST' ? OLIST_KEYS : erpType === 'BLING' ? BLING_KEYS : Object.keys(data[0] || {});
+    return [headers.join(SEP), ...data.map(row => headers.map(h => escapeCSV(row[h])).join(SEP))].join('\n');
+  };
+
   const exportToCSV = (data: any[], fileName?: string, erpType?: string) => {
     if (!data.length) return;
-    const SEP = ';'; // semicolon for Excel PT-BR and Bling compatibility
-    const olistKeys = ['Data','Categoria','Historico','Tipo','Valor','ID','Contato','CNPJ','Marcadores','Conta de destino','Nr documento'];
-    const blingKeys = ['ID','Data','Competencia','Cliente/Fornecedor','Observacoes','Valor','Categoria','Portador','Saldo','CNPJ'];
-    const headers = erpType === 'OLIST' ? olistKeys : erpType === 'BLING' ? blingKeys : Object.keys(data[0]);
-    const escape = (v: any) => {
-      const s = v == null ? '' : v.toString();
-      return s.includes(SEP) || s.includes('\n') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const csv = [headers.join(SEP), ...data.map(row => headers.map(h => escape(row[h])).join(SEP))].join('\n');
+    const csv = buildCSVContent(data, erpType);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
-    a.download = fileName || `exportacao_${Date.now()}.csv`;
+    a.download = fileName || 'exportacao_' + Date.now() + '.csv';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 100);
+  };
+
+  const exportToOlistZip = async (data: any[], zipName: string) => {
+    if (!data.length) return;
+    const zip = new JSZip();
+    const chunks: any[][] = [];
+    for (let i = 0; i < data.length; i += CHUNK_SIZE) chunks.push(data.slice(i, i + CHUNK_SIZE));
+    if (chunks.length === 0) chunks.push(data);
+    chunks.forEach((chunk, idx) => {
+      const partName = chunks.length > 1
+        ? 'parte' + String(idx + 1).padStart(2, '0') + '.csv'
+        : 'dados.csv';
+      zip.file(partName, '\uFEFF' + buildCSVContent(chunk, 'OLIST'));
+    });
+    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = zipName;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 100);
   };
@@ -469,29 +496,39 @@ export const Exportacao: React.FC = () => {
     }
 
     await saveExportRecord(exportData);
-    const exportChunks: any[][] = [];
-    for (let i = 0; i < finalData.length; i += CHUNK_SIZE) exportChunks.push(finalData.slice(i, i + CHUNK_SIZE));
-    if (exportChunks.length === 0) exportChunks.push(finalData);
-    const exportNeedsSplit = exportChunks.length > 1;
-    exportData.formatos.forEach(formato => {
-      exportChunks.forEach((chunk, idx) => {
-        const baseName = generateFileName({ ...exportData, ano }, formato);
-        const ext = '.' + formato.toLowerCase();
-        const fileName = exportNeedsSplit ? baseName.replace(ext, '_parte' + String(idx + 1).padStart(2, '0') + ext) : baseName;
-        try {
-          if (formato === 'CSV')       exportToCSV(chunk, fileName, exportData.erp);
-          else if (formato === 'XLSX') exportToExcel(chunk, 'xlsx', fileName);
-          else if (formato === 'XLS')  exportToExcel(chunk, 'xls', fileName);
-          else if (formato === 'OFX')  exportToOFX(chunk, fileName);
-        } catch (e) { console.error('Erro ao gerar ' + formato + ':', e); }
+    if (exportData.erp === 'OLIST') {
+      const zipName = generateFileName({ ...exportData, ano }, 'ZIP');
+      exportToOlistZip(finalData, zipName);
+    } else {
+      const exportChunks: any[][] = [];
+      for (let i = 0; i < finalData.length; i += CHUNK_SIZE) exportChunks.push(finalData.slice(i, i + CHUNK_SIZE));
+      if (exportChunks.length === 0) exportChunks.push(finalData);
+      const exportNeedsSplit = exportChunks.length > 1;
+      exportData.formatos.forEach(formato => {
+        exportChunks.forEach((chunk, idx) => {
+          const baseName = generateFileName({ ...exportData, ano }, formato);
+          const ext = '.' + formato.toLowerCase();
+          const fileName = exportNeedsSplit ? baseName.replace(ext, '_parte' + String(idx + 1).padStart(2, '0') + ext) : baseName;
+          try {
+            if (formato === 'CSV')       exportToCSV(chunk, fileName, exportData.erp);
+            else if (formato === 'XLSX') exportToExcel(chunk, 'xlsx', fileName);
+            else if (formato === 'XLS')  exportToExcel(chunk, 'xls', fileName);
+            else if (formato === 'OFX')  exportToOFX(chunk, fileName);
+          } catch (e) { console.error('Erro ao gerar ' + formato + ':', e); }
+        });
       });
-    });
+    }
   };
 
   const CHUNK_SIZE = 1000;
 
   const handleDownloadRecord = (record: ExportRecord) => {
     const finalData = getConvertedData(record.canal, record.erp, record.periodoInicial, record.periodoFinal, record.competencia);
+    if (record.erp === 'OLIST') {
+      const zipName = generateFileName(record, 'ZIP');
+      exportToOlistZip(finalData, zipName);
+      return;
+    }
     const chunks: any[][] = [];
     for (let i = 0; i < finalData.length; i += CHUNK_SIZE) chunks.push(finalData.slice(i, i + CHUNK_SIZE));
     if (chunks.length === 0) chunks.push(finalData);
