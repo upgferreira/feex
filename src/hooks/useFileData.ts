@@ -44,15 +44,16 @@ export const useFileData = () => {
   const loadFiles = async () => {
     if (!user) return;
     try {
-      const { data, error } = await supabase
+      // 1. Load metadata only (no file_data) — avoids large response timeouts
+      const { data: meta, error: metaErr } = await supabase
         .from('imported_files')
-        .select('id, channel, type, year, competence, start_period, end_period, file_name, source_file_name, size, upload_date, file_data, file_headers, user_id')
+        .select('id, channel, type, year, competence, start_period, end_period, file_name, source_file_name, size, upload_date, file_headers, user_id')
         .eq('user_id', user.id)
         .order('upload_date', { ascending: false });
 
-      if (error) throw error;
+      if (metaErr) throw metaErr;
 
-      const formattedFiles: ImportedFile[] = data.map(file => ({
+      const formattedFiles: ImportedFile[] = meta.map(file => ({
         id: file.id,
         canal: file.channel,
         tipo: file.type,
@@ -64,14 +65,33 @@ export const useFileData = () => {
         originalName: file.source_file_name,
         size: file.size,
         dataUpload: new Date(file.upload_date),
-        data: file.file_data,
-        columns: file.file_headers,
+        data: [],
+        columns: file.file_headers || [],
       }));
 
-      // Save to cache
+      // Show list immediately
       _cache = formattedFiles;
       _cacheUserId = user.id;
-      setFiles(formattedFiles);
+      setFiles([...formattedFiles]);
+      notifyListeners();
+
+      // 2. Load file_data for each file individually (avoids 37MB+ responses)
+      for (const f of formattedFiles) {
+        try {
+          const { data: fd, error: fdErr } = await supabase
+            .from('imported_files')
+            .select('id, file_data, file_headers')
+            .eq('id', f.id)
+            .single();
+          if (fdErr || !fd) continue;
+          f.data = fd.file_data || [];
+          f.columns = fd.file_headers || f.columns;
+        } catch { continue; }
+      }
+
+      // Update cache with full data
+      _cache = [...formattedFiles];
+      setFiles([...formattedFiles]);
       notifyListeners();
     } catch (err) {
       console.error('Error loading files:', err);
