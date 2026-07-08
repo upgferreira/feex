@@ -287,7 +287,7 @@ export const Exportacao: React.FC = () => {
     const SEP = ';'; // semicolon for Excel PT-BR and Bling compatibility
     const olistKeys = ['Data','Categoria','Historico','Tipo','Valor','ID','Contato','CNPJ','Marcadores','Conta de destino','Nr documento'];
     const blingKeys = ['ID','Data','Competencia','Cliente/Fornecedor','Observacoes','Valor','Categoria','Portador','Saldo','CNPJ'];
-    const autoKeys = Object.keys(data[0]);
+    const headers = erpType === 'OLIST' ? olistKeys : erpType === 'BLING' ? blingKeys : Object.keys(data[0]);
     const escape = (v: any) => {
       const s = v == null ? '' : v.toString();
       return s.includes(SEP) || s.includes('\n') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
@@ -469,14 +469,22 @@ export const Exportacao: React.FC = () => {
     }
 
     await saveExportRecord(exportData);
+    const exportChunks: any[][] = [];
+    for (let i = 0; i < finalData.length; i += CHUNK_SIZE) exportChunks.push(finalData.slice(i, i + CHUNK_SIZE));
+    if (exportChunks.length === 0) exportChunks.push(finalData);
+    const exportNeedsSplit = exportChunks.length > 1;
     exportData.formatos.forEach(formato => {
-      const fileName = generateFileName({ ...exportData, ano }, formato);
-      try {
-        if (formato === 'CSV')       exportToCSV(finalData, fileName, record.erp);
-        else if (formato === 'XLSX') exportToExcel(finalData, 'xlsx', fileName);
-        else if (formato === 'XLS')  exportToExcel(finalData, 'xls', fileName);
-        else if (formato === 'OFX')  exportToOFX(finalData, fileName);
-      } catch (e) { console.error(`Erro ao gerar ${formato}:`, e); }
+      exportChunks.forEach((chunk, idx) => {
+        const baseName = generateFileName({ ...exportData, ano }, formato);
+        const ext = '.' + formato.toLowerCase();
+        const fileName = exportNeedsSplit ? baseName.replace(ext, '_parte' + String(idx + 1).padStart(2, '0') + ext) : baseName;
+        try {
+          if (formato === 'CSV')       exportToCSV(chunk, fileName, exportData.erp);
+          else if (formato === 'XLSX') exportToExcel(chunk, 'xlsx', fileName);
+          else if (formato === 'XLS')  exportToExcel(chunk, 'xls', fileName);
+          else if (formato === 'OFX')  exportToOFX(chunk, fileName);
+        } catch (e) { console.error('Erro ao gerar ' + formato + ':', e); }
+      });
     });
   };
 
