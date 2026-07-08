@@ -9,7 +9,6 @@ import { useFileData } from '../hooks/useFileData';
 import { useAuth } from '../hooks/useAuth';
 import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
-import JSZip from 'jszip';
 import { convertToBling, convertToOlist, formatDateToBR, formatValueToBR, cleanText, BlingRow, OlistRow } from '../utils/converters';
 
 export const Exportacao: React.FC = () => {
@@ -307,19 +306,80 @@ export const Exportacao: React.FC = () => {
     setTimeout(() => URL.revokeObjectURL(a.href), 100);
   };
 
-  const exportToOlistZip = async (data: any[], zipName: string) => {
+  const makeCrc32Table = () => {
+    const t = new Uint32Array(256);
+    for (let i = 0; i < 256; i++) {
+      let c = i;
+      for (let j = 0; j < 8; j++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[i] = c;
+    }
+    return t;
+  };
+  const CRC32_TABLE = makeCrc32Table();
+  const crc32 = (data: Uint8Array) => {
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < data.length; i++) crc = (crc >>> 8) ^ CRC32_TABLE[(crc ^ data[i]) & 0xFF];
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  };
+
+  const createZipBlob = (files: { name: string; content: string }[]): Blob => {
+    const enc = new TextEncoder();
+    const entries: { nameBytes: Uint8Array; dataBytes: Uint8Array; crc: number; offset: number }[] = [];
+    let offset = 0;
+    const localParts: Uint8Array[] = [];
+    for (const f of files) {
+      const nameBytes = enc.encode(f.name);
+      const dataBytes = enc.encode(f.content);
+      const crc = crc32(dataBytes);
+      const hdr = new Uint8Array(30 + nameBytes.length);
+      const dv = new DataView(hdr.buffer);
+      dv.setUint32(0, 0x04034b50, true);
+      dv.setUint16(4, 20, true);
+      dv.setUint16(8, 0, true);
+      dv.setUint32(14, crc, true);
+      dv.setUint32(18, dataBytes.length, true);
+      dv.setUint32(22, dataBytes.length, true);
+      dv.setUint16(26, nameBytes.length, true);
+      hdr.set(nameBytes, 30);
+      localParts.push(hdr, dataBytes);
+      entries.push({ nameBytes, dataBytes, crc, offset });
+      offset += 30 + nameBytes.length + dataBytes.length;
+    }
+    const centralParts: Uint8Array[] = [];
+    for (const e of entries) {
+      const c = new Uint8Array(46 + e.nameBytes.length);
+      const dv = new DataView(c.buffer);
+      dv.setUint32(0, 0x02014b50, true);
+      dv.setUint16(4, 20, true); dv.setUint16(6, 20, true);
+      dv.setUint32(16, e.crc, true);
+      dv.setUint32(20, e.dataBytes.length, true);
+      dv.setUint32(24, e.dataBytes.length, true);
+      dv.setUint16(28, e.nameBytes.length, true);
+      dv.setUint32(42, e.offset, true);
+      c.set(e.nameBytes, 46);
+      centralParts.push(c);
+    }
+    const cdSize = centralParts.reduce((a, b) => a + b.length, 0);
+    const eocd = new Uint8Array(22);
+    const edv = new DataView(eocd.buffer);
+    edv.setUint32(0, 0x06054b50, true);
+    edv.setUint16(8, entries.length, true);
+    edv.setUint16(10, entries.length, true);
+    edv.setUint32(12, cdSize, true);
+    edv.setUint32(16, offset, true);
+    return new Blob([...localParts, ...centralParts, eocd], { type: 'application/zip' });
+  };
+
+  const exportToOlistZip = (data: any[], zipName: string) => {
     if (!data.length) return;
-    const zip = new JSZip();
     const chunks: any[][] = [];
     for (let i = 0; i < data.length; i += CHUNK_SIZE) chunks.push(data.slice(i, i + CHUNK_SIZE));
     if (chunks.length === 0) chunks.push(data);
-    chunks.forEach((chunk, idx) => {
-      const partName = chunks.length > 1
-        ? 'parte' + String(idx + 1).padStart(2, '0') + '.csv'
-        : 'dados.csv';
-      zip.file(partName, '\uFEFF' + buildCSVContent(chunk, 'OLIST'));
-    });
-    const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    const files = chunks.map((chunk, idx) => ({
+      name: chunks.length > 1 ? 'parte' + String(idx + 1).padStart(2, '0') + '.csv' : 'dados.csv',
+      content: '\uFEFF' + buildCSVContent(chunk, 'OLIST'),
+    }));
+    const blob = createZipBlob(files);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = zipName;
