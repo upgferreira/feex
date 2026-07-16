@@ -494,6 +494,137 @@ function convertAmazonToBling(
   return resultado;
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAGAZINE LUIZA → Bling
+// Receives pivoted data: Data do Pedido | Número do pedido | Nome do cliente | Categoria | Valor | Relatório
+// ─────────────────────────────────────────────────────────────────────────────
+function convertMagaluToBling(data: any[], dataInicial: string, dataFinal: string, competencia: string, categories: any[], accounts: any[]): BlingRow[] {
+  const account = accounts.find(a => String(a.canal || a.channel || '').toUpperCase().trim() === 'MAGAZINE LUIZA');
+  const portador   = account?.caixa || account?.portador || '';
+  const fornecedor = account?.fornecedor_razao_social || account?.fornecedor || 'MAGAZINE LUIZA';
+  const cnpj       = account?.fornecedor_cnpj || account?.cnpj || '';
+
+  const findCat = (detalhe: string) => {
+    const norm = normalizeText(detalhe);
+    const matches = categories.filter(c => {
+      const ch = String(c.channel || c.canal || '').toUpperCase().trim();
+      return ch === 'MAGAZINE LUIZA' && normalizeText(c.channel_category || c.categoria_canal || '') === norm;
+    });
+    const m = matches[0];
+    return { cat: m?.erp_category || m?.categoria_erp || '', pai: m?.erp_parent_category || m?.categoria_pai_erp || '' };
+  };
+
+  const parseNum = (v: any) => {
+    if (typeof v === 'number') return v;
+    return parseFloat(String(v || '0').replace(',', '.')) || 0;
+  };
+
+  const resultado: BlingRow[] = [];
+
+  data.forEach((row: any) => {
+    const dateRaw = row['Data do Pedido'];
+    const detalhe = row['Categoria'] || '';
+    const valor   = parseNum(row['Valor']);
+    const pedido  = row['Número do pedido'] || row['Numero do pedido'] || '';
+    const cliente = row['Nome do cliente'] || '';
+
+    if (!dateRaw || !detalhe || valor === 0) return;
+
+    const dataObj = dateRaw instanceof Date ? dateRaw : new Date(dateRaw);
+    if (isNaN(dataObj.getTime())) return;
+
+    const iso = dataObj.toISOString().split('T')[0];
+    if (dataInicial && iso < dataInicial) return;
+    if (dataFinal   && iso > dataFinal)   return;
+
+    const dataFormatada = dataObj.toLocaleDateString('pt-BR');
+    const mm = String(dataObj.getMonth() + 1).padStart(2, '0');
+    const yyyy = String(dataObj.getFullYear());
+    const compMes = mm + '/' + yyyy;
+
+    const { cat, pai } = findCat(detalhe);
+
+    const obs = [
+      cliente ? 'MAGAZINE LUIZA: ' + cliente.toUpperCase() : 'MAGAZINE LUIZA',
+      pedido ? 'PEDIDO: ' + pedido + ' > ' + detalhe.toUpperCase() : detalhe.toUpperCase(),
+      pai && cat ? pai.toUpperCase() + ' > ' + cat.toUpperCase() : (cat || pai || '').toUpperCase(),
+      dataFormatada,
+      compMes,
+    ].filter(Boolean).join(' | ');
+
+    resultado.push({
+      'ID':                 '',
+      'Data':               dataFormatada,
+      'Competencia':        dataFormatada,
+      'Cliente/Fornecedor': fornecedor,
+      'Observacoes':        obs,
+      'Valor':              String(valor.toFixed(2)).replace('.', ','),
+      'Categoria':          cat,
+      'Portador':           portador,
+      'Saldo':              'N',
+      'CNPJ':               cnpj,
+    });
+  });
+
+  return resultado;
+}
+
+function convertMagaluToOlist(data: any[], dataInicial: string, dataFinal: string, competencia: string, categories: any[], accounts: any[]): OlistRow[] {
+  const account = accounts.find(a => String(a.canal || a.channel || '').toUpperCase().trim() === 'MAGAZINE LUIZA');
+  const portador   = account?.caixa || account?.portador || '';
+  const contato    = account?.fornecedor_razao_social || account?.fornecedor || 'MAGAZINE LUIZA';
+  const cnpj       = account?.fornecedor_cnpj || account?.cnpj || '';
+
+  const findCat = (detalhe: string) => {
+    const norm = normalizeText(detalhe);
+    const matches = categories.filter(c => {
+      const ch = String(c.channel || c.canal || '').toUpperCase().trim();
+      return ch === 'MAGAZINE LUIZA' && normalizeText(c.channel_category || c.categoria_canal || '') === norm;
+    });
+    return matches[0]?.erp_category || matches[0]?.categoria_erp || '';
+  };
+
+  const parseNum = (v: any) => {
+    if (typeof v === 'number') return v;
+    return parseFloat(String(v || '0').replace(',', '.')) || 0;
+  };
+
+  const resultado: OlistRow[] = [];
+
+  data.forEach((row: any) => {
+    const dateRaw = row['Data do Pedido'];
+    const detalhe = row['Categoria'] || '';
+    const valor   = parseNum(row['Valor']);
+    const pedido  = row['Número do pedido'] || row['Numero do pedido'] || '';
+    const cliente = row['Nome do cliente'] || '';
+
+    if (!dateRaw || !detalhe || valor === 0) return;
+
+    const dataObj = dateRaw instanceof Date ? dateRaw : new Date(dateRaw);
+    if (isNaN(dataObj.getTime())) return;
+
+    const iso = dataObj.toISOString().split('T')[0];
+    if (dataInicial && iso < dataInicial) return;
+    if (dataFinal   && iso > dataFinal)   return;
+
+    const dataFormatada = dataObj.toLocaleDateString('pt-BR');
+    const mm = String(dataObj.getMonth() + 1).padStart(2, '0');
+    const compMes = mm + '/' + String(dataObj.getFullYear());
+
+    const cat = findCat(detalhe);
+    const obs = buildOlistObs('MAGAZINE LUIZA', detalhe, pedido, cliente, cat, compMes);
+
+    resultado.push({
+      Data: dataFormatada, Categoria: cat, Historico: obs, Tipo: '',
+      Valor: String(valor), ID: '', Contato: contato, CNPJ: cnpj,
+      Marcadores: '', 'Conta de destino': portador, 'Nr documento': '',
+    });
+  });
+
+  return resultado;
+}
+
 export function convertToBling(
   canal: string,
   data: any[],
@@ -506,7 +637,9 @@ export function convertToBling(
   if (canal === 'MERCADO LIVRE') return convertMLToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
   if (canal === 'NUVEM PAGO')   return convertNuvemPagoToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
   if (canal === 'SHOPEE')         return convertShopeeToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
+  if (canal === 'MAGAZINE LUIZA') return convertMagaluToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
   if (canal === 'AMAZON')         return convertAmazonToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
+  if (canal === 'MAGAZINE LUIZA')  return convertMagaluToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
   return [];
 }
 
@@ -626,9 +759,143 @@ function convertAmazonToOlist(data: any[], dataInicial: string, dataFinal: strin
   return resultado;
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAGAZINE LUIZA → Bling (receives pivoted data)
+// Pivoted row: { 'Data do Pedido', 'Número do pedido', 'Nome do cliente',
+//               'Categoria', 'Valor', 'Relatório' }
+// ─────────────────────────────────────────────────────────────────────────────
+function convertMagaluToBling(
+  data: any[],
+  dataInicial: string,
+  dataFinal: string,
+  competencia: string,
+  categories: any[],
+  accounts: any[]
+): BlingRow[] {
+  if (!data?.length) return [];
+
+  const conta = accounts.find(a => String(a.canal || a.channel || '').toUpperCase().trim() === 'MAGAZINE LUIZA');
+  const portador   = conta?.caixa || conta?.portador || '';
+  const fornecedor = conta?.fornecedor_razao_social || conta?.fornecedor || 'MAGAZINE LUIZA';
+  const cnpj       = conta?.fornecedor_cnpj || conta?.cnpj || '';
+
+  const findCat = (detalhe: string) => {
+    const norm = normalizeText(detalhe);
+    const m = categories.find(c =>
+      String(c.channel || c.canal || '').toUpperCase().trim() === 'MAGAZINE LUIZA' &&
+      normalizeText(c.channel_category || c.categoria_canal || '') === norm
+    );
+    return { cat: m?.erp_category || m?.categoria_erp || '', pai: m?.erp_parent_category || m?.categoria_pai_erp || '' };
+  };
+
+  const resultado: BlingRow[] = [];
+
+  data.forEach((row: any) => {
+    const dataVal  = row['Data do Pedido'] || row['Data'] || '';
+    const pedido   = row['Número do pedido'] || '';
+    const cliente  = row['Nome do cliente'] || '';
+    const detalhe  = row['Categoria'] || '';
+    const valor    = typeof row['Valor'] === 'number' ? row['Valor'] : parseFloat(String(row['Valor'] || '0').replace(',', '.')) || 0;
+    const relatorio = row['Relatório'] || row['Relatorio'] || '';
+
+    if (!dataVal || !detalhe || valor === 0) return;
+
+    const dataObj = parseDateBR(dataVal);
+    if (!dataObj) return;
+    const iso = dataObj.toISOString().split('T')[0];
+    if (dataInicial && iso < dataInicial) return;
+    if (dataFinal   && iso > dataFinal)   return;
+
+    const dataFormatada   = dataObj.toLocaleDateString('pt-BR');
+    const mm              = String(dataObj.getMonth() + 1).padStart(2, '0');
+    const lineCompetencia = mm + '/' + dataObj.getFullYear();
+    const { cat, pai }    = findCat(detalhe);
+
+    const obs = [
+      cliente ? 'MAGAZINE LUIZA: ' + cliente.toUpperCase() : 'MAGAZINE LUIZA',
+      pedido ? 'PEDIDO: ' + pedido + ' > ' + detalhe.toUpperCase() : detalhe.toUpperCase(),
+      pai && cat ? pai.toUpperCase() + ' > ' + cat.toUpperCase() : (cat || pai || '').toUpperCase(),
+      dataFormatada,
+      lineCompetencia,
+    ].filter(Boolean).join(' | ');
+
+    resultado.push({
+      'ID':                 '',
+      'Data':               dataFormatada,
+      'Competencia':        dataFormatada,
+      'Cliente/Fornecedor': fornecedor,
+      'Observacoes':        obs,
+      'Valor':              String(valor.toFixed(2)).replace('.', ','),
+      'Categoria':          cat,
+      'Portador':           portador,
+      'Saldo':              'N',
+      'CNPJ':               cnpj,
+    });
+  });
+
+  return resultado;
+}
+
+function convertMagaluToOlist(
+  data: any[],
+  dataInicial: string,
+  dataFinal: string,
+  competencia: string,
+  categories: any[],
+  accounts: any[]
+): OlistRow[] {
+  if (!data?.length) return [];
+
+  const conta = accounts.find(a => String(a.canal || a.channel || '').toUpperCase().trim() === 'MAGAZINE LUIZA');
+  const portador   = conta?.caixa || conta?.portador || '';
+  const fornecedor = conta?.fornecedor_razao_social || conta?.fornecedor || 'MAGAZINE LUIZA';
+  const cnpj       = conta?.fornecedor_cnpj || conta?.cnpj || '';
+
+  const findCat = (detalhe: string) => {
+    const norm = normalizeText(detalhe);
+    const m = categories.find(c =>
+      String(c.channel || c.canal || '').toUpperCase().trim() === 'MAGAZINE LUIZA' &&
+      normalizeText(c.channel_category || c.categoria_canal || '') === norm
+    );
+    return { cat: m?.erp_category || m?.categoria_erp || '', pai: m?.erp_parent_category || m?.categoria_pai_erp || '' };
+  };
+
+  const resultado: OlistRow[] = [];
+
+  data.forEach((row: any) => {
+    const dataVal  = row['Data do Pedido'] || row['Data'] || '';
+    const pedido   = row['Número do pedido'] || '';
+    const cliente  = row['Nome do cliente'] || '';
+    const detalhe  = row['Categoria'] || '';
+    const valor    = typeof row['Valor'] === 'number' ? row['Valor'] : parseFloat(String(row['Valor'] || '0').replace(',', '.')) || 0;
+
+    if (!dataVal || !detalhe || valor === 0) return;
+
+    const dataObj = parseDateBR(dataVal);
+    if (!dataObj) return;
+    const iso = dataObj.toISOString().split('T')[0];
+    if (dataInicial && iso < dataInicial) return;
+    if (dataFinal   && iso > dataFinal)   return;
+
+    const dataFormatada   = dataObj.toLocaleDateString('pt-BR');
+    const mm              = String(dataObj.getMonth() + 1).padStart(2, '0');
+    const lineCompetencia = mm + '/' + dataObj.getFullYear();
+    const { cat } = findCat(detalhe);
+
+    const obs = buildOlistObs('MAGAZINE LUIZA', detalhe, pedido, cliente, cat, lineCompetencia);
+
+    resultado.push({ Data: dataFormatada, Categoria: cat, Historico: obs, Tipo: '', Valor: String(valor), ID: '', Contato: fornecedor, CNPJ: cnpj, Marcadores: '', 'Conta de destino': portador, 'Nr documento': '' });
+  });
+
+  return resultado;
+}
+
 export function convertToOlist(canal: string, data: any[], dataInicial: string, dataFinal: string, competencia: string, categories: any[], accounts: any[]): OlistRow[] {
   if (canal === 'MERCADO LIVRE') return convertMLToOlist(data, dataInicial, dataFinal, competencia, categories, accounts);
   if (canal === 'SHOPEE')        return convertShopeeToOlist(data, dataInicial, dataFinal, competencia, categories, accounts);
+  if (canal === 'MAGAZINE LUIZA') return convertMagaluToOlist(data, dataInicial, dataFinal, competencia, categories, accounts);
   if (canal === 'AMAZON')        return convertAmazonToOlist(data, dataInicial, dataFinal, competencia, categories, accounts);
+  if (canal === 'MAGAZINE LUIZA') return convertMagaluToOlist(data, dataInicial, dataFinal, competencia, categories, accounts);
   return [];
 }
