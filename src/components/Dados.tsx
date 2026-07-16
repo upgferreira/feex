@@ -155,7 +155,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     return getAllChannelData(canal);
   }, [canal, files, getAllChannelData]);
 
-  const PIVOT_CHANNELS = ['SHOPEE', 'SHEIN', 'AMAZON'];
+  const PIVOT_CHANNELS = ['SHOPEE', 'SHEIN', 'AMAZON', 'MAGAZINE LUIZA'];
   const canPivot = PIVOT_CHANNELS.includes(canal);
 
   const pivotedData = useMemo((): any[] => {
@@ -251,6 +251,74 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             'Relatório':        row['Relatório'],
           });
         }
+      });
+      return result;
+    }
+    if (canal === 'MAGAZINE LUIZA') {
+      const MAGALU_COLS = ['Coparticipação de Fretes estimada','Serviços de tecnologia','Serviços de tecnologia (1)','Serviços de intermediação','Serviços de intermediação (2)','Intermediações financeiras (MDR)','Intermediações financeiras (MDR) (3)','Tarifa fixa por pacote','Tarifa fixa por pedido','Juros','Custos logísticos','Coparticipação de frete','Taxa de antecipação'];
+      const parseNum = (v: any) => { if (typeof v === 'number') return v; return parseFloat(String(v||'0').replace(',','.')) || 0; };
+      const result: any[] = [];
+      data.forEach((row: any) => {
+        MAGALU_COLS.forEach(col => {
+          const colKey = Object.keys(row).find(k => k.trim().toLowerCase() === col.toLowerCase());
+          if (!colKey) return;
+          const valor = parseNum(row[colKey]);
+          if (valor === 0) return;
+          const cleanCat = col.replace(/\s*\(\d+\)\s*/g, '').trim();
+          result.push({
+            'Data do Pedido':    row['Data do Pedido'],
+            'Número do pedido':  row['Número do pedido'] || row['Numero do pedido'] || '',
+            'Nome do cliente':   row['Nome do cliente'] || '',
+            'Categoria':         cleanCat,
+            'Valor':             valor,
+            'Relatório':         row['Relatório'] || row['Relatorio'] || '',
+          });
+        });
+      });
+      return result;
+    }
+    if (canal === 'MAGAZINE LUIZA') {
+      const MAGALU_PIVOT_COLS = [
+        'Coparticipacao de Fretes estimada',
+        'Coparticipação de Fretes estimada',
+        'Servicos de tecnologia',
+        'Serviços de tecnologia',
+        'Servicos de intermediacao',
+        'Serviços de intermediação',
+        'Intermediacoes financeiras (MDR)',
+        'Intermediações financeiras (MDR)',
+        'Tarifa fixa por pacote',
+        'Tarifa fixa por pedido',
+        'Custos logisticos',
+        'Custos logísticos',
+        'Coparticipacao de frete',
+        'Coparticipação de frete',
+        'Juros',
+        'Taxa de antecipacao',
+        'Taxa de antecipação',
+      ];
+      const parseNum = (v: any) => {
+        if (typeof v === 'number') return v;
+        const s = String(v || '0').replace(/[^\d\-.,]/g, '').replace(',', '.');
+        return parseFloat(s) || 0;
+      };
+      const result: any[] = [];
+      data.forEach((row: any) => {
+        Object.keys(row).forEach(col => {
+          const colClean = col.replace(/\s*\(\d+\)\s*/g, '').trim();
+          const isTarget = MAGALU_PIVOT_COLS.some(pc => pc.toLowerCase() === colClean.toLowerCase() || pc.toLowerCase() === col.toLowerCase());
+          if (!isTarget) return;
+          const valor = parseNum(row[col]);
+          if (valor === 0) return;
+          result.push({
+            'Data do Pedido':    row['Data do Pedido'] || row['Data'],
+            'Número do pedido':  row['Número do pedido'] || row['Numero do pedido'] || '',
+            'Nome do cliente':   row['Nome do cliente'] || row['Nome do Cliente'] || '',
+            'Categoria':         colClean,
+            'Valor':             valor,
+            'Relatório':         row['Relatório'] || row['Relatorio'] || '',
+          });
+        });
       });
       return result;
     }
@@ -506,6 +574,14 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       });
       return Object.entries(map).map(([_, d]) => ({ sku: '-', produto: d.produto, receita: d.receita, qtd: d.qtd }))
         .sort((a, b) => b.receita - a.receita).slice(0, 20);
+    } else if (canal === 'MAGAZINE LUIZA') {
+      filteredRaw.forEach((r: any) => {
+        const sku = String(r['Número do pedido'] || r['Numero do pedido'] || '-');
+        const produto = r['Categoria'] || String(r['Nome do cliente'] || '-');
+        const v = Math.abs(typeof r['Valor'] === 'number' ? r['Valor'] : parseFloat(String(r['Valor']||'0').replace(',','.')) || 0);
+        if (!map[sku]) map[sku] = { produto, receita: 0, qtd: 0 };
+        map[sku].receita += v; map[sku].qtd += 1;
+      });
     }
     return Object.entries(map).map(([sku, d]) => ({ sku, produto: d.produto, receita: d.receita, qtd: d.qtd }))
       .sort((a, b) => b.receita - a.receita).slice(0, 20);
@@ -626,6 +702,16 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
           const v = parseFloat(String(r['total'] || '0').replace(',', '.')) || 0;
           map[date] = (map[date] || 0) + v;
         }
+      });
+    } else if (canal === 'MAGAZINE LUIZA') {
+      filteredRaw.forEach((r: any) => {
+        const dateRaw = r['Data do Pedido'];
+        if (!dateRaw) return;
+        const d = dateRaw instanceof Date ? dateRaw : new Date(dateRaw);
+        if (isNaN(d.getTime())) return;
+        const date = d.toLocaleDateString('pt-BR');
+        const v = Math.abs(typeof r['Valor'] === 'number' ? r['Valor'] : parseFloat(String(r['Valor']||'0').replace(',','.')) || 0);
+        map[date] = (map[date] || 0) + v;
       });
     } else {
       return [];
@@ -905,6 +991,13 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
           map[group] = (map[group] || 0) + Math.abs(parseNum(r['total']));
         }
       });
+    } else if (canal === 'MAGAZINE LUIZA') {
+      filteredRaw.forEach((r: any) => {
+        const cat = String(r['Categoria'] || '');
+        const { group } = lookupChannelCat(cat);
+        const v = Math.abs(typeof r['Valor'] === 'number' ? r['Valor'] : parseFloat(String(r['Valor']||'0').replace(',','.')) || 0);
+        if (v > 0) map[group] = (map[group] || 0) + v;
+      });
     }
     const total = Object.values(map).reduce((a, b) => a + b, 0);
     return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value/total)*100).toFixed(1) : '0' })).sort((a, b) => b.value - a.value).slice(0, 10);
@@ -963,16 +1056,22 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
           map[cat] = (map[cat] || 0) + Math.abs(parseNum(r['total']));
         }
       });
+    } else if (canal === 'MAGAZINE LUIZA') {
+      filteredRaw.forEach((r: any) => {
+        const cat = String(r['Categoria'] || 'Sem categoria');
+        const v = Math.abs(typeof r['Valor'] === 'number' ? r['Valor'] : parseFloat(String(r['Valor']||'0').replace(',','.')) || 0);
+        if (v > 0) map[cat] = (map[cat] || 0) + v;
+      });
     }
     const total = Object.values(map).reduce((a, b) => a + b, 0);
     return Object.entries(map).map(([name, value]) => ({ name, value, percentage: total > 0 ? ((value/total)*100).toFixed(1) : '0' })).sort((a, b) => b.value - a.value).slice(0, 10);
   }, [filteredRaw, canal]);
 
   const erpInputData = useMemo((): any[] => {
-    if (!['SHOPEE', 'SHEIN', 'AMAZON'].includes(canal)) return filteredRaw;
+    if (!['SHOPEE', 'SHEIN', 'AMAZON', 'MAGAZINE LUIZA'].includes(canal)) return filteredRaw;
     if (filteredRaw.length === 0) return [];
     // Already pivoted? Check by absence of raw columns
-    if (filteredRaw[0] && 'Categoria' in filteredRaw[0] && !('Status do pedido' in filteredRaw[0]) && !('tipo' in filteredRaw[0]) && !('data/hora' in filteredRaw[0])) return filteredRaw;
+    if (filteredRaw[0] && 'Categoria' in filteredRaw[0] && !('Status do pedido' in filteredRaw[0]) && !('tipo' in filteredRaw[0]) && !('data/hora' in filteredRaw[0]) && !('Data do Pedido' in filteredRaw[0])) return filteredRaw;
 
     const parseNum = (v: any) => {
       if (typeof v === 'number') return v;
@@ -1018,6 +1117,41 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
             'Relatório': row['Relatório'],
           });
         }
+      });
+      return result;
+    }
+
+    if (canal === 'MAGAZINE LUIZA') {
+      const MAGALU_ERP_COLS = [
+        'Coparticipacao de Fretes estimada','Coparticipação de Fretes estimada',
+        'Servicos de tecnologia','Serviços de tecnologia',
+        'Servicos de intermediacao','Serviços de intermediação',
+        'Intermediacoes financeiras (MDR)','Intermediações financeiras (MDR)',
+        'Tarifa fixa por pacote','Tarifa fixa por pedido',
+        'Custos logisticos','Custos logísticos',
+        'Coparticipacao de frete','Coparticipação de frete',
+        'Juros','Taxa de antecipacao','Taxa de antecipação',
+      ];
+      const parseNumML = (v: any) => {
+        if (typeof v === 'number') return v;
+        return parseFloat(String(v || '0').replace(/[^\d\-.,]/g, '').replace(',', '.')) || 0;
+      };
+      filteredRaw.forEach((row: any) => {
+        Object.keys(row).forEach(col => {
+          const colClean = col.replace(/\s*\(\d+\)\s*/g, '').trim();
+          const isTarget = MAGALU_ERP_COLS.some(pc => pc.toLowerCase() === colClean.toLowerCase() || pc.toLowerCase() === col.toLowerCase());
+          if (!isTarget) return;
+          const valor = parseNumML(row[col]);
+          if (valor === 0) return;
+          result.push({
+            'Data do Pedido':   row['Data do Pedido'] || row['Data'],
+            'Número do pedido': row['Número do pedido'] || '',
+            'Nome do cliente':  row['Nome do cliente'] || '',
+            'Categoria':        colClean,
+            'Valor':            valor,
+            'Relatório':        row['Relatório'] || '',
+          });
+        });
       });
       return result;
     }
