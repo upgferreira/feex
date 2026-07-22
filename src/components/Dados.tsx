@@ -155,7 +155,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     return getAllChannelData(canal);
   }, [canal, files, getAllChannelData]);
 
-  const PIVOT_CHANNELS = ['SHOPEE', 'SHEIN', 'AMAZON', 'MAGAZINE LUIZA'];
+  const PIVOT_CHANNELS = ['SHOPEE', 'SHEIN', 'AMAZON', 'MAGAZINE LUIZA', 'MAGALU'];
   const canPivot = PIVOT_CHANNELS.includes(canal);
 
   const pivotedData = useMemo((): any[] => {
@@ -1068,7 +1068,7 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   }, [filteredRaw, canal]);
 
   const erpInputData = useMemo((): any[] => {
-    if (!['SHOPEE', 'SHEIN', 'AMAZON', 'MAGAZINE LUIZA'].includes(canal)) return filteredRaw;
+    if (!['SHOPEE', 'SHEIN', 'AMAZON', 'MAGAZINE LUIZA', 'MAGALU'].includes(canal)) return filteredRaw;
     if (filteredRaw.length === 0) return [];
     // Already pivoted? Check by absence of raw columns
     if (filteredRaw[0] && 'Categoria' in filteredRaw[0] && !('Status do pedido' in filteredRaw[0]) && !('tipo' in filteredRaw[0]) && !('data/hora' in filteredRaw[0]) && !('Data do Pedido' in filteredRaw[0])) return filteredRaw;
