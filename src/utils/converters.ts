@@ -636,14 +636,14 @@ export function convertToBling(
   if (canal === 'NUVEM PAGO')    return convertNuvemPagoToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
   if (canal === 'SHOPEE')        return convertShopeeToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
   if (canal === 'AMAZON')        return convertAmazonToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
-  if (canal === 'MAGAZINE LUIZA') return convertMagaluToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
+  if (canal === 'MAGAZINE LUIZA' || canal === 'MAGALU') return convertMagaluToBling(data, dataInicial, dataFinal, competencia, categories, accounts);
   return [];
 }
 
 export function convertToOlist(canal: string, data: any[], dataInicial: string, dataFinal: string, competencia: string, categories: any[], accounts: any[]): OlistRow[] {
   if (canal === 'MERCADO LIVRE') return convertMLToOlist(data, dataInicial, dataFinal, competencia, categories, accounts);
   if (canal === 'SHOPEE')        return convertShopeeToOlist(data, dataInicial, dataFinal, competencia, categories, accounts);
-  if (canal === 'MAGAZINE LUIZA') return convertMagaluToOlist(data, dataInicial, dataFinal, competencia, categories, accounts);
+  if (canal === 'MAGAZINE LUIZA' || canal === 'MAGALU') return convertMagaluToOlist(data, dataInicial, dataFinal, competencia, categories, accounts);
   if (canal === 'AMAZON')        return convertAmazonToOlist(data, dataInicial, dataFinal, competencia, categories, accounts);
   if (canal === 'MAGAZINE LUIZA') return convertMagaluToOlist(data, dataInicial, dataFinal, competencia, categories, accounts);
   return [];
