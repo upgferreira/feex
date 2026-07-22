@@ -462,6 +462,19 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       valid.forEach((r: any) => {
         receita += parseNum(r['Subtotal do produto'] ?? r['Preço acordado'] ?? 0);
       });
+    } else if (canal === 'MAGAZINE LUIZA' || canal === 'MAGALU') {
+      const FEE_KW = ['fretes','tecnologia','intermediac','mdr','pacote','pedido','logist','juros','antecipac','coparticipac'];
+      const SKIP_KW = ['data','pedido num','numero','nome','relat','cliente'];
+      filteredRaw.forEach((r: any) => {
+        vendas++;
+        Object.keys(r).forEach(k => {
+          const kl = k.toLowerCase();
+          if (SKIP_KW.some(s => kl.includes(s))) return;
+          const v = r[k];
+          if (typeof v !== 'number' || Math.abs(v) > 100000 || v === 0) return;
+          if (FEE_KW.some(f => kl.includes(f))) receita += Math.abs(v);
+        });
+      });
     } else {
       vendas = filteredRaw.length;
       filteredRaw.forEach((r: any) => {
@@ -574,6 +587,25 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       });
       return Object.entries(map).map(([_, d]) => ({ sku: '-', produto: d.produto, receita: d.receita, qtd: d.qtd }))
         .sort((a, b) => b.receita - a.receita).slice(0, 20);
+    } else if (canal === 'MAGAZINE LUIZA' || canal === 'MAGALU') {
+      const DATE_FIELDS_M = new Set(['data do pedido','data','data hora','relatório','relatorio','nome do cliente']);
+      filteredRaw.forEach((r: any) => {
+        const pedido = String(r['Número do pedido'] || r['Numero do pedido'] || '-');
+        const cliente = String(r['Nome do cliente'] || '-');
+        let total = 0;
+        Object.keys(r).forEach(k => {
+          if (DATE_FIELDS_M.has(k.toLowerCase())) return;
+          if (k.toLowerCase().includes('pedido') || k.toLowerCase().includes('cliente')) return;
+          const v = r[k];
+          if (typeof v === 'number' && v !== 0 && Math.abs(v) < 100000) total += Math.abs(v);
+        });
+        if (total === 0) return;
+        if (!map[pedido]) map[pedido] = { produto: cliente, receita: 0, qtd: 0 };
+        map[pedido].receita += total;
+        map[pedido].qtd += 1;
+      });
+      return Object.entries(map).map(([sku, d]) => ({ sku, produto: d.produto, receita: d.receita, qtd: d.qtd }))
+        .sort((a, b) => b.receita - a.receita).slice(0, 20);
     } else if (canal === 'MAGAZINE LUIZA') {
       filteredRaw.forEach((r: any) => {
         const sku = String(r['Número do pedido'] || r['Numero do pedido'] || '-');
@@ -643,6 +675,23 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       filteredRaw.forEach((r: any) => {
         const date = formatDate(r['Data da tarifa']);
         map[date] = (map[date] || 0) + (Number(r['Valor da tarifa']) || 0);
+      });
+    } else if (canal === 'MAGAZINE LUIZA' || canal === 'MAGALU') {
+      const FEE_KW3 = ['fretes','tecnologia','intermediac','mdr','pacote','logist','juros','antecipac','coparticipac'];
+      const SKIP_KW3 = ['nome','relat','cliente'];
+      filteredRaw.forEach((r: any) => {
+        const dateRaw = r['Data do Pedido'] || r['Data'];
+        const date = formatDate(dateRaw);
+        if (!date || date.includes('1969') || date.includes('Invalid')) return;
+        let v = 0;
+        Object.keys(r).forEach(k => {
+          const kl = k.toLowerCase();
+          if (SKIP_KW3.some(s => kl.includes(s))) return;
+          const val = r[k];
+          if (typeof val !== 'number' || Math.abs(val) > 100000 || val === 0) return;
+          if (FEE_KW3.some(f => kl.includes(f))) v += Math.abs(val);
+        });
+        if (v > 0) map[date] = (map[date] || 0) + v;
       });
     } else if (canal === 'TODOS') {
       filteredRaw.forEach((r: any) => {
