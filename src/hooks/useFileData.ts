@@ -101,6 +101,9 @@ export const useFileData = () => {
 
   const processFile = useCallback(async (file: File): Promise<ImportedFile> => {
     const fileInfo = parseFileName(file.name);
+    // Normalize canal aliases
+    if (fileInfo.canal === 'MAGALU') fileInfo.canal = 'MAGAZINE LUIZA';
+    if (fileInfo.canal === 'SHEIN') fileInfo.canal = 'SHEIN';
     let data: DataRow[] = [];
     let columns: string[] = [];
 
