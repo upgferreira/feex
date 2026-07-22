@@ -84,6 +84,8 @@ export function toDate(val: any): Date | null {
   return null;
 }
 
+const parseDateBR = toDate;
+
 export function toDateStr(val: any): string {
   const d = toDate(val);
   return d && !isNaN(d.getTime()) ? d.toLocaleDateString('pt-BR') : '';
