@@ -277,47 +277,36 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       });
       return result;
     }
-    if (canal === 'MAGAZINE LUIZA') {
-      const MAGALU_PIVOT_COLS = [
-        'Coparticipacao de Fretes estimada',
-        'Coparticipação de Fretes estimada',
-        'Servicos de tecnologia',
-        'Serviços de tecnologia',
-        'Servicos de intermediacao',
-        'Serviços de intermediação',
-        'Intermediacoes financeiras (MDR)',
-        'Intermediações financeiras (MDR)',
-        'Tarifa fixa por pacote',
-        'Tarifa fixa por pedido',
-        'Custos logisticos',
-        'Custos logísticos',
-        'Coparticipacao de frete',
-        'Coparticipação de frete',
-        'Juros',
-        'Taxa de antecipacao',
-        'Taxa de antecipação',
+    if (canal === 'MAGAZINE LUIZA' || canal === 'MAGALU') {
+      const normM = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+      const TARGETS: { p: string; label: string }[] = [
+        { p: 'coparticipacaodefrete', label: 'Coparticipação de Fretes' },
+        { p: 'servicosdetecnologia',  label: 'Serviços de tecnologia' },
+        { p: 'servicosdeintermediacao', label: 'Serviços de intermediação' },
+        { p: 'intermediacoesfinanceiras', label: 'Intermediações financeiras (MDR)' },
+        { p: 'tarifafixa',            label: 'Tarifa fixa' },
+        { p: 'taxadeantecipacao',      label: 'Taxa de antecipação' },
+        { p: 'custoslogisticos',       label: 'Custos logísticos' },
+        { p: 'juros',                  label: 'Juros' },
       ];
-      const parseNum = (v: any) => {
-        if (typeof v === 'number') return v;
-        const s = String(v || '0').replace(/[^\d\-.,]/g, '').replace(',', '.');
-        return parseFloat(s) || 0;
-      };
+      const parseNumM = (v: any) => { if (typeof v === 'number') return v; return parseFloat(String(v||'0').replace(/[^\d\-.,]/g,'').replace(',','.')) || 0; };
+      const allKeys = Object.keys(data[0] || {});
+      const dateKeyM   = allKeys.find(k => normM(k).includes('datadopedido')) || allKeys.find(k => normM(k) === 'data') || 'Data do Pedido';
+      const pedidoKeyM = allKeys.find(k => normM(k).startsWith('numerodopedido')) || 'Número do pedido';
+      const clienteKeyM = allKeys.find(k => normM(k).startsWith('nomedocliente')) || 'Nome do cliente';
       const result: any[] = [];
       data.forEach((row: any) => {
+        const grouped: Record<string, number> = {};
         Object.keys(row).forEach(col => {
-          const colClean = col.replace(/\s*\(\d+\)\s*/g, '').trim();
-          const isTarget = MAGALU_PIVOT_COLS.some(pc => pc.toLowerCase() === colClean.toLowerCase() || pc.toLowerCase() === col.toLowerCase());
-          if (!isTarget) return;
-          const valor = parseNum(row[col]);
-          if (valor === 0) return;
-          result.push({
-            'Data do Pedido':    row['Data do Pedido'] || row['Data'],
-            'Número do pedido':  row['Número do pedido'] || row['Numero do pedido'] || '',
-            'Nome do cliente':   row['Nome do cliente'] || row['Nome do Cliente'] || '',
-            'Categoria':         colClean,
-            'Valor':             valor,
-            'Relatório':         row['Relatório'] || row['Relatorio'] || '',
-          });
+          const cn = normM(col);
+          const target = TARGETS.find(t => cn.includes(t.p));
+          if (!target) return;
+          const v = parseNumM(row[col]);
+          if (v === 0) return;
+          grouped[target.label] = (grouped[target.label] || 0) + v;
+        });
+        Object.entries(grouped).forEach(([label, valor]) => {
+          result.push({ 'Data do Pedido': row[dateKeyM], 'Número do pedido': row[pedidoKeyM]||'', 'Nome do cliente': row[clienteKeyM]||'', 'Categoria': label, 'Valor': valor, 'Relatório': '' });
         });
       });
       return result;
@@ -1170,40 +1159,40 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
       return result;
     }
 
-    if (canal === 'MAGAZINE LUIZA') {
-      const MAGALU_ERP_COLS = [
-        'Coparticipacao de Fretes estimada','Coparticipação de Fretes estimada',
-        'Servicos de tecnologia','Serviços de tecnologia',
-        'Servicos de intermediacao','Serviços de intermediação',
-        'Intermediacoes financeiras (MDR)','Intermediações financeiras (MDR)',
-        'Tarifa fixa por pacote','Tarifa fixa por pedido',
-        'Custos logisticos','Custos logísticos',
-        'Coparticipacao de frete','Coparticipação de frete',
-        'Juros','Taxa de antecipacao','Taxa de antecipação',
+        if (canal === 'MAGAZINE LUIZA' || canal === 'MAGALU') {
+      const normE = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+      const TARGETS_E: { p: string; label: string }[] = [
+        { p: 'coparticipacaodefrete', label: 'Coparticipação de Fretes' },
+        { p: 'servicosdetecnologia',  label: 'Serviços de tecnologia' },
+        { p: 'servicosdeintermediacao', label: 'Serviços de intermediação' },
+        { p: 'intermediacoesfinanceiras', label: 'Intermediações financeiras (MDR)' },
+        { p: 'tarifafixa',            label: 'Tarifa fixa' },
+        { p: 'taxadeantecipacao',      label: 'Taxa de antecipação' },
+        { p: 'custoslogisticos',       label: 'Custos logísticos' },
+        { p: 'juros',                  label: 'Juros' },
       ];
-      const parseNumML = (v: any) => {
-        if (typeof v === 'number') return v;
-        return parseFloat(String(v || '0').replace(/[^\d\-.,]/g, '').replace(',', '.')) || 0;
-      };
+      const parseNumE = (v: any) => { if (typeof v === 'number') return v; return parseFloat(String(v||'0').replace(/[^\d\-.,]/g,'').replace(',','.')) || 0; };
+      const allKeysE = Object.keys(filteredRaw[0] || {});
+      const dateKeyE   = allKeysE.find(k => normE(k).includes('datadopedido')) || allKeysE.find(k => normE(k) === 'data') || 'Data do Pedido';
+      const pedidoKeyE = allKeysE.find(k => normE(k).startsWith('numerodopedido')) || 'Número do pedido';
+      const clienteKeyE = allKeysE.find(k => normE(k).startsWith('nomedocliente')) || 'Nome do cliente';
       filteredRaw.forEach((row: any) => {
+        const grouped: Record<string, number> = {};
         Object.keys(row).forEach(col => {
-          const colClean = col.replace(/\s*\(\d+\)\s*/g, '').trim();
-          const isTarget = MAGALU_ERP_COLS.some(pc => pc.toLowerCase() === colClean.toLowerCase() || pc.toLowerCase() === col.toLowerCase());
-          if (!isTarget) return;
-          const valor = parseNumML(row[col]);
-          if (valor === 0) return;
-          result.push({
-            'Data do Pedido':   row['Data do Pedido'] || row['Data'],
-            'Número do pedido': row['Número do pedido'] || '',
-            'Nome do cliente':  row['Nome do cliente'] || '',
-            'Categoria':        colClean,
-            'Valor':            valor,
-            'Relatório':        row['Relatório'] || '',
-          });
+          const cn = normE(col);
+          const target = TARGETS_E.find(t => cn.includes(t.p));
+          if (!target) return;
+          const v = parseNumE(row[col]);
+          if (v === 0) return;
+          grouped[target.label] = (grouped[target.label] || 0) + v;
+        });
+        Object.entries(grouped).forEach(([label, valor]) => {
+          result.push({ 'Data do Pedido': row[dateKeyE], 'Número do pedido': row[pedidoKeyE]||'', 'Nome do cliente': row[clienteKeyE]||'', 'Categoria': label, 'Valor': valor, 'Relatório': '' });
         });
       });
       return result;
     }
+
 
     // SHOPEE / SHEIN
     const PIVOT_COLS = [
