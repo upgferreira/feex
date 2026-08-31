@@ -41,6 +41,8 @@ export const useFileData = () => {
     return () => window.removeEventListener('feex:files-updated', handler);
   }, [user]);
 
+
+
   const loadFiles = async () => {
     if (!user) return;
     try {
@@ -223,7 +225,12 @@ export const useFileData = () => {
         .select('id, channel, type, year, competence, start_period, end_period, file_name, source_file_name, size, upload_date, file_headers')
         .single();
 
-      if (saveError) throw saveError;
+      if (saveError) {
+        if (saveError.code === '23505') {
+          throw new Error('Arquivo já importado. Este período já existe na FEEX. Delete o arquivo atual antes de reimportar.');
+        }
+        throw saveError;
+      }
 
       const newFile: ImportedFile = {
         id: savedFile.id,
