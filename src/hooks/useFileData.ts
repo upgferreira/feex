@@ -206,6 +206,7 @@ export const useFileData = () => {
     setError(null);
     try {
       const processedFile = await processFile(file);
+      // Insert metadata first (no file_data) to get the ID
       const { data: savedFile, error: saveError } = await supabase
         .from('imported_files')
         .insert({
@@ -218,7 +219,7 @@ export const useFileData = () => {
           file_name: processedFile.arquivo,
           source_file_name: processedFile.originalName,
           size: processedFile.size,
-          file_data: processedFile.data,
+          file_data: [],
           file_headers: processedFile.columns,
           user_id: user.id,
         })
@@ -230,6 +231,28 @@ export const useFileData = () => {
           throw new Error('Arquivo já importado. Este período já existe na FEEX. Delete o arquivo atual antes de reimportar.');
         }
         throw saveError;
+      }
+
+      // Upload file_data in chunks of 5000 rows via RPC to avoid payload timeout
+      // Each RPC call only sends ~5K rows and the server appends to the JSONB field
+      const CHUNK = 5000;
+      const rows = processedFile.data;
+      if (rows.length <= CHUNK) {
+        // Small file — single update is fine
+        await supabase.from('imported_files').update({ file_data: rows }).eq('id', savedFile.id);
+      } else {
+        // Large file — upload in chunks via append_file_data RPC
+        for (let i = 0; i < rows.length; i += CHUNK) {
+          const slice = rows.slice(i, i + CHUNK);
+          const { error: chunkErr } = await supabase.rpc('append_file_data', {
+            p_id: savedFile.id,
+            p_data: JSON.stringify(slice),
+          });
+          if (chunkErr) {
+            console.error('Chunk upload error at offset', i, chunkErr);
+            throw new Error('Erro ao enviar dados: ' + chunkErr.message);
+          }
+        }
       }
 
       const newFile: ImportedFile = {
