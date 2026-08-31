@@ -103,6 +103,7 @@ export const useFileData = () => {
     const fileInfo = parseFileName(file.name);
     // Normalize canal aliases
     if (fileInfo.canal === 'MAGALU') fileInfo.canal = 'MAGAZINE LUIZA';
+    if (fileInfo.canal === 'MADEIRAMADEIRA') fileInfo.canal = 'MADEIRA MADEIRA';
     if (fileInfo.canal === 'SHEIN') fileInfo.canal = 'SHEIN';
     let data: DataRow[] = [];
     let columns: string[] = [];
@@ -219,7 +220,7 @@ export const useFileData = () => {
           file_headers: processedFile.columns,
           user_id: user.id,
         })
-        .select()
+        .select('id, channel, type, year, competence, start_period, end_period, file_name, source_file_name, size, upload_date, file_headers')
         .single();
 
       if (saveError) throw saveError;
@@ -236,8 +237,8 @@ export const useFileData = () => {
         originalName: savedFile.source_file_name,
         size: savedFile.size,
         dataUpload: new Date(savedFile.upload_date),
-        data: savedFile.file_data,
-        columns: savedFile.file_headers,
+        data: processedFile.data,       // use local data, not from DB response
+        columns: processedFile.columns,   // use local columns, not from DB response
       };
 
       // Update cache and notify all hook instances
