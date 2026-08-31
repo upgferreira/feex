@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, Trash2, Download } from 'lucide-react';
+import { Upload, Trash2, Download, CheckCircle, AlertCircle } from 'lucide-react';
 import { useFileData } from '../hooks/useFileData';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { useAuth } from '../hooks/useAuth';
@@ -9,12 +9,21 @@ import { DataTable, FormatBadge, DataTableColumn } from './DataTable';
 interface ImportacaoProps { selectedCanal?: string; }
 
 const CANAL_COLORS: Record<string, string> = {
-  'AMAZON':         'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400',
-  'MERCADO LIVRE':  'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
-  'MAGAZINE LUIZA': 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-  'SHEIN':          'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
-  'SHOPEE':         'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
+  'AMAZON':          'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400',
+  'MERCADO LIVRE':   'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
+  'MAGAZINE LUIZA':  'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
+  'SHEIN':           'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
+  'SHOPEE':          'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
+  'MADEIRA MADEIRA': 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
 };
+
+interface UploadStatus {
+  name: string;
+  step: string;
+  progress: number;
+  done: boolean;
+  error?: string;
+}
 
 function formatPeriodo(p: string) {
   if (!p) return '-';
@@ -36,21 +45,51 @@ export const Importacao: React.FC<ImportacaoProps> = ({ selectedCanal = 'TODOS' 
   const { files, loading, error, addFile, removeFile } = useFileData();
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<string | null>(null);
+  const [uploadQueue, setUploadQueue] = useState<UploadStatus[]>([]);
+  const [uploading, setUploading] = useState(false);
   const { user } = useAuth();
+
+  const updateStatus = (name: string, patch: Partial<UploadStatus>) => {
+    setUploadQueue(q => q.map(s => s.name === name ? { ...s, ...patch } : s));
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files;
     if (!selected || selected.length === 0) return;
     const fileArray = Array.from(selected);
-    const existingNames = files.map(f => f.originalName);
-    const duplicates = fileArray.filter(f => existingNames.includes(f.name));
-    if (duplicates.length > 0) {
-      alert(`Arquivos duplicados: ${duplicates.map(f => f.name).join(', ')}`);
-      e.target.value = '';
-      return;
-    }
-    for (const file of fileArray) await addFile(file);
     e.target.value = '';
+
+    const existingNames = files.map(f => f.originalName);
+    const queue: UploadStatus[] = fileArray.map(f => ({
+      name: f.name,
+      step: 'Aguardando...',
+      progress: 0,
+      done: false,
+      error: existingNames.includes(f.name) ? 'Arquivo já importado — delete o existente antes de reimportar.' : undefined,
+    }));
+    setUploadQueue(queue);
+    setUploading(true);
+
+    for (const file of fileArray) {
+      if (existingNames.includes(file.name)) continue;
+
+      updateStatus(file.name, { step: 'Lendo arquivo...', progress: 10 });
+      await new Promise(r => setTimeout(r, 50));
+
+      updateStatus(file.name, { step: 'Processando dados...', progress: 40 });
+      await new Promise(r => setTimeout(r, 50));
+
+      updateStatus(file.name, { step: 'Enviando para servidor...', progress: 70 });
+
+      try {
+        await addFile(file);
+        updateStatus(file.name, { step: 'Concluído', progress: 100, done: true });
+      } catch (err: any) {
+        updateStatus(file.name, { step: 'Erro', progress: 100, error: err?.message || 'Erro ao processar arquivo' });
+      }
+    }
+
+    setUploading(false);
   };
 
   const handleDownload = (file: any) => {
@@ -100,7 +139,7 @@ export const Importacao: React.FC<ImportacaoProps> = ({ selectedCanal = 'TODOS' 
     {
       key: 'canal', label: 'Canal',
       render: (v) => (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${CANAL_COLORS[v] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>
+        <span className={'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + (CANAL_COLORS[v] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300')}>
           {v}
         </span>
       ),
@@ -121,13 +160,44 @@ export const Importacao: React.FC<ImportacaoProps> = ({ selectedCanal = 'TODOS' 
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Importação de Dados</h2>
-            <label className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
+            <label className={'inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-colors ' + (uploading ? 'bg-gray-400 cursor-not-allowed text-white' : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer')}>
               <Upload className="w-4 h-4" />
-              {loading ? 'Processando...' : 'Upload Arquivo'}
-              <input type="file" accept=".txt,.csv,.xls,.xlsx" onChange={handleFileUpload} className="hidden" disabled={loading} multiple />
+              {uploading ? 'Enviando...' : 'Upload Arquivo'}
+              <input type="file" accept=".txt,.csv,.xls,.xlsx" onChange={handleFileUpload} className="hidden" disabled={uploading} multiple />
             </label>
           </div>
         </div>
+
+        {/* Upload progress queue */}
+        {uploadQueue.length > 0 && (
+          <div className="mx-6 mt-4 space-y-2 flex-shrink-0">
+            {uploadQueue.map(s => (
+              <div key={s.name} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate max-w-xs">{s.name}</span>
+                  <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                    {s.done && !s.error && <CheckCircle className="w-4 h-4 text-green-500" />}
+                    {s.error && <AlertCircle className="w-4 h-4 text-red-500" />}
+                    <span className={'text-xs ' + (s.error ? 'text-red-500' : s.done ? 'text-green-600 dark:text-green-400' : 'text-gray-500')}>
+                      {s.error ? s.error : s.step}
+                    </span>
+                  </div>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                  <div
+                    className={'h-1.5 rounded-full transition-all duration-500 ' + (s.error ? 'bg-red-500' : s.done ? 'bg-green-500' : 'bg-blue-600')}
+                    style={{ width: s.progress + '%' }}
+                  />
+                </div>
+              </div>
+            ))}
+            {!uploading && (
+              <button onClick={() => setUploadQueue([])} className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 ml-1">
+                Limpar
+              </button>
+            )}
+          </div>
+        )}
 
         {error && (
           <div className="mx-6 mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm flex-shrink-0">
