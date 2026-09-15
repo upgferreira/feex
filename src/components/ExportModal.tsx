@@ -28,11 +28,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const [formatos, setFormatos] = useState<string[]>([]);
 
   const channels = canais.length > 0 ? canais : ['AMAZON', 'MAGAZINE LUIZA', 'MERCADO LIVRE', 'SHEIN', 'SHOPEE'];
-  const erps = ['BLING', 'TINY'];
+  const erps = ['BLING', 'OLIST'];
   const formatOptions = ['CSV', 'XLSX', 'XLS', 'OFX'];
 
-  // Quando BLING ou TINY é selecionado, automaticamente marca CSV e trava outros formatos
-  const isERPSelected = erp === 'BLING' || erp === 'TINY';
+  // Quando BLING ou OLIST é selecionado, automaticamente marca CSV e trava outros formatos
+  const isERPSelected = erp === 'BLING' || erp === 'OLIST';
 
   React.useEffect(() => {
     if (isERPSelected) {
@@ -68,7 +68,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   const handleFormatoChange = (formato: string) => {
-    if (isERPSelected) return; // Não permite mudança quando Bling ou Tiny está selecionado
+    if (isERPSelected) return; // Não permite mudança quando Bling ou Olist está selecionado
     
     setFormatos(prev => 
       prev.includes(formato)
