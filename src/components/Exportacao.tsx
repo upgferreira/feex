@@ -32,7 +32,7 @@ export const Exportacao: React.FC = () => {
       loadCategories();
       loadAccounts();
     }
-  }, [user]);
+  }, [user?.id]);
 
   const loadCategories = async () => {
     try { setCategories(await getCategories()); }

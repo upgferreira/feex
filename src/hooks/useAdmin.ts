@@ -57,6 +57,16 @@ export interface FinancialAccount {
   updated_at: string;
 }
 
+// Chamadas simultâneas iguais (ex.: duas telas montando juntas) usam a mesma requisição
+const _inflight = new Map<string, Promise<any>>();
+function shared<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const existing = _inflight.get(key);
+  if (existing) return existing;
+  const p = fn().finally(() => _inflight.delete(key));
+  _inflight.set(key, p);
+  return p;
+}
+
 // Verificação de admin compartilhada entre todas as instâncias do hook (1 requisição por usuário)
 const _adminCheck = new Map<string, Promise<boolean>>();
 
@@ -197,9 +207,9 @@ export const useAdmin = () => {
   };
 
   // Updated getCategories function - now available to all authenticated users
-  const getCategories = async (): Promise<FinancialCategory[]> => {
-    console.log('Fetching categories...');
-    
+  const getCategories = (): Promise<FinancialCategory[]> => shared('categories', fetchCategories);
+
+  const fetchCategories = async (): Promise<FinancialCategory[]> => {
     const { data, error } = await supabase
       .from('financial_categories')
       .select('*')
@@ -250,9 +260,9 @@ export const useAdmin = () => {
   };
 
   // Updated getAccounts function - now available to all authenticated users
-  const getAccounts = async (): Promise<FinancialAccount[]> => {
-    console.log('Fetching accounts...');
-    
+  const getAccounts = (): Promise<FinancialAccount[]> => shared('accounts', fetchAccounts);
+
+  const fetchAccounts = async (): Promise<FinancialAccount[]> => {
     const { data, error } = await supabase
       .from('financial_accounts')
       .select('*')

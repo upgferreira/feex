@@ -2,33 +2,49 @@ import { useState, useEffect } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
+// ── Sessão compartilhada entre todas as telas ─────────────────────────────────
+// Antes cada componente tinha seu próprio estado e começava com user = null,
+// o que fazia todas as telas refazerem suas consultas ao montar.
+let _user: User | null = null
+let _loading = true
+let _started = false
+const _subs = new Set<() => void>()
+
+function setShared(user: User | null) {
+  // Mantém a mesma referência se o usuário não mudou (evita re-renderizações e refetch)
+  if (_user && user && _user.id === user.id) _user = user
+  else _user = user
+  _loading = false
+  _subs.forEach(fn => fn())
+}
+
+function startAuth() {
+  if (_started) return
+  _started = true
+  supabase.auth.getSession().then(({ data: { session }, error }) => {
+    if (error) {
+      // Token inválido: limpa a sessão para não repetir o erro
+      supabase.auth.signOut()
+      setShared(null)
+    } else {
+      setShared(session?.user ?? null)
+    }
+  })
+  supabase.auth.onAuthStateChange((_event, session) => {
+    setShared(session?.user ?? null)
+  })
+}
+
 export const useAuth = () => {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  startAuth()
+  const [user, setUser] = useState<User | null>(_user)
+  const [loading, setLoading] = useState(_loading)
 
   useEffect(() => {
-    // Get initial session with error handling
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        // If there's an error getting the session (like invalid refresh token),
-        // clear the session to prevent repeated errors
-        supabase.auth.signOut()
-        setUser(null)
-      } else {
-        setUser(session?.user ?? null)
-      }
-      setLoading(false)
-    })
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null)
-        setLoading(false)
-      }
-    )
-
-    return () => subscription.unsubscribe()
+    const sync = () => { setUser(_user); setLoading(_loading) }
+    _subs.add(sync)
+    sync()
+    return () => { _subs.delete(sync) }
   }, [])
 
   const signIn = async (email: string, password: string) => {

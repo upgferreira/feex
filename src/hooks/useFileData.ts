@@ -53,6 +53,14 @@ const idbSet = (id: string, value: CachedFileData) => idbReq('readwrite', st => 
 const idbDel = (id: string) => idbReq('readwrite', st => st.delete(id));
 const idbKeys = () => idbReq<IDBValidKey[]>('readonly', st => st.getAllKeys());
 
+// Logout: não deixa dados financeiros no navegador
+supabase.auth.onAuthStateChange(event => {
+  if (event === 'SIGNED_OUT') {
+    clearFileDataCache();
+    window.dispatchEvent(new CustomEvent('feex:files-updated'));
+  }
+});
+
 /** Limpa o cache local (usar no logout). */
 export async function clearFileDataCache() {
   _loaded.clear();
@@ -239,10 +247,6 @@ export const useFileData = () => {
         _metaInflightUser = user.id;
         _metaInflight = loadFiles().finally(() => { _metaInflight = null; });
       }
-    } else if (_cacheUserId) {
-      // Logout: não deixa dados financeiros no navegador
-      clearFileDataCache();
-      setFiles([]);
     }
   }, [user?.id]);
 
