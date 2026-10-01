@@ -14,6 +14,7 @@ import { MethodsModal } from './components/MethodsModal';
 import { CaixasModal } from './components/CaixasModal';
 import { HelpModal } from './components/HelpModal';
 import { LoadingProgress } from './components/LoadingProgress';
+import { LogModal } from './components/LogModal';
 import { useAuth } from './hooks/useAuth';
 import { supabase } from './lib/supabase';
 import { useAdmin } from './hooks/useAdmin';
@@ -30,6 +31,7 @@ function App() {
   const [mappingModalOpen, setMappingModalOpen] = useState(false);
   const [methodsModalOpen, setMethodsModalOpen] = useState(false);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
+  const [logModalOpen, setLogModalOpen] = useState(false);
   const [caixasModalOpen, setCaixasModalOpen] = useState(false);
   const [selectedCanal, setSelectedCanal] = useState<string>('TODOS');
   const { user, loading } = useAuth();
@@ -137,6 +139,7 @@ function App() {
           onMethodsClick={() => setMethodsModalOpen(true)}
           onHelpClick={() => setHelpModalOpen(true)}
           onCaixasClick={() => setCaixasModalOpen(true)}
+          onLogClick={() => setLogModalOpen(true)}
         />
         <CategoryModal isOpen={categoryModalOpen} onClose={() => setCategoryModalOpen(false)} />
         <BoxModal isOpen={boxModalOpen} onClose={() => setBoxModalOpen(false)} />
@@ -144,6 +147,7 @@ function App() {
         <MappingModal isOpen={mappingModalOpen} onClose={() => setMappingModalOpen(false)} />
         <MethodsModal isOpen={methodsModalOpen} onClose={() => setMethodsModalOpen(false)} />
         <HelpModal isOpen={helpModalOpen} onClose={() => setHelpModalOpen(false)} />
+        <LogModal isOpen={logModalOpen} onClose={() => setLogModalOpen(false)} />
         <CaixasModal isOpen={caixasModalOpen} onClose={() => setCaixasModalOpen(false)} />
     </div>
   );
