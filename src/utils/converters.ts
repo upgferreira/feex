@@ -93,7 +93,7 @@ export function toDateStr(val: any): string {
 
 // ── Olist tipo/valor helper: Olist usa coluna Tipo (C/D) e Valor sempre positivo ──
 function olistTipoValor(valor: number): { Tipo: string; Valor: string } {
-  return { Tipo: valor < 0 ? 'D' : 'C', Valor: String(Math.abs(valor)) };
+  return { Tipo: valor < 0 ? 'D' : 'C', Valor: formatValueToBR(Math.abs(valor)) };
 }
 
 // ── Olist obs helper ──────────────────────────────────────────────────────────
