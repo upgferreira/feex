@@ -13,6 +13,7 @@ import { MappingModal } from './components/MappingModal';
 import { MethodsModal } from './components/MethodsModal';
 import { CaixasModal } from './components/CaixasModal';
 import { HelpModal } from './components/HelpModal';
+import { LoadingProgress } from './components/LoadingProgress';
 import { useAuth } from './hooks/useAuth';
 import { supabase } from './lib/supabase';
 import { useAdmin } from './hooks/useAdmin';
@@ -114,6 +115,7 @@ function App() {
 
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
+        <LoadingProgress />
         <Header
           currentView={currentView}
           onViewChange={setCurrentView}

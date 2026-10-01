@@ -14,6 +14,166 @@ function notifyListeners() {
   _listeners.forEach(fn => fn());
 }
 
+// ── Persistent cache (IndexedDB) — arquivos importados são imutáveis por id ──
+const IDB_NAME = 'feex-cache';
+const IDB_STORE = 'file_data';
+let _idbPromise: Promise<IDBDatabase | null> | null = null;
+
+function idbOpen(): Promise<IDBDatabase | null> {
+  if (_idbPromise) return _idbPromise;
+  _idbPromise = new Promise(resolve => {
+    try {
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch { resolve(null); }
+  });
+  return _idbPromise;
+}
+
+async function idbReq<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => IDBRequest): Promise<T | null> {
+  const db = await idbOpen();
+  if (!db) return null;
+  return new Promise(resolve => {
+    try {
+      const req = fn(db.transaction(IDB_STORE, mode).objectStore(IDB_STORE));
+      req.onsuccess = () => resolve((req.result ?? null) as T | null);
+      req.onerror = () => resolve(null);
+    } catch { resolve(null); }
+  });
+}
+
+type CachedFileData = { data: DataRow[]; columns: string[] };
+const idbGet = (id: string) => idbReq<CachedFileData>('readonly', st => st.get(id));
+const idbSet = (id: string, value: CachedFileData) => idbReq('readwrite', st => st.put(value, id));
+const idbDel = (id: string) => idbReq('readwrite', st => st.delete(id));
+const idbKeys = () => idbReq<IDBValidKey[]>('readonly', st => st.getAllKeys());
+
+/** Limpa o cache local (usar no logout). */
+export async function clearFileDataCache() {
+  _loaded.clear();
+  _cache = null;
+  _cacheUserId = null;
+  const db = await idbOpen();
+  if (db) await idbReq('readwrite', st => st.clear());
+}
+
+// ── Carregamento sob demanda + progresso ──────────────────────────────────────
+const _loaded = new Set<string>();
+const _inflight = new Map<string, Promise<void>>();
+let _progressDone = 0;
+let _progressTotal = 0;
+const CONCURRENCY = 4;
+
+export type LoadProgress = { done: number; total: number } | null;
+export function getLoadProgress(): LoadProgress {
+  return _progressTotal > 0 ? { done: _progressDone, total: _progressTotal } : null;
+}
+function emitProgress() {
+  window.dispatchEvent(new CustomEvent('feex:load-progress'));
+}
+
+export function isFileLoaded(id: string) {
+  return _loaded.has(id);
+}
+
+async function loadOne(id: string) {
+  const f = _cache?.find(x => x.id === id);
+  if (!f) return;
+  const cached = await idbGet(id);
+  if (cached) {
+    f.data = cached.data || [];
+    f.columns = cached.columns?.length ? cached.columns : f.columns;
+    _loaded.add(id);
+    return;
+  }
+  const { data: fd, error } = await supabase
+    .from('imported_files')
+    .select('id, file_data, file_headers')
+    .eq('id', id)
+    .single();
+  if (error || !fd) return;
+  f.data = fd.file_data || [];
+  f.columns = fd.file_headers || f.columns;
+  _loaded.add(id);
+  idbSet(id, { data: f.data, columns: f.columns });
+}
+
+/** Garante que os dados dos arquivos informados estejam carregados (cache → banco). */
+export async function ensureFileData(ids: string[]): Promise<ImportedFile[]> {
+  const pending = ids.filter(id => !_loaded.has(id) && !_inflight.has(id));
+  const waiting = ids.filter(id => _inflight.has(id)).map(id => _inflight.get(id)!);
+
+  if (pending.length) {
+    _progressTotal += pending.length;
+    emitProgress();
+    const queue = [...pending];
+    const worker = async () => {
+      while (queue.length) {
+        const id = queue.shift()!;
+        const p = loadOne(id).catch(err => console.error('Erro ao carregar arquivo', id, err));
+        _inflight.set(id, p);
+        await p;
+        _inflight.delete(id);
+        _progressDone++;
+        emitProgress();
+      }
+    };
+    waiting.push(...Array.from({ length: Math.min(CONCURRENCY, pending.length) }, worker));
+  }
+
+  await Promise.all(waiting);
+
+  if (pending.length) {
+    if (_inflight.size === 0) { _progressDone = 0; _progressTotal = 0; emitProgress(); }
+    if (_cache) _cache = [..._cache];
+    window.dispatchEvent(new CustomEvent('feex:files-updated'));
+    notifyListeners();
+  }
+  return (_cache || []).filter(f => ids.includes(f.id));
+}
+
+// ── Período coberto por um arquivo (ISO yyyy-mm-dd) ───────────────────────────
+function brToIso(v: string | undefined): string | null {
+  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec((v || '').trim());
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : null;
+}
+
+export function fileRange(f: ImportedFile): { start: string; end: string } | null {
+  const m = /^(\d{2})-(\d{4})$/.exec((f.competencia || '').trim());
+  const compStart = m ? `${m[2]}-${m[1]}-01` : null;
+  const compEnd = m ? new Date(+m[2], +m[1], 0).toISOString().split('T')[0] : null;
+  const start = brToIso(f.periodoInicial) || compStart;
+  const end = brToIso(f.periodoFinal) || compEnd;
+  return start && end ? { start, end } : null;
+}
+
+/** true se o arquivo cobre (parte de) o período. Período vazio = tudo. */
+export function fileOverlaps(f: ImportedFile, startDate?: string, endDate?: string) {
+  if (!startDate && !endDate) return true;
+  const r = fileRange(f);
+  if (!r) return true; // período desconhecido: carrega para não perder dados
+  if (startDate && r.end < startDate) return false;
+  if (endDate && r.start > endDate) return false;
+  return true;
+}
+
+/** Período (ISO) da competência mais recente entre os arquivos. */
+export function latestCompetenceRange(files: ImportedFile[]): { startDate: string; endDate: string } | null {
+  let best: { y: number; m: number } | null = null;
+  for (const f of files) {
+    const mm = /^(\d{2})-(\d{4})$/.exec((f.competencia || '').trim());
+    if (!mm) continue;
+    const c = { y: +mm[2], m: +mm[1] };
+    if (!best || c.y > best.y || (c.y === best.y && c.m > best.m)) best = c;
+  }
+  if (!best) return null;
+  const mm = String(best.m).padStart(2, '0');
+  const last = new Date(best.y, best.m, 0).getDate();
+  return { startDate: `${best.y}-${mm}-01`, endDate: `${best.y}-${mm}-${String(last).padStart(2, '0')}` };
+}
+
 export const useFileData = () => {
   const [files, setFiles] = useState<ImportedFile[]>(_cache || []);
   const [loading, setLoading] = useState(false);
@@ -27,6 +187,10 @@ export const useFileData = () => {
       } else {
         loadFiles();
       }
+    } else if (_cacheUserId) {
+      // Logout: não deixa dados financeiros no navegador
+      clearFileDataCache();
+      setFiles([]);
     }
   }, [user]);
 
@@ -71,30 +235,25 @@ export const useFileData = () => {
         columns: file.file_headers || [],
       }));
 
-      // Show list immediately
+      // Mantém dados já carregados nesta sessão
+      if (_cacheUserId !== user.id) _loaded.clear();
+      const prev = new Map((_cache || []).map(f => [f.id, f]));
+      formattedFiles.forEach(f => {
+        const old = prev.get(f.id);
+        if (old && _loaded.has(f.id)) { f.data = old.data; f.columns = old.columns; }
+      });
+      const ids = new Set(formattedFiles.map(f => f.id));
+      Array.from(_loaded).forEach(id => { if (!ids.has(id)) _loaded.delete(id); });
+
+      // Lista aparece na hora; os dados de cada arquivo são carregados sob demanda (ensureFileData)
       _cache = formattedFiles;
       _cacheUserId = user.id;
       setFiles([...formattedFiles]);
       notifyListeners();
+      window.dispatchEvent(new CustomEvent('feex:files-updated'));
 
-      // 2. Load file_data for each file individually (avoids 37MB+ responses)
-      for (const f of formattedFiles) {
-        try {
-          const { data: fd, error: fdErr } = await supabase
-            .from('imported_files')
-            .select('id, file_data, file_headers')
-            .eq('id', f.id)
-            .single();
-          if (fdErr || !fd) continue;
-          f.data = fd.file_data || [];
-          f.columns = fd.file_headers || f.columns;
-        } catch { continue; }
-      }
-
-      // Update cache with full data
-      _cache = [...formattedFiles];
-      setFiles([...formattedFiles]);
-      notifyListeners();
+      // Remove do cache local arquivos que não existem mais (deletados ou de outro usuário)
+      idbKeys().then(keys => (keys || []).forEach(k => { if (!ids.has(String(k))) idbDel(String(k)); }));
     } catch (err) {
       console.error('Error loading files:', err);
       setError('Erro ao carregar arquivos');
@@ -271,6 +430,9 @@ export const useFileData = () => {
         columns: processedFile.columns,   // use local columns, not from DB response
       };
 
+      _loaded.add(newFile.id);
+      idbSet(newFile.id, { data: newFile.data, columns: newFile.columns });
+
       // Update cache and notify all hook instances
       _cache = [newFile, ...(_cache || [])];
       setFiles(prev => [newFile, ...prev]);
@@ -294,6 +456,8 @@ export const useFileData = () => {
         .eq('id', fileId)
         .eq('user_id', user.id);
       if (error) throw error;
+      _loaded.delete(fileId);
+      idbDel(fileId);
       // Update cache and notify all hook instances
       _cache = (_cache || []).filter(f => f.id !== fileId);
       setFiles(prev => prev.filter(f => f.id !== fileId));
@@ -317,5 +481,5 @@ export const useFileData = () => {
     return () => { _listeners = _listeners.filter(l => l !== fn); };
   };
 
-  return { files, loading, error, addFile, removeFile, getFilesByChannel, getAllChannelData, loadFiles, subscribe };
+  return { files, loading, error, addFile, removeFile, getFilesByChannel, getAllChannelData, loadFiles, subscribe, ensureFileData };
 };

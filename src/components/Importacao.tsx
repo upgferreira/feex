@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Upload, Trash2, Download, CheckCircle, AlertCircle } from 'lucide-react';
-import { useFileData } from '../hooks/useFileData';
+import { useFileData, ensureFileData } from '../hooks/useFileData';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
@@ -92,8 +92,9 @@ export const Importacao: React.FC<ImportacaoProps> = ({ selectedCanal = 'TODOS' 
     setUploading(false);
   };
 
-  const handleDownload = (file: any) => {
-    if (!file.data?.length) { alert('Arquivo sem dados'); return; }
+  const handleDownload = async (fileRow: any) => {
+    const [file] = await ensureFileData([fileRow.id]);
+    if (!file?.data?.length) { alert('Arquivo sem dados'); return; }
     const headers = file.columns;
     const csv = [
       headers.join(','),

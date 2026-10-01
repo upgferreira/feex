@@ -5,7 +5,7 @@ import { ExportRecord } from '../types';
 import { ExportModal } from './ExportModal';
 import { DataTable, FormatBadge, DataTableColumn } from './DataTable';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
-import { useFileData } from '../hooks/useFileData';
+import { useFileData, ensureFileData, fileOverlaps } from '../hooks/useFileData';
 import { useAuth } from '../hooks/useAuth';
 import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
@@ -540,10 +540,20 @@ export const Exportacao: React.FC = () => {
     } catch (e) { console.error('Erro ao salvar exported_file:', JSON.stringify(e)); }
   };
 
+  // Carrega (cache → banco) só os arquivos do canal que cobrem o período
+  const loadChannelPeriod = async (canal: string, dataInicial: string, dataFinal: string) => {
+    const ids = files
+      .filter(f => f.canal === canal.toUpperCase())
+      .filter(f => fileOverlaps(f, dataInicial, dataFinal))
+      .map(f => f.id);
+    await ensureFileData(ids);
+  };
+
   const handleExport = async (exportData: { canal: string; erp: string; dataInicial: string; dataFinal: string; formatos: string[] }) => {
     const dataObj = new Date(exportData.dataInicial);
     const ano = dataObj.getFullYear().toString();
     const competencia = (dataObj.getMonth() + 1).toString().padStart(2, '0') + '/' + ano;
+    await loadChannelPeriod(exportData.canal, exportData.dataInicial, exportData.dataFinal);
     const finalData = getConvertedData(exportData.canal, exportData.erp, exportData.dataInicial, exportData.dataFinal, competencia);
 
     // Block export if any row has empty category
@@ -582,7 +592,8 @@ export const Exportacao: React.FC = () => {
 
   const CHUNK_SIZE = 1000;
 
-  const handleDownloadRecord = (record: ExportRecord) => {
+  const handleDownloadRecord = async (record: ExportRecord) => {
+    await loadChannelPeriod(record.canal, record.periodoInicial, record.periodoFinal);
     const finalData = getConvertedData(record.canal, record.erp, record.periodoInicial, record.periodoFinal, record.competencia);
     if (record.erp === 'OLIST') {
       const zipName = generateFileName(record, 'ZIP');

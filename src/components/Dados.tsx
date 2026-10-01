@@ -9,7 +9,7 @@ import {
   ChevronDown, ChevronRight, ArrowUp, ArrowDown,
   Filter, Download, X, Image,
 } from 'lucide-react';
-import { useFileData } from '../hooks/useFileData';
+import { useFileData, ensureFileData, fileOverlaps, latestCompetenceRange } from '../hooks/useFileData';
 import { useAdmin } from '../hooks/useAdmin';
 import { supabase } from '../lib/supabase';
 import { convertToBling, toDateStr } from '../utils/converters';
@@ -110,6 +110,24 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
   const erpFilterRef = useRef<HTMLDivElement>(null);
   const erpThRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
   const [dateFilter, setDateFilter] = useState({ startDate: '', endDate: '' });
+
+  // Abre no mês mais recente e carrega só os arquivos do canal/período filtrado
+  const defaultPeriodApplied = useRef(false);
+  useEffect(() => {
+    if (!files.length) return;
+    if (!defaultPeriodApplied.current) {
+      defaultPeriodApplied.current = true;
+      if (!dateFilter.startDate && !dateFilter.endDate) {
+        const latest = latestCompetenceRange(files);
+        if (latest) { setDateFilter(latest); return; }
+      }
+    }
+    const ids = files
+      .filter(f => canal === 'TODOS' || f.canal === canal.toUpperCase())
+      .filter(f => fileOverlaps(f, dateFilter.startDate, dateFilter.endDate))
+      .map(f => f.id);
+    ensureFileData(ids);
+  }, [files, canal, dateFilter]);
   const [exportPanelOpen, setExportPanelOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const calendarRef = React.useRef<HTMLDivElement>(null);
