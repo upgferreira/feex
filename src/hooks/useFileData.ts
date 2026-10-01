@@ -10,6 +10,8 @@ import * as XLSX from 'xlsx';
 let _cache: ImportedFile[] | null = null;
 let _cacheUserId: string | null = null;
 let _listeners: (() => void)[] = [];
+let _metaInflight: Promise<void> | null = null;
+let _metaInflightUser: string | null = null;
 
 function notifyListeners() {
   _listeners.forEach(fn => fn());
@@ -120,6 +122,7 @@ async function loadOne(id: string) {
   const cached = await idbGet(id);
   if (cached) {
     f.data = normalizeRows(cached.data);
+    logger.info('dados', 'Carregar dados do arquivo', `${f.originalName || f.arquivo}: ${f.data.length} linhas do cache local (sem acessar o servidor)`);
     f.columns = cached.columns?.length ? cached.columns : f.columns;
     _loaded.add(id);
     return;
@@ -136,13 +139,13 @@ async function loadOne(id: string) {
       f.columns = fd.file_headers || f.columns;
       _loaded.add(id);
       idbSet(id, { data: f.data, columns: f.columns });
-      logger.info('dados', `Carregado ${f.originalName || f.arquivo} (${f.data.length} linhas, ${Math.round(performance.now() - started)} ms)`);
+      logger.info('dados', 'Carregar dados do arquivo', `Carregado ${f.originalName || f.arquivo} (${f.data.length} linhas, ${Math.round(performance.now() - started)} ms)`);
       return;
     }
-    logger.warn('dados', `Falha ao carregar ${f.originalName || f.arquivo} (tentativa ${attempt}/2): ${describeError(error)}`, error);
+    logger.warn('dados', 'Carregar dados do arquivo', `Falha ao carregar ${f.originalName || f.arquivo} (tentativa ${attempt}/2): ${describeError(error)}`, error);
     if (attempt < 2) await new Promise(r => setTimeout(r, 1500));
   }
-  logger.error('dados', `Não foi possível carregar ${f.originalName || f.arquivo}. Os dados dele não aparecem até recarregar a página.`);
+  logger.error('dados', 'Carregar dados do arquivo', `Não foi possível carregar ${f.originalName || f.arquivo}. Os dados dele não aparecem até recarregar a página.`);
 }
 
 /** Garante que os dados dos arquivos informados estejam carregados (cache → banco). */
@@ -229,15 +232,19 @@ export const useFileData = () => {
     if (user) {
       if (_cache && _cacheUserId === user.id) {
         setFiles(_cache);
+      } else if (_metaInflight && _metaInflightUser === user.id) {
+        // Outra instância já está buscando a lista — só espera o resultado
+        _metaInflight.then(() => { if (_cache && _cacheUserId === user.id) setFiles([..._cache]); });
       } else {
-        loadFiles();
+        _metaInflightUser = user.id;
+        _metaInflight = loadFiles().finally(() => { _metaInflight = null; });
       }
     } else if (_cacheUserId) {
       // Logout: não deixa dados financeiros no navegador
       clearFileDataCache();
       setFiles([]);
     }
-  }, [user]);
+  }, [user?.id]);
 
   // Sync with other hook instances when files change
   useEffect(() => {
@@ -412,7 +419,7 @@ export const useFileData = () => {
     let createdId: string | null = null;
     let etapa = 'leitura do arquivo';
     try {
-      logger.info('importacao', `Iniciando ${tag} (${Math.round(file.size / 1024)} KB)`);
+      logger.info('importacao', 'Início', `Iniciando ${tag} (${Math.round(file.size / 1024)} KB)`);
 
       // 1. Nome no padrão CANAL_TIPO_ANO_COMPETENCIA_INICIO_FIM
       const partes = file.name.replace(/\.(txt|csv|xls|xlsx)$/i, '').split('_');
@@ -431,12 +438,12 @@ export const useFileData = () => {
         throw new Error(`Não foi possível ler o arquivo: ${e?.message || e}. Confira se é o relatório original exportado do canal, sem edições.`);
       }
       if (!/^\d{2}-\d{4}$/.test(processedFile.competencia || '')) {
-        logger.warn('importacao', `${tag}: competência "${processedFile.competencia}" fora do formato MM-AAAA — o filtro por período pode não encontrar este arquivo.`);
+        logger.warn('importacao', 'Validação', `${tag}: competência "${processedFile.competencia}" fora do formato MM-AAAA — o filtro por período pode não encontrar este arquivo.`);
       }
       if (!processedFile.columns.length || !processedFile.data.length) {
         throw new Error('Nenhuma linha de dados encontrada. Confira se o arquivo não está vazio e se é o relatório original do canal (o cabeçalho precisa estar no lugar padrão).');
       }
-      logger.info('importacao', `${tag}: ${processedFile.data.length} linhas, ${processedFile.columns.length} colunas lidas`);
+      logger.info('importacao', 'Leitura da planilha', `${tag}: ${processedFile.data.length} linhas, ${processedFile.columns.length} colunas lidas`);
 
       // 3. Cria o registro (sem dados) para obter o ID
       etapa = 'criação do registro';
@@ -503,18 +510,18 @@ export const useFileData = () => {
       _cache = [newFile, ...(_cache || [])];
       setFiles(prev => [newFile, ...prev]);
       window.dispatchEvent(new CustomEvent('feex:files-updated'));
-      logger.info('importacao', `${tag}: importado com sucesso (${newFile.data.length} linhas)`);
+      logger.info('importacao', 'Concluído', `${tag}: importado com sucesso (${newFile.data.length} linhas)`);
       return newFile;
     } catch (err: any) {
       const friendly = err instanceof Error && !err.hasOwnProperty('code') ? err.message : describeError(err);
       const errorMessage = createdId ? `Falha na ${etapa}: ${friendly}` : friendly;
-      logger.error('importacao', `${tag}: ${errorMessage}`, err);
+      logger.error('importacao', 'Falha na importação', `${tag}: ${errorMessage}`, err);
 
       // Desfaz o registro incompleto para não bloquear a reimportação ("arquivo já importado")
       if (createdId) {
         const { error: delErr } = await supabase.from('imported_files').delete().eq('id', createdId).eq('user_id', user.id);
-        if (delErr) logger.error('importacao', `${tag}: não foi possível desfazer o registro incompleto ${createdId}. Delete-o manualmente antes de reimportar.`, delErr);
-        else logger.info('importacao', `${tag}: registro incompleto removido — pode reimportar.`);
+        if (delErr) logger.error('importacao', 'Desfazer registro incompleto', `${tag}: não foi possível desfazer o registro incompleto ${createdId}. Delete-o manualmente antes de reimportar.`, delErr);
+        else logger.info('importacao', 'Desfazer registro incompleto', `${tag}: registro incompleto removido — pode reimportar.`);
       }
 
       setError(errorMessage);

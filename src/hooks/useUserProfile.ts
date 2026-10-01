@@ -28,7 +28,7 @@ export const useUserProfile = () => {
     if (user) {
       loadProfile();
     }
-  }, [user]);
+  }, [user?.id]);
 
   const loadProfile = async () => {
     if (!user) return;

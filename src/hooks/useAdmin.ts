@@ -57,6 +57,9 @@ export interface FinancialAccount {
   updated_at: string;
 }
 
+// Verificação de admin compartilhada entre todas as instâncias do hook (1 requisição por usuário)
+const _adminCheck = new Map<string, Promise<boolean>>();
+
 export const useAdmin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -71,7 +74,7 @@ export const useAdmin = () => {
       setIsAdmin(false);
       setLoading(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
   const checkAdminStatus = async () => {
     if (!user) {
@@ -79,48 +82,39 @@ export const useAdmin = () => {
       setLoading(false);
       return;
     }
-
-    try {
-      console.log('Checking admin status for user:', user.id, user.email);
-      
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('is_admin, responsible_name')
-        .eq('user_id', user.id)
-        .single();
-
-      if (error) {
-        console.error('Error checking admin status:', error);
-        if (error.code === 'PGRST116') {
-          // No profile found, create one
-          console.log('No profile found, creating one...');
-          const { error: insertError } = await supabase
-            .from('user_profiles')
-            .insert({
-              user_id: user.id,
-              is_admin: user.email === 'admin@feex.com.br',
-              responsible_name: user.email === 'admin@feex.com.br' ? 'Administrador' : 'Usuário'
-            });
-          
-          if (insertError) {
-            console.error('Error creating profile:', insertError);
-            setIsAdmin(false);
-          } else {
-            setIsAdmin(user.email === 'admin@feex.com.br');
-          }
-        } else {
-          setIsAdmin(false);
-        }
-      } else {
-        console.log('Profile found:', data);
-        setIsAdmin(data?.is_admin || false);
-      }
-    } catch (err) {
-      console.error('Error in checkAdminStatus:', err);
-      setIsAdmin(false);
-    } finally {
-      setLoading(false);
+    let pending = _adminCheck.get(user.id);
+    if (!pending) {
+      pending = fetchAdminStatus();
+      _adminCheck.set(user.id, pending);
+      pending.catch(() => _adminCheck.delete(user.id));
     }
+    const admin = await pending.catch(() => false);
+    setIsAdmin(admin);
+    setLoading(false);
+  };
+
+  const fetchAdminStatus = async (): Promise<boolean> => {
+    if (!user) return false;
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('is_admin, responsible_name')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!error) return data?.is_admin || false;
+    if (error.code !== 'PGRST116') throw error;
+
+    // Sem perfil ainda: cria um
+    const isAdminEmail = user.email === 'admin@feex.com.br';
+    const { error: insertError } = await supabase
+      .from('user_profiles')
+      .insert({
+        user_id: user.id,
+        is_admin: isAdminEmail,
+        responsible_name: isAdminEmail ? 'Administrador' : 'Usuário'
+      });
+    if (insertError && insertError.code !== '23505') throw insertError;
+    return isAdminEmail;
   };
 
   const getAdminStats = async (): Promise<AdminStats> => {
