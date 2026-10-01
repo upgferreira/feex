@@ -91,6 +91,11 @@ export function toDateStr(val: any): string {
   return d && !isNaN(d.getTime()) ? d.toLocaleDateString('pt-BR') : '';
 }
 
+// ── Olist tipo/valor helper: Olist usa coluna Tipo (C/D) e Valor sempre positivo ──
+function olistTipoValor(valor: number): { Tipo: string; Valor: string } {
+  return { Tipo: valor < 0 ? 'D' : 'C', Valor: String(Math.abs(valor)) };
+}
+
 // ── Olist obs helper ──────────────────────────────────────────────────────────
 function buildOlistObs(canal: string, detalhe: string, pedido: string, cliente: string, categoria: string, competencia: string): string {
   return [
@@ -192,7 +197,7 @@ function convertMLToOlist(
     const lineCompetencia = String(dataLinha.getMonth() + 1).padStart(2,'0') + '/' + dataLinha.getFullYear();
     const cat = findCat(detalhe);
     const obs = buildOlistObs('MERCADO LIVRE', detalhe, pedido, cliente, cat, lineCompetencia);
-    resultado.push({ Data: dataFormatada, Categoria: cat, Historico: obs, Tipo: '', Valor: String(Number(valorTarifa) * -1), ID: '', Contato: fornecedor, CNPJ: cnpj, Marcadores: '', 'Conta de destino': portador, 'Nr documento': '' });
+    resultado.push({ Data: dataFormatada, Categoria: cat, Historico: obs, ...olistTipoValor(Number(valorTarifa) * -1), ID: '', Contato: fornecedor, CNPJ: cnpj, Marcadores: '', 'Conta de destino': portador, 'Nr documento': '' });
   });
   return resultado;
 }
@@ -304,7 +309,7 @@ function convertShopeeToOlist(
     const valor = isPositive ? Math.abs(rawValor) : -Math.abs(rawValor);
     const cat = findCat(detalhe);
     const obs = buildOlistObs('SHOPEE', detalhe, pedido, cliente, cat, lineCompetencia);
-    resultado.push({ Data: dataFormatada, Categoria: cat, Historico: obs, Tipo: '', Valor: String(valor), ID: '', Contato: fornecedor, CNPJ: cnpj, Marcadores: '', 'Conta de destino': portador, 'Nr documento': '' });
+    resultado.push({ Data: dataFormatada, Categoria: cat, Historico: obs, ...olistTipoValor(valor), ID: '', Contato: fornecedor, CNPJ: cnpj, Marcadores: '', 'Conta de destino': portador, 'Nr documento': '' });
   });
   return resultado;
 }
@@ -374,7 +379,7 @@ function convertAmazonToOlist(
     const lineCompetencia = String(dataLinha.getMonth()+1).padStart(2,'0')+'/'+dataLinha.getFullYear();
     const cat = findCat(detalhe);
     const obs = buildOlistObs('AMAZON', detalhe, pedido, '', cat, lineCompetencia);
-    resultado.push({ Data: dataFormatada, Categoria: cat, Historico: obs, Tipo: '', Valor: String(valor), ID: '', Contato: fornecedor, CNPJ: cnpj, Marcadores: '', 'Conta de destino': portador, 'Nr documento': '' });
+    resultado.push({ Data: dataFormatada, Categoria: cat, Historico: obs, ...olistTipoValor(valor), ID: '', Contato: fornecedor, CNPJ: cnpj, Marcadores: '', 'Conta de destino': portador, 'Nr documento': '' });
   });
   return resultado;
 }
@@ -443,7 +448,7 @@ function convertMagaluToOlist(
     const mm = String(dataObj.getMonth()+1).padStart(2,'0'); const lineCompetencia = mm+'/'+dataObj.getFullYear();
     const { cat } = findCat(detalhe);
     const obs = buildOlistObs('MAGAZINE LUIZA', detalhe, pedido, cliente, cat, lineCompetencia);
-    resultado.push({ Data: dataFormatada, Categoria: cat, Historico: obs, Tipo: '', Valor: String(valor), ID: '', Contato: fornecedor, CNPJ: cnpj, Marcadores: '', 'Conta de destino': portador, 'Nr documento': '' });
+    resultado.push({ Data: dataFormatada, Categoria: cat, Historico: obs, ...olistTipoValor(valor), ID: '', Contato: fornecedor, CNPJ: cnpj, Marcadores: '', 'Conta de destino': portador, 'Nr documento': '' });
   });
   return resultado;
 }
