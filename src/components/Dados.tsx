@@ -352,10 +352,11 @@ export const Dados: React.FC<DadosProps> = ({ selectedCanal: externalCanal }) =>
     if (!dateFilter.startDate && !dateFilter.endDate) return base;
     return base.filter((r: any) => {
       let dateStr = '';
-      if (canal === 'MERCADO LIVRE') dateStr = formatDate(r['Data da tarifa']);
-      else if (canal === 'TODOS') dateStr = r.DATA?.toString() || '';
+      // Em TODOS cada linha tem o canal de origem em _canal: usa a regra de data daquele canal
+      const rowCanal = canal === 'TODOS' ? r._canal : canal;
+      if (rowCanal === 'MERCADO LIVRE') dateStr = formatDate(r['Data da tarifa']);
       else {
-        const dk = Object.keys(r).find(k => k.toLowerCase().includes('data'));
+        const dk = Object.keys(r).find(k => k !== '_canal' && k.toLowerCase().includes('data'));
         if (dk) dateStr = formatDate(r[dk]);
       }
       const parts = dateStr.split('/');
